@@ -1,0 +1,19 @@
+// assets/backgrounds.ts
+export const backgrounds = {
+  bg001: require("./images/bg/bg001.png"),
+  bg002: require("./images/bg/bg002.png"),
+  bg003: require("./images/bg/bg003.png"),
+  bg004: require("./images/bg/bg004.png"),
+  bg005: require("./images/bg/bg005.png"),
+  bg006: require("./images/bg/bg006.png"),
+  bg007: require("./images/bg/bg007.png"),
+  bg008: require("./images/bg/bg008.png"),
+  bg009: require("./images/bg/bg009.png"),
+  bg010: require("./images/bg/bg010.png"),
+  bg011: require("./images/bg/bg011.png"),
+  bg012: require("./images/bg/bg012.png"),
+  bg013: require("./images/bg/bg013.png"),
+  bg014: require("./images/bg/bg014.png"),
+  bg015: require("./images/bg/bg015.png"),
+  bg016: require("./images/bg/bg016.png"),
+};

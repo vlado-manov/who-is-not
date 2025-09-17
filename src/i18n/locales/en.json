@@ -1,0 +1,21 @@
+{
+  "title_00": "Who is",
+  "title_01": "NOT?",
+  "start_btn": "Start",
+  "language_pick_btn": "Language",
+  "menu_play_btn": "Play now",
+  "menu_store_btn": "Store",
+  "menu_store_btn_label": "No ads?",
+  "menu_profile_btn": "Profile",
+  "menu_aq_btn": "Add a question",
+  "menu_aq_btn_label": "Premium",
+  "menu_htp_btn": "How to play",
+  "menuPlay_device_btn": "Play on 1 device",
+  "menuPlay_host_btn": "Host a game",
+  "menuPlay_join_btn": "Join a game",
+  "players_number_label_text": "How many players?",
+  "continue_btn": "Continue",
+  "name_label_text": "...and your name?",
+  "max_characters_players": "Between 3-10 players",
+  "max_characters_name": "Between 3-8 characters"
+}
