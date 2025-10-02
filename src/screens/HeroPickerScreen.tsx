@@ -7,8 +7,9 @@ import {
   Easing,
   Image,
   Pressable,
-  Text,
   TouchableOpacity,
+  Dimensions,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CustomText from "../components/common/CustomText";
@@ -20,7 +21,6 @@ import { Asset } from "expo-asset";
 import Entypo from "@expo/vector-icons/Entypo";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 
-// ❗ ползвам същия тип, който ти си дал
 import { CreateGameStackParamList } from "../navigation/types";
 import { useGameStore } from "../store/useGameStore";
 import { StackNavigationProp } from "@react-navigation/stack";
@@ -29,6 +29,9 @@ import Fontisto from "@expo/vector-icons/Fontisto";
 
 type HeroNav = StackNavigationProp<CreateGameStackParamList, "HeroPicker">;
 type HeroRoute = RouteProp<CreateGameStackParamList, "HeroPicker">;
+
+const { width: W, height: H } = Dimensions.get("window");
+const HERO_STAGE_HEIGHT = Math.min(Math.round(H * 0.58), 520);
 
 function randomOf<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -44,28 +47,16 @@ export default function HeroPickerScreen() {
   );
   const [previewing, setPreviewing] = useState(false);
 
-  // ─────────────────────────────────────────────────────────────
-  // 1) Вземаме от стора кои герои вече са взети, целта N, и екшъните
-  // ─────────────────────────────────────────────────────────────
   const taken = useGameStore((s) => s.takenCharacters);
   const target = useGameStore((s) => s.targetPlayersCount);
   const assignCharacter = useGameStore((s) => s.assignCharacter);
 
-  // ─────────────────────────────────────────────────────────────
-  // 2) Списък с налични герои (филтрираме заетите)
-  //    -> така вече избран герой изобщо НЕ се появява
-  // ─────────────────────────────────────────────────────────────
   const availableHeroes = useMemo(
     () => HEROES.filter((h) => !taken.includes(h.id)),
     [taken]
   );
 
-  // ─────────────────────────────────────────────────────────────
-  // 3) Индекс и текущ герой върху филтрирания списък
-  // ─────────────────────────────────────────────────────────────
   const [idx, setIdx] = useState(0);
-
-  // ако списъкът се смали или изпразни → връщаме idx в граници
   useEffect(() => {
     if (availableHeroes.length === 0) return;
     if (idx >= availableHeroes.length) setIdx(0);
@@ -73,9 +64,6 @@ export default function HeroPickerScreen() {
 
   const hero = availableHeroes[idx];
 
-  // ─────────────────────────────────────────────────────────────
-  // 4) Preload само наличните изображения (за гладък UI)
-  // ─────────────────────────────────────────────────────────────
   const [assetsReady, setAssetsReady] = useState(false);
   useEffect(() => {
     let mounted = true;
@@ -95,16 +83,13 @@ export default function HeroPickerScreen() {
     };
   }, [availableHeroes]);
 
-  // ─────────────────────────────────────────────────────────────
-  // 5) Анимации (slide out → switch → slide in) – твоите
-  // ─────────────────────────────────────────────────────────────
   const opacity = useRef(new Animated.Value(1)).current;
   const translateX = useRef(new Animated.Value(0)).current;
   const dir = useRef<1 | -1>(1);
 
   const animateTo = (nextIdx: number, direction: 1 | -1) => {
-    if (selected) return; // стрелките са изключени след избор
-    if (availableHeroes.length <= 1) return; // няма какво да въртим
+    if (selected) return;
+    if (availableHeroes.length <= 1) return;
     dir.current = direction;
     Animated.parallel([
       Animated.timing(opacity, {
@@ -144,9 +129,6 @@ export default function HeroPickerScreen() {
 
   const onNext = () => animateTo((idx + 1) % availableHeroes.length, 1);
 
-  // ─────────────────────────────────────────────────────────────
-  // 6) Избор → цитат + Skip → авто-напред след 2s
-  // ─────────────────────────────────────────────────────────────
   const [selected, setSelected] = useState(false);
   const [quote, setQuote] = useState<string | null>(null);
   const quoteOpacity = useRef(new Animated.Value(0)).current;
@@ -165,7 +147,6 @@ export default function HeroPickerScreen() {
     }
   }, [quote, quoteOpacity]);
 
-  // навигация напред според това дали има още играчи
   const goNext = () => {
     if (skipTimerRef.current) {
       clearTimeout(skipTimerRef.current);
@@ -178,7 +159,6 @@ export default function HeroPickerScreen() {
     }
   };
 
-  // чистене на таймера при unmount (предпазва от side-effects)
   useEffect(() => {
     return () => {
       if (skipTimerRef.current) {
@@ -191,19 +171,16 @@ export default function HeroPickerScreen() {
   const handleSelect = () => {
     if (!hero || !hero.free || selected) return;
 
-    setLockedHero(hero); // 👈 заключи текущия видим герой
+    setLockedHero(hero);
     assignCharacter(playerId, hero.id);
     setSelected(true);
     setQuote(randomOf(hero.quotes_selected));
-    skipTimerRef.current = setTimeout(goNext, 99999999999999999);
+    skipTimerRef.current = setTimeout(goNext, 5000);
   };
 
   const onSkip = () => goNext();
   const displayHero = lockedHero ?? hero;
 
-  // ─────────────────────────────────────────────────────────────
-  // 7) Guards за празни/зареждащи състояния
-  // ─────────────────────────────────────────────────────────────
   if (
     !assetsReady ||
     (availableHeroes.length === 0 && !lockedHero) ||
@@ -212,9 +189,6 @@ export default function HeroPickerScreen() {
     return <LoadingScreen />;
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // 8) UI
-  // ─────────────────────────────────────────────────────────────
   return (
     <SafeAreaView className="flex-1" edges={["right", "left"]}>
       <ImageBackground
@@ -222,38 +196,32 @@ export default function HeroPickerScreen() {
         style={{ flex: 1 }}
         resizeMode="cover"
       >
-        {/* Skip в горния десен ъгъл – само след избор */}
         {selected && (
           <View className="absolute top-20 right-6 z-50">
             <TouchableOpacity onPress={onSkip}>
-              <CustomText className="w-full underline">Skip</CustomText>
+              <CustomText className="w-full underline">
+                {t("hero_picker_skip")}
+              </CustomText>
             </TouchableOpacity>
           </View>
         )}
 
         <View className="flex-1 items-center w-full justify-between px-4 pt-10 pb-[88px]">
-          {/* Заглавие / Цитат */}
           <View className="mt-[80px] justify-center items-center max-w-[80%]">
             {!selected ? (
               <>
                 <CustomText variant="h3-headline" className="text-center">
-                  Choose your
+                  {t("hero_picker_headline")}
                 </CustomText>
                 <CustomText variant="h3" className="text-center" shadow>
-                  HERO
+                  {t("hero_picker_headline_2")}
                 </CustomText>
               </>
             ) : (
               <Animated.View style={{ opacity: quoteOpacity }}>
                 <View
                   className="bg-white rounded-[16px] py-4 px-12 min-w-[85%] w-full"
-                  style={{
-                    shadowColor: "#000",
-                    shadowOpacity: 0.15,
-                    shadowRadius: 12,
-                    shadowOffset: { width: 0, height: 6 },
-                    elevation: 6,
-                  }}
+                  style={styles.quoteBubbleShadow}
                 >
                   <CustomText
                     variant="quote"
@@ -264,27 +232,16 @@ export default function HeroPickerScreen() {
                   </CustomText>
                   <View
                     className="absolute -bottom-4 left-1/2 - translate-x-1/2"
-                    style={{
-                      width: 0,
-                      height: 0,
-                      borderLeftWidth: 12,
-                      borderRightWidth: 12,
-                      borderTopWidth: 14,
-                      borderLeftColor: "transparent",
-                      borderRightColor: "transparent",
-                      borderTopColor: "#FFFFFF",
-                      marginTop: -1,
-                    }}
+                    style={styles.quoteBubbleTail}
                   />
                 </View>
               </Animated.View>
             )}
           </View>
 
-          {/* Карусел */}
-          <View className="flex-1 items-center justify-center w-full">
+          <View style={styles.stage}>
             <Pressable
-              className={`absolute left-6 top-1/2 -translate-y-1/2 z-50 ${selected ? "opacity-40" : ""}`}
+              style={[styles.arrowLeft, selected && { opacity: 0.4 }]}
               onPress={onPrev}
               disabled={selected || availableHeroes.length <= 1}
               hitSlop={16}
@@ -292,16 +249,13 @@ export default function HeroPickerScreen() {
               <Entypo name="arrow-with-circle-left" size={48} color="white" />
             </Pressable>
 
-            {/* Платените герои са disabled в MVP */}
             {!displayHero.free && !previewing && (
-              <View className="px-12 flex-col absolute left-1/2 top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 text-center justify-center items-center max-w-[75%]">
-                <View className="w-[100px] h-[100px]">
-                  <Fontisto
-                    name="locked"
-                    size={88}
-                    color="white"
-                    className="absolute left-1/2 top-1/2 -translate-y-1/2 -translate-x-1/2"
-                  />
+              <View style={styles.lockOverlay}>
+                <View
+                  style={{ width: 100, height: 100 }}
+                  className="justify-center items-center"
+                >
+                  <Fontisto name="locked" size={88} color="white" />
                 </View>
                 <CustomText
                   variant="quote"
@@ -312,20 +266,27 @@ export default function HeroPickerScreen() {
                 </CustomText>
               </View>
             )}
+
             <Animated.View
-              style={{ opacity, transform: [{ translateX }] }}
-              className="flex-1 items-center justify-center relative"
+              style={[
+                styles.heroImageWrap,
+                { opacity, transform: [{ translateX }] },
+              ]}
+              pointerEvents="none"
             >
               <Image
                 source={displayHero.main_image}
                 resizeMode="contain"
-                className={`max-w-[90%] transition-all ${!displayHero.free && !previewing ? "opacity-60" : ""}`}
+                style={[
+                  styles.heroImage,
+                  !displayHero.free && !previewing ? { opacity: 0.6 } : null,
+                ]}
                 blurRadius={displayHero.free || previewing ? 0 : 12}
               />
             </Animated.View>
 
             <Pressable
-              className={`absolute right-6 top-1/2 -translate-y-1/2 ${selected ? "opacity-40" : ""}`}
+              style={[styles.arrowRight, selected && { opacity: 0.4 }]}
               onPress={onNext}
               disabled={selected || availableHeroes.length <= 1}
               hitSlop={16}
@@ -334,7 +295,6 @@ export default function HeroPickerScreen() {
             </Pressable>
           </View>
 
-          {/* Бутон за избор */}
           <View className="w-full px-6">
             {!displayHero.free && (
               <TouchableOpacity
@@ -372,3 +332,63 @@ export default function HeroPickerScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  stage: {
+    position: "relative",
+    width: "100%",
+    height: HERO_STAGE_HEIGHT,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroImageWrap: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroImage: {
+    ...StyleSheet.absoluteFillObject,
+    top: "50%",
+    left: "50%",
+    transform: [{ translateX: "-50%" }, { translateY: "-50%" }],
+    width: "100%",
+    height: "100%",
+  },
+  arrowLeft: {
+    position: "absolute",
+    left: 24,
+    top: "50%",
+    transform: [{ translateY: -24 }],
+    zIndex: 50,
+  },
+  arrowRight: {
+    position: "absolute",
+    right: 24,
+    top: "50%",
+    transform: [{ translateY: -24 }],
+    zIndex: 50,
+  },
+  lockOverlay: {
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+  },
+  quoteBubbleShadow: {
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+  },
+  quoteBubbleTail: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 12,
+    borderRightWidth: 12,
+    borderTopWidth: 14,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderTopColor: "#FFFFFF",
+    marginTop: -1,
+  },
+});

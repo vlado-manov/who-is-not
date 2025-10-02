@@ -17,5 +17,10 @@
   "continue_btn": "Continue",
   "name_label_text": "...and your name?",
   "max_characters_players": "Between 3-10 players",
-  "max_characters_name": "Between 3-8 characters"
+  "max_characters_name": "Between 3-8 characters",
+  "max_characters_name_error": "Try with at least 3 letters",
+  "player_label_text": "Player",
+  "hero_picker_headline": "Pick your",
+  "hero_picker_headline_2": "Hero",
+  "hero_picker_skip": "Skip"
 }

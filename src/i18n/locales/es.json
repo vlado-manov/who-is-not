@@ -12,5 +12,15 @@
   "menu_htp_btn": "Cómo jugar",
   "menuPlay_device_btn": "Jugar en 1 dispositivo",
   "menuPlay_host_btn": "Crear partida",
-  "menuPlay_join_btn": "Unirse a una partida"
+  "menuPlay_join_btn": "Unirse a una partida",
+  "players_number_label_text": "¿Cuántos jugadores?",
+  "continue_btn": "Continuar",
+  "name_label_text": "...¿y tu nombre?",
+  "max_characters_players": "Entre 3-10 jugadores",
+  "max_characters_name": "Entre 3-8 caracteres",
+  "max_characters_name_error": "Prueba con al menos 3 letras",
+  "player_label_text": "Jugador",
+  "hero_picker_headline": "Elige tu",
+  "hero_picker_headline_2": "Héroe",
+  "hero_picker_skip": "Saltar"
 }

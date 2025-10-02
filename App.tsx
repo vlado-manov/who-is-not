@@ -49,8 +49,11 @@ export default function App() {
         const toPreload = [
           backgrounds.bg001,
           backgrounds.bg009,
+          backgrounds.bgheroes01,
           ...HEROES.map((h) => h.main_image),
           images.passDevice,
+          images.curtainTop,
+          images.curtainBottom,
           character_avatars.susie,
           character_avatars.booena,
           character_avatars.simpalot,

@@ -17,25 +17,19 @@ type TextVariant =
 interface Props extends TextProps {
   children: ReactNode;
   variant?: TextVariant;
-  className?: string; // допълнителни Tailwind класове (-rotate-2, tracking-wide и т.н.)
-  shadow?: boolean; // ако е true -> добавя text-shadow-default клас
-  responsive?: boolean; // shrink под 390px ширина (default: true)
-  textColor?: string; // "text-black" | "text-sky-400" | "#fff" | "rgb(255,0,0)" | т.н.
+  className?: string;
+  shadow?: boolean;
+  responsive?: boolean;
+  textColor?: string;
 }
 
-/**
- * Runtime-only sizing (без Tailwind text-[..] размери).
- * - Ползва базов пикселен размер според варианта.
- * - Смалява пропорционално под 390px; никога не скалира нагоре.
- * - По подразбиране цветът е бял, освен ако е подаден textColor.
- */
 export default function CustomText({
   children,
   variant = "p",
   className,
   shadow = false,
   responsive = true,
-  textColor, // <- нов проп
+  textColor,
   ...rest
 }: Props) {
   const { width } = useWindowDimensions();
@@ -67,11 +61,9 @@ export default function CustomText({
     }
   }, [variant]);
 
-  // shrink only if the device is narrower than 390px
   const scale = responsive ? Math.min(1, width / 390) : 1;
   const fontSize = Math.round(baseSize * scale);
 
-  // font family per variant (via Tailwind font-* classes you defined)
   const fontClass = useMemo(() => {
     switch (variant) {
       case "h1":
@@ -93,8 +85,6 @@ export default function CustomText({
     }
   }, [variant]);
 
-  // 1) Премахваме евентуални text-* цветове от className, за да няма конфликт
-  // вместо: /\btext-[^\s]+/g
   const sanitizedClassName = useMemo(
     () =>
       className
@@ -105,7 +95,6 @@ export default function CustomText({
     [className]
   );
 
-  // 2) Определяме цветa: по подразбиране е бял
   const isTailwindTextClass =
     typeof textColor === "string" && textColor.startsWith("text-");
   const colorClass = isTailwindTextClass ? (textColor as string) : "text-white";
@@ -118,14 +107,14 @@ export default function CustomText({
     <Text
       className={[
         fontClass,
-        colorClass, // Tailwind цвят (или text-white по подразбиране)
-        shadow ? "text-shadow-default" : "", // опционална сянка през клас
-        sanitizedClassName, // останалите класове (без text-*)
+        colorClass,
+        shadow ? "text-shadow-default" : "",
+        sanitizedClassName,
       ]
         .filter(Boolean)
         .join(" ")
         .trim()}
-      style={[{ fontSize }, inlineColor]} // ако е hex/rgb -> минава през style.color
+      style={[{ fontSize }, inlineColor]}
       {...rest}
     >
       {children}

@@ -28,14 +28,14 @@ interface Props extends Omit<TextInputProps, "placeholder" | "onChange"> {
   onChangeText?: (text: string) => void;
   containerStyle?: StyleProp<ViewStyle>;
   inputStyle?: StyleProp<TextStyle>;
-  containerClassName?: string; // Tailwind/NativeWind
-  inputClassName?: string; // Tailwind/NativeWind
+  containerClassName?: string;
+  inputClassName?: string;
   borderColor?: string;
   focusBorderColor?: string;
 }
 
-const DEFAULT_BORDER = "#FA8900"; // primary-700-ish
-const DEFAULT_BORDER_FOCUSED = "#FA3A00"; // primary-500-ish
+const DEFAULT_BORDER = "#FA8900";
+const DEFAULT_BORDER_FOCUSED = "#FA3A00";
 
 const CustomInput = forwardRef<CustomInputHandle | TextInput, Props>(
   (

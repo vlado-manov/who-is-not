@@ -29,14 +29,14 @@ const NameScreen = () => {
 
     if (!trimmed || trimmed.length < 3) {
       setError(
-        t("min_characters_name", {
+        t("max_characters_name_error", {
           defaultValue: "Name must be at least 3 letters",
         })
       );
       return;
     }
 
-    setError(null); // изчистваме грешката ако всичко е наред
+    setError(null);
 
     const id = Date.now().toString();
     addPlayer({ id, name: trimmed, connected: true });
@@ -67,7 +67,7 @@ const NameScreen = () => {
               value={name}
               onChangeText={setName}
               returnKeyType="done"
-              maxLength={8} // 👈 лимит до 8 символа
+              maxLength={8}
             />
 
             <CustomText variant="footnote" className="my-4">
@@ -83,14 +83,14 @@ const NameScreen = () => {
               onPress={onContinue}
             />
 
-            {error && ( // 👈 показва се само след Continue
+            {error && (
               <CustomText variant="footnote" className="text-red-500 mt-4">
                 {error}
               </CustomText>
             )}
 
             <CustomText variant="label" className="absolute bottom-12">
-              {t("player_n_label", { defaultValue: `Player ${index}`, index })}
+              {t("player_label_text")} {index}
             </CustomText>
           </View>
         </View>

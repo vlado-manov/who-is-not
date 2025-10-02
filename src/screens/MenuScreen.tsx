@@ -39,7 +39,7 @@ const MenuScreen = () => {
               btnSize="sm"
               fullWidth
               buttonClassName="-rotate-1"
-              onPress={() => navigation.navigate("MenuPlay")} // ✅ навигация
+              onPress={() => navigation.navigate("MenuPlay")}
             />
             <CustomButton
               title={t("menu_store_btn")}

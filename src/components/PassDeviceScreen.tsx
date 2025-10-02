@@ -8,7 +8,7 @@ import { StackNavigationProp } from "@react-navigation/stack";
 import CustomText from "./common/CustomText";
 import CustomButton from "./common/CustomButton";
 import { backgrounds } from "../../assets/backgrounds";
-import { images } from "../../assets/images"; // увери се, че images.passDevice е require(...) или { uri: ... }
+import { images } from "../../assets/images";
 import { CreateGameStackParamList } from "../navigation/types";
 import { useGameStore } from "../store/useGameStore";
 
@@ -23,11 +23,9 @@ const PassDeviceScreen = () => {
   const target = useGameStore((s) => s.targetPlayersCount);
 
   const onContinue = () => {
-    // ако има още играчи за въвеждане → към Name(index)
     if (target && index <= target) {
       navigation.navigate("Name", { index });
     } else {
-      // safety: ако някой е натиснал Continue след последния → към Lobby
       navigation.navigate("Lobby");
     }
   };
