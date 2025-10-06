@@ -26,7 +26,17 @@ export const characters_win = {};
 
 export const character_avatars = {
   booena: require("./images/characters/avatars/Booena.png"),
+  bitcoin_allan: require("./images/characters/avatars/bitcoin_allan.png"),
+  dad_gpt: require("./images/characters/avatars/dad_gpt.png"),
+  hangreta: require("./images/characters/avatars/hangreta.png"),
+  monday: require("./images/characters/avatars/monday.png"),
+  mr_good_time: require("./images/characters/avatars/mr_good_time.png"),
   pete: require("./images/characters/avatars/Pluggedin_pete.png"),
+  screena: require("./images/characters/avatars/screena.png"),
   susie: require("./images/characters/avatars/Remote_susie.png"),
   simpalot: require("./images/characters/avatars/Sir_Simpalot.png"),
+  tedimechov: require("./images/characters/avatars/tedimechov.png"),
+  vibeswitch: require("./images/characters/avatars/vibeswitch.png"),
+  virala: require("./images/characters/avatars/virala.png"),
+  wine_bender: require("./images/characters/avatars/wine_bender.png"),
 };

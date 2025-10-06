@@ -1,0 +1,61 @@
+import { backgrounds } from "../../assets/backgrounds";
+import { images } from "../../assets/images";
+import { IBundle } from "../types/bundle";
+
+export const BUNDLES: IBundle[] = [
+  {
+    id: "1",
+    productId: "1a",
+    title: "All Roster Bundle",
+    slug: "all_roster_bundle",
+    summary: "Unlock ALL currently available heroes",
+    description: "Unlock ALL currently available heroes, best offer.",
+    image: images.rosterBundle,
+    background: backgrounds.bg007,
+    price: 19.99,
+    currency: "USD",
+    discountPrice: 11.99,
+    discountPercentage: 40,
+    priceNote: "-40% discount",
+    active: true,
+    position: 1,
+    isBestOffer: true,
+    isFeatured: true,
+  },
+  {
+    id: "2",
+    productId: "2a",
+    title: "Spooky Hero Bundle",
+    slug: "spooky_hero_bundle",
+    summary: "Screena, Аllan and Monday",
+    description:
+      "Unlock our collection of spooky heroes now for limited time only - get Screena, Bitcoin Allan and Monday just for $3.49 instead of $5.99.",
+    image: images.spookyPack,
+    background: backgrounds.bg017,
+    price: 5.99,
+    currency: "USD",
+    discountPrice: 3.49,
+    active: true,
+    position: 1,
+    isBestOffer: false,
+    isFeatured: false,
+  },
+  {
+    id: "3",
+    productId: "3a",
+    title: "YAS Girl Bundle",
+    slug: "yas_girl_bundle",
+    summary: "Vibeswitch, Wine Bender and Virala",
+    description:
+      "Unlock our collection of powerful girls now for limited time only - get Vibeswitch, Wine Bender and Virala just for $3.49 instead of $5.99.",
+    image: images.girlBundle,
+    background: backgrounds.bg014,
+    price: 5.99,
+    currency: "USD",
+    discountPrice: 3.49,
+    active: true,
+    position: 1,
+    isBestOffer: false,
+    isFeatured: false,
+  },
+];

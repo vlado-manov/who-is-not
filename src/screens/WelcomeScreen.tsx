@@ -31,10 +31,18 @@ export default function WelcomeScreen() {
         resizeMode="cover"
       >
         <View className="flex-1 items-center w-full justify-center px-4">
-          <CustomText variant="h2-headline" className="text-center" shadow>
+          <CustomText
+            variant="h2-headline"
+            className="text-center w-full"
+            shadow
+          >
             {t("title_00")}
           </CustomText>
-          <CustomText variant="h2" className="-rotate-3 text-center" shadow>
+          <CustomText
+            variant="h2"
+            className="-rotate-3 text-center w-full"
+            shadow
+          >
             {t("title_01")}
           </CustomText>
 

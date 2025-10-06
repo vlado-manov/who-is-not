@@ -2,6 +2,7 @@ export type OnboardingStackParamList = {
   Welcome: undefined;
   Menu: undefined;
   MenuPlay: undefined;
+  Store: undefined;
 };
 
 export type CreateGameStackParamList = {

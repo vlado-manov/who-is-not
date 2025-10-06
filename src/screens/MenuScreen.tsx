@@ -48,6 +48,7 @@ const MenuScreen = () => {
               fullWidth
               label
               labelTitle={t("menu_store_btn_label")}
+              onPress={() => navigation.navigate("Store")}
             />
             <CustomButton
               title={t("menu_profile_btn")}
