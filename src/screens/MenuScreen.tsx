@@ -56,6 +56,7 @@ const MenuScreen = () => {
               btnSize="sm"
               fullWidth
               buttonClassName="-rotate-1"
+              onPress={() => navigation.navigate("Profile")}
             />
             <CustomButton
               title={t("menu_aq_btn")}

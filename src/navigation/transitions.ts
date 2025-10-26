@@ -121,6 +121,33 @@ export const forParallax: StackCardStyleInterpolator = ({
   };
 };
 
+export const forInstantFade: StackCardStyleInterpolator = ({
+  current,
+  next,
+}) => {
+  // Текущият екран
+  const opacityIn = current.progress.interpolate({
+    inputRange: [0, 0.01, 1],
+    outputRange: [0, 1, 1], // бързо се появява
+  });
+
+  // Излизащият екран (ако има)
+  const opacityOut = next
+    ? next.progress.interpolate({
+        inputRange: [0, 0.01, 1],
+        outputRange: [1, 0, 0], // почти веднага изчезва
+      })
+    : 1;
+
+  return {
+    cardStyle: {
+      opacity: opacityIn,
+      transform: [{ translateX: 0 }, { translateY: 0 }, { scale: 1 }],
+    },
+    containerStyle: { opacity: opacityOut as any },
+  };
+};
+
 export const forOverlayFade: StackCardStyleInterpolator = ({ current }) => {
   const overlayOpacity = current.progress.interpolate({
     inputRange: [0, 1],
@@ -163,5 +190,6 @@ export const Transitions = {
   parallax: forParallax,
   overlayFade: forOverlayFade,
   flipHorizontal: forFlipHorizontal,
+  instantFade: forInstantFade,
 };
 export type TransitionName = keyof typeof Transitions;

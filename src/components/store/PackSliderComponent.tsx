@@ -52,7 +52,8 @@ const PackSliderComponent = ({ title, data, onSelect }: Props) => {
     const target =
       layout.offsets[Math.min(activeIndex, layout.offsets.length - 1)];
     sliderRef.current?.scrollToOffset({ offset: target, animated: false });
-  }, [screenWidth, layout.offsets.join(",")]); // crude, но стабилно за мемо масив
+  }, [screenWidth, layout.offsets.join(",")]);
+
   const handleMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
     let nearest = 0;
@@ -68,7 +69,7 @@ const PackSliderComponent = ({ title, data, onSelect }: Props) => {
   };
 
   return (
-    <View className="w-full my-4">
+    <View className="w-full mt-[40px]">
       <CustomText variant="h3-small" className="px-8 my-4">
         {title}
       </CustomText>

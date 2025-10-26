@@ -6,7 +6,7 @@ import { backgrounds } from "../../../assets/backgrounds";
 
 const PremiumComponent = () => {
   return (
-    <View className="my-10 mx-8 relative">
+    <View className="mt-16 mx-8 relative">
       <ImageBackground
         source={backgrounds.bg009}
         resizeMode="cover"

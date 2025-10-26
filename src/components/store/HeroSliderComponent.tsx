@@ -37,7 +37,7 @@ export default function HeroSliderComponent({
   };
 
   return (
-    <View className="w-full my-4">
+    <View className="w-full mt-[40px]">
       <FlatList
         data={data}
         keyExtractor={(it) => it.id}

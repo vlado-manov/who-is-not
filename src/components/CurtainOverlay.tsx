@@ -1,5 +1,5 @@
 // src/components/CurtainOverlay.tsx
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
@@ -9,33 +9,38 @@ import {
   View,
 } from "react-native";
 import { images } from "../../assets/images";
+import AudioManager from "../utils/audioManager";
 
 const { height: H } = Dimensions.get("window");
 
 type Props = {
   onDone: () => void;
-  /** колко да стоят затворени преди да тръгнат */
   delayMs?: number;
-  /** колко бавно да се отварят */
   durationMs?: number;
-  /** застъпване на PNG-тата спрямо ръбовете(за да няма фуга) */
   edgeOffset?: number;
-  /** колко повече да изтеглим панелите извън екрана след H/2 */
   overshootPx?: number;
 };
 
 export default function CurtainOverlay({
   onDone,
-  delayMs = 2500,
-  durationMs = 3000,
+  delayMs = 800,
+  durationMs = 3800,
   edgeOffset = 117,
   overshootPx = 120,
 }: Props) {
   const topY = useRef(new Animated.Value(0)).current;
   const bottomY = useRef(new Animated.Value(0)).current;
   const backdropOpacity = useRef(new Animated.Value(1)).current;
+  const [canTouch, setCanTouch] = useState(false);
 
   useEffect(() => {
+    const touchDelay = delayMs + durationMs * 0.2;
+    const touchTimer = setTimeout(() => setCanTouch(true), touchDelay);
+
+    const soundTimer = setTimeout(() => {
+      AudioManager.playCurtainSound();
+    }, delayMs);
+
     Animated.sequence([
       Animated.delay(delayMs),
       Animated.parallel([
@@ -61,6 +66,11 @@ export default function CurtainOverlay({
     ]).start(({ finished }) => {
       if (finished) onDone();
     });
+
+    return () => {
+      clearTimeout(touchTimer);
+      clearTimeout(soundTimer);
+    };
   }, [
     delayMs,
     durationMs,
@@ -72,9 +82,8 @@ export default function CurtainOverlay({
   ]);
 
   return (
-    <View pointerEvents="auto" style={styles.container}>
+    <View pointerEvents={canTouch ? "none" : "auto"} style={styles.container}>
       <Animated.View
-        pointerEvents="none"
         style={[
           StyleSheet.absoluteFillObject,
           { opacity: backdropOpacity, backgroundColor: "#000" },

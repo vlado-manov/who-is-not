@@ -7,6 +7,7 @@ import {
   Animated,
   Platform,
 } from "react-native";
+import AudioManager from "../../utils/audioManager";
 
 interface CustomButtonProps {
   title: string;
@@ -18,7 +19,7 @@ interface CustomButtonProps {
   buttonClassName?: string;
   textClassName?: string;
   labelClassName?: string;
-  btnSize?: "sm" | "lg";
+  btnSize?: "xs" | "sm" | "lg";
   disabled?: boolean;
 }
 
@@ -92,6 +93,7 @@ export default function CustomButton({
   let textSizeClass = "text-[24px]";
   if (btnSize === "lg") textSizeClass = "text-[32px]";
   if (btnSize === "sm") textSizeClass = "text-[20px]";
+  if (btnSize === "xs") textSizeClass = "text-[16px]";
 
   const tailwindBgClass = !isHex ? color || "bg-primary-500" : "";
 
@@ -103,7 +105,10 @@ export default function CustomButton({
       <Pressable
         disabled={disabled}
         accessibilityState={{ disabled }}
-        onPress={onPress}
+        onPress={(e) => {
+          AudioManager.playButtonClick();
+          onPress?.(e);
+        }}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         className={`${fullWidth ? "w-full" : ""} ${buttonClassName || ""}`}

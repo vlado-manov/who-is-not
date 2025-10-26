@@ -65,7 +65,7 @@ const StoreScreen = () => {
             </TouchableOpacity>
           </View>
 
-          <View className="flex-1 items-center w-full justify-center px-4 mt-[16px]">
+          <View className="items-center w-full justify-center px-4 mt-[40px]">
             <CustomText
               variant="h3-headline"
               className="text-center w-full"
@@ -85,7 +85,6 @@ const StoreScreen = () => {
           <PremiumComponent />
 
           <HeroSliderComponent
-            title="Our hero selection"
             data={paidHeroes}
             itemSize={164}
             gap={0}

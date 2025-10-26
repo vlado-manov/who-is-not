@@ -7,12 +7,16 @@ import { Asset } from "expo-asset";
 
 import "./global.css";
 import "./src/i18n";
+
 import { backgrounds } from "./assets/backgrounds";
-import LoadingScreen from "./src/components/LoadingScreen";
-import RootNavigator from "./src/navigation/RootNavigator";
 import { character_avatars } from "./assets/characters";
-import { images } from "./assets/images";
+import { images, store_images } from "./assets/images";
 import { HEROES } from "./src/data/heroes";
+
+import RootNavigator from "./src/navigation/RootNavigator";
+import InitialLoadingScreen from "./src/components/InitialLoadingScreen";
+import { useAuthStore } from "./src/store/useUserStore";
+import AudioManager from "./src/utils/audioManager";
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -38,62 +42,73 @@ export default function App() {
     "StalinistOne-Regular": require("./assets/fonts/StalinistOne-Regular.ttf"),
   });
 
-  const [assetsReady, setAssetsReady] = useState(false);
-
-  const [showLoading, setShowLoading] = useState(true);
+  const [heroBgReady, setHeroBgReady] = useState(false);
+  const [restReady, setRestReady] = useState(false);
+  const [appReady, setAppReady] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
+    let active = true;
     (async () => {
       try {
-        const toPreload = [
-          backgrounds.bg001,
-          backgrounds.bg002,
-          backgrounds.bg003,
-          backgrounds.bg004,
-          backgrounds.bg005,
-          backgrounds.bg006,
-          backgrounds.bg007,
-          backgrounds.bg008,
-          backgrounds.bg009,
-          backgrounds.bg010,
-          backgrounds.bg011,
-          backgrounds.bg012,
-          backgrounds.bg013,
-          backgrounds.bg014,
-          backgrounds.bg015,
-          backgrounds.bg016,
-          backgrounds.bg017,
-          backgrounds.bgheroes01,
-          ...HEROES.map((h) => h.main_image),
-          images.passDevice,
-          images.curtainTop,
-          images.curtainBottom,
-          character_avatars.susie,
-          character_avatars.booena,
-          character_avatars.simpalot,
-        ] as any[];
-        await Asset.loadAsync(toPreload);
+        await Asset.loadAsync([backgrounds.bgheroes01]);
       } finally {
-        if (mounted) setAssetsReady(true);
+        if (active) setHeroBgReady(true);
       }
     })();
     return () => {
-      mounted = false;
+      active = false;
     };
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowLoading(false), 1000);
-    return () => clearTimeout(timer);
+    let active = true;
+    const values = (obj: Record<string, any>) =>
+      Object.values(obj).filter(Boolean);
+
+    (async () => {
+      try {
+        const allBackgrounds = values(backgrounds).filter(
+          (v) => v !== backgrounds.bgheroes01
+        );
+        const toPreload = [
+          ...allBackgrounds,
+          ...values(character_avatars),
+          ...values(store_images),
+          ...values(images),
+          ...HEROES.map((h) => h.main_image),
+        ];
+        await Asset.loadAsync(toPreload);
+      } finally {
+        if (active) setRestReady(true);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const ready = fontsLoaded && assetsReady;
+  const soundEnabled = useAuthStore((s) => s.settings.soundEnabled);
+
+  useEffect(() => {
+    AudioManager.setSoundEnabled(soundEnabled);
+  }, [soundEnabled]);
+
+  useEffect(() => {
+    if (heroBgReady && restReady && fontsLoaded) {
+      const t = setTimeout(() => setAppReady(true), 100);
+      return () => clearTimeout(t);
+    }
+  }, [heroBgReady, restReady, fontsLoaded]);
 
   return (
     <NavigationContainer>
       <StatusBar style="light" />
-      {ready ? <RootNavigator /> : <LoadingScreen />}
+      {appReady ? (
+        <RootNavigator />
+      ) : (
+        <InitialLoadingScreen heroReady={heroBgReady} />
+      )}
     </NavigationContainer>
   );
 }

@@ -1,3 +1,5 @@
+import { ImageSourcePropType } from "react-native";
+
 export interface ICharacter {
   id: string;
   name: string;
@@ -7,14 +9,15 @@ export interface ICharacter {
   price: number;
   unlocked: boolean;
   discountPrice: number;
-  background: string;
-  main_image: string;
-  secondaryImage: string;
-  profileImage: string;
-  winImages: string[];
-  loseImages: string[];
+  background: ImageSourcePropType;
+  main_image: ImageSourcePropType;
+  secondaryImage?: ImageSourcePropType | null;
+  profileImage: ImageSourcePropType;
+  winImages: ImageSourcePropType[];
+  loseImages: ImageSourcePropType[];
   quotes_selected: string[];
   winQuotes: string[];
   loseQuotes: string[];
   conditions?: { minLevel?: number; premiumOnly?: boolean };
+  playedWith?: number;
 }

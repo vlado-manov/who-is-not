@@ -12,6 +12,7 @@ import LanguageSelector from "../components/LanguageSelector";
 import { backgrounds } from "../../assets/backgrounds";
 import { OnboardingStackParamList } from "../navigation/types";
 import CurtainOverlay from "../components/CurtainOverlay";
+import AudioManager from "../utils/audioManager";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Welcome">;
 
@@ -22,6 +23,11 @@ export default function WelcomeScreen() {
   const [curtainActive, setCurtainActive] = useState(true);
 
   const onCurtainDone = () => setCurtainActive(false);
+
+  const handleStart = async () => {
+    await AudioManager.playBackground();
+    navigation.navigate("Menu");
+  };
 
   return (
     <SafeAreaView className="flex-1" edges={["right", "left"]}>
@@ -50,7 +56,7 @@ export default function WelcomeScreen() {
             <CustomButton
               title={t("start_btn")}
               color="bg-primary-500"
-              onPress={() => navigation.navigate("Menu")}
+              onPress={handleStart}
             />
           </View>
         </View>

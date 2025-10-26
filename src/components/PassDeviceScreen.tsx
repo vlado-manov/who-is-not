@@ -8,7 +8,7 @@ import { StackNavigationProp } from "@react-navigation/stack";
 import CustomText from "./common/CustomText";
 import CustomButton from "./common/CustomButton";
 import { backgrounds } from "../../assets/backgrounds";
-import { images } from "../../assets/images";
+import { game_images } from "../../assets/images";
 import { CreateGameStackParamList } from "../navigation/types";
 import { useGameStore } from "../store/useGameStore";
 
@@ -58,7 +58,7 @@ const PassDeviceScreen = () => {
           </View>
           <View className="flex-1 w-full h-full items-center justify-around mt-16">
             <Image
-              source={images.passDevice}
+              source={game_images.passDevice}
               resizeMode="contain"
               className="mt-8 w-[130%]"
             />
