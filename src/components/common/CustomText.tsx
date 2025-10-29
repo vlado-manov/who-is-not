@@ -12,6 +12,7 @@ type TextVariant =
   | "h3-small"
   | "h4"
   | "h4-headline"
+  | "h5"
   | "p"
   | "p-small"
   | "label"
@@ -56,6 +57,8 @@ export default function CustomText({
         return 24;
       case "h4":
         return 40;
+      case "h5":
+        return 24;
       case "h4-headline":
         return 28;
       case "p":
@@ -84,6 +87,7 @@ export default function CustomText({
       case "h3":
       case "h3-small":
       case "h4":
+      case "h5":
         return "font-seymour";
       case "h2-headline":
       case "h3-headline":

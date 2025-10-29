@@ -9,6 +9,7 @@ import {
 import CustomButton from "../common/CustomButton";
 import CustomText from "../common/CustomText";
 import { ICharacter } from "../../types/character";
+import AudioManager from "../../utils/audioManager";
 
 const { width, height } = Dimensions.get("window");
 
@@ -20,7 +21,7 @@ type Props = {
 
 export default function SuccessComponent({ visible, hero, onContinue }: Props) {
   if (!visible || !hero) return null;
-
+  AudioManager.playHeroBuy();
   const src = (hero.main_image as any) ?? (hero.profileImage as any);
   const [layout, setLayout] = useState({ width: 0, height: 0 });
 

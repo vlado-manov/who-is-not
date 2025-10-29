@@ -6,9 +6,11 @@ export interface ICharacter {
   slug: string;
   free: boolean;
   adFree: boolean;
+  isActive: boolean;
+  media?: string;
   price: number;
-  unlocked: boolean;
   discountPrice: number;
+  unlocked: boolean;
   background: ImageSourcePropType;
   main_image: ImageSourcePropType;
   secondaryImage?: ImageSourcePropType | null;
@@ -18,6 +20,5 @@ export interface ICharacter {
   quotes_selected: string[];
   winQuotes: string[];
   loseQuotes: string[];
-  conditions?: { minLevel?: number; premiumOnly?: boolean };
   playedWith?: number;
 }

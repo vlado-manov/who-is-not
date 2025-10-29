@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import React, { useMemo, useState } from "react";
 import CustomText from "../common/CustomText";
-import { FontAwesome5 } from "@expo/vector-icons";
+import { Entypo, FontAwesome5 } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import CustomButton from "../common/CustomButton";
 import { useAuthStore } from "../../store/useUserStore";
@@ -21,7 +21,7 @@ type Props = {
 
 const ProfileSettingsComponent = ({ setSettingsVisible }: Props) => {
   const { t } = useTranslation();
-  const { isGuest, isPremium, name, email } = useAuthStore((s) => s.user);
+  const { isGuest, name, email } = useAuthStore((s) => s.user);
   const updateName = useAuthStore((s) => s.updateName);
   const { settings, updateSettings } = useAuthStore();
 
@@ -64,11 +64,13 @@ const ProfileSettingsComponent = ({ setSettingsVisible }: Props) => {
         >
           <View className="px-8">
             <TouchableOpacity
-              onPress={() => setSettingsVisible(false)}
+              onPress={() => {
+                AudioManager.playButtonClick();
+                setSettingsVisible(false);
+              }}
               className="flex flex-row gap-2 items-center"
             >
-              <FontAwesome5 name="arrow-left" size={16} color="white" />
-              <CustomText>{t("back_btn")}</CustomText>
+              <Entypo name="arrow-with-circle-left" size={48} color="white" />
             </TouchableOpacity>
           </View>
 
@@ -104,7 +106,7 @@ const ProfileSettingsComponent = ({ setSettingsVisible }: Props) => {
                     returnKeyType="done"
                     maxLength={12}
                   />
-                  <View className="mt-3">
+                  <View className="mt-6">
                     <CustomButton
                       title="Change name"
                       color="bg-primary-700"
@@ -118,33 +120,37 @@ const ProfileSettingsComponent = ({ setSettingsVisible }: Props) => {
                 </View>
               )}
 
-              <CustomButton
-                title={
-                  settings.notificationsEnabled
-                    ? "Notifications: ON"
-                    : "Notifications: OFF"
-                }
-                color={
-                  settings.notificationsEnabled
-                    ? "bg-primary-100"
-                    : "bg-customBlack-500"
-                }
-                btnSize="sm"
-                fullWidth
-                buttonClassName="w-[80%] -rotate-1 m-auto"
-                onPress={toggleNotifications}
-              />
+              <View className="w-[80%]">
+                <CustomButton
+                  title={
+                    settings.notificationsEnabled
+                      ? "Notifications: ON"
+                      : "Notifications: OFF"
+                  }
+                  color={
+                    settings.notificationsEnabled
+                      ? "bg-primary-100"
+                      : "bg-customBlack-500"
+                  }
+                  btnSize="sm"
+                  fullWidth
+                  buttonClassName="w-[80%] -rotate-1 m-auto"
+                  onPress={toggleNotifications}
+                />
+              </View>
 
-              <CustomButton
-                title={settings.soundEnabled ? "Sound: ON" : "Sound: OFF"}
-                color={
-                  settings.soundEnabled ? "bg-primary-400" : "bg-primary-500"
-                }
-                btnSize="sm"
-                fullWidth
-                buttonClassName="w-[80%] m-auto"
-                onPress={toggleSound}
-              />
+              <View className="w-[80%]">
+                <CustomButton
+                  title={settings.soundEnabled ? "Sound: ON" : "Sound: OFF"}
+                  color={
+                    settings.soundEnabled ? "bg-primary-400" : "bg-primary-500"
+                  }
+                  btnSize="sm"
+                  fullWidth
+                  buttonClassName="w-[80%] m-auto"
+                  onPress={toggleSound}
+                />
+              </View>
             </View>
           </View>
         </ScrollView>

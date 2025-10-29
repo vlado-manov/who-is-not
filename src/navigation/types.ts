@@ -5,6 +5,7 @@ export type OnboardingStackParamList = {
   MenuPlay: undefined;
   Store: undefined;
   Profile: undefined;
+  Rules: undefined;
 };
 
 export type CreateGameStackParamList = {

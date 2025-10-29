@@ -7,7 +7,7 @@ import {
 import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { backgrounds } from "../../assets/backgrounds";
-import { FontAwesome5 } from "@expo/vector-icons";
+import { Entypo, FontAwesome5 } from "@expo/vector-icons";
 import CustomText from "../components/common/CustomText";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -19,6 +19,7 @@ import ProfileLoginComponent from "../components/profile/ProfileLoginComponent";
 import CustomButton from "../components/common/CustomButton";
 import ProfileImagePickerComponent from "../components/profile/ProfileImagePickerComponent";
 import ProfileSettingsComponent from "../components/profile/ProfileSettingsComponent";
+import AudioManager from "../utils/audioManager";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Store">;
 
@@ -30,8 +31,6 @@ const ProfileScreen = () => {
   const signOut = useAuthStore((s) => s.signOut);
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
-  console.log("authstatus is: ", authStatus);
-  console.log("userdata is: ", user);
 
   return (
     <SafeAreaView className="flex-1" edges={["right", "left"]}>
@@ -51,11 +50,15 @@ const ProfileScreen = () => {
           <View className="relative">
             <View className="px-8">
               <TouchableOpacity
-                onPress={() => navigation.goBack()}
+                onPress={() => {
+                  AudioManager.playButtonClick();
+                  navigation.goBack();
+                }}
                 className="flex flex-row gap-2 items-center"
               >
-                <FontAwesome5 name="arrow-left" size={16} color="white" />
-                <CustomText>{t("back_btn")}</CustomText>
+                <Entypo name="arrow-with-circle-left" size={48} color="white" />
+                {/* <FontAwesome5 name="arrow-left" size={16} color="white" />*/}
+                {/* <CustomText variant="h3-headline">{t("back_btn")}</CustomText> */}
               </TouchableOpacity>
             </View>
             <View className="items-center w-full justify-center px-4 mt-[40px]">

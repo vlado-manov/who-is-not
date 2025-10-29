@@ -5,6 +5,7 @@ import MenuScreen from "../screens/MenuScreen";
 import MenuPlayScreen from "../screens/MenuPlayScreen";
 import StoreScreen from "../screens/StoreScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import HowToPlayScreen from "../screens/HowToPlayScreen";
 
 const Stack = createStackNavigator<OnboardingStackParamList>();
 export default function OnboardingStackNavigator() {
@@ -18,6 +19,7 @@ export default function OnboardingStackNavigator() {
       <Stack.Screen name="MenuPlay" component={MenuPlayScreen} />
       <Stack.Screen name="Store" component={StoreScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="Rules" component={HowToPlayScreen} />
     </Stack.Navigator>
   );
 }

@@ -4,6 +4,7 @@ import { ICharacter } from "../../types/character";
 import { AvatarId } from "../../../assets/characters";
 import { useAuthStore } from "../../store/useUserStore";
 import { FontAwesome } from "@expo/vector-icons";
+import AudioManager from "../../utils/audioManager";
 
 type Props = {
   item: ICharacter;
@@ -14,6 +15,7 @@ const SingleProfileImagePickerComponent = ({ item }: Props) => {
     <TouchableOpacity
       activeOpacity={0.8}
       onPress={() => {
+        AudioManager.playButtonClick();
         item.unlocked ? updateAvatar(item.slug as AvatarId) : null;
       }}
       className="items-center relative focus:scale-100 active_scale-100"

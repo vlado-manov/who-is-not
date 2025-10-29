@@ -8,6 +8,7 @@ import React from "react";
 import { useAuthStore } from "../../store/useUserStore";
 import { character_avatars } from "../../../assets/characters";
 import { FontAwesome5 } from "@expo/vector-icons";
+import AudioManager from "../../utils/audioManager";
 type Props = {
   setImagePickerVisible: React.Dispatch<React.SetStateAction<boolean>>;
 };
@@ -28,7 +29,10 @@ const ProfileImageComponent = ({ setImagePickerVisible }: Props) => {
         {authStatus != "guest" && (
           <TouchableOpacity
             className="rounded-full bg-white p-3 shadow-customBlack-500 absolute top-2 right-6"
-            onPress={() => setImagePickerVisible(true)}
+            onPress={() => {
+              AudioManager.playButtonClick();
+              setImagePickerVisible(true);
+            }}
           >
             <FontAwesome5 name="pen" size={20} color="#FA3A00" />
           </TouchableOpacity>

@@ -24,7 +24,8 @@ import BundleSliderComponent from "../components/store/BundleSliderComponent";
 import { BUNDLES } from "../data/bundles";
 import PackSliderComponent from "../components/store/PackSliderComponent";
 import { PACKS } from "../data/packs";
-import { FontAwesome5 } from "@expo/vector-icons";
+import { Entypo, FontAwesome5 } from "@expo/vector-icons";
+import AudioManager from "../utils/audioManager";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Store">;
 
@@ -57,11 +58,13 @@ const StoreScreen = () => {
         <ScrollView contentContainerStyle={{ paddingVertical: 64 }}>
           <View className="px-8 w-full">
             <TouchableOpacity
-              onPress={() => navigation.goBack()}
+              onPress={() => {
+                AudioManager.playButtonClick();
+                navigation.goBack();
+              }}
               className="flex flex-row gap-2 items-center"
             >
-              <FontAwesome5 name="arrow-left" size={16} color="white" />
-              <CustomText>{t("back_btn")}</CustomText>
+              <Entypo name="arrow-with-circle-left" size={48} color="white" />
             </TouchableOpacity>
           </View>
 

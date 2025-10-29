@@ -5,6 +5,7 @@ import ProfileImageComponent from "./ProfileImageComponent";
 import { useAuthStore } from "../../store/useUserStore";
 import CustomText from "../common/CustomText";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
+import AudioManager from "../../utils/audioManager";
 
 type Props = {
   setImagePickerVisible: React.Dispatch<React.SetStateAction<boolean>>;
@@ -52,7 +53,12 @@ const ProfileInfoComponent = ({
         >
           {userName}
         </CustomText>
-        <TouchableOpacity onPress={() => setSettingsVisible(true)}>
+        <TouchableOpacity
+          onPress={() => {
+            AudioManager.playButtonClick();
+            setSettingsVisible(true);
+          }}
+        >
           <FontAwesome name="gear" size={24} color="white" />
         </TouchableOpacity>
       </View>

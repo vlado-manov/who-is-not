@@ -28,7 +28,7 @@ class AudioManager {
       this.bgSound = new Audio.Sound();
       await this.bgSound.loadAsync(require("../../assets/audio/audio01.wav"));
       await this.bgSound.setIsLoopingAsync(true);
-      await this.bgSound.setVolumeAsync(0.5);
+      await this.bgSound.setVolumeAsync(0.35);
       await this.bgSound.playAsync();
     } catch (error) {
       console.warn("Error playBackgroundFromStart", error);
@@ -42,7 +42,7 @@ class AudioManager {
       this.bgSound = new Audio.Sound();
       await this.bgSound.loadAsync(require("../../assets/audio/audio01.wav"));
       await this.bgSound.setIsLoopingAsync(true);
-      await this.bgSound.setVolumeAsync(0.5);
+      await this.bgSound.setVolumeAsync(0.35);
       await this.bgSound.playAsync();
     } catch (error) {
       console.warn("Error playing bg music", error);
@@ -72,6 +72,20 @@ class AudioManager {
       await this.curtainSound.playAsync();
     } catch (error) {
       console.warn("Error playing curtain sound", error);
+    }
+  }
+
+  static async playHeroBuy() {
+    if (!this.enabled) return;
+    try {
+      this.curtainSound = new Audio.Sound();
+      await this.curtainSound.loadAsync(
+        require("../../assets/audio/audioHorn.mp3")
+      );
+      await this.curtainSound.setVolumeAsync(0.7);
+      await this.curtainSound.playAsync();
+    } catch (error) {
+      console.warn("Error playing buy hero sound", error);
     }
   }
 
