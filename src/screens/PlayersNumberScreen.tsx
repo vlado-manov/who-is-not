@@ -1,4 +1,4 @@
-import { View, Text, ImageBackground } from "react-native";
+import { View, ImageBackground, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { backgrounds } from "../../assets/backgrounds";
 import CustomText from "../components/common/CustomText";
@@ -10,11 +10,16 @@ import { useState } from "react";
 import CustomButton from "../components/common/CustomButton";
 import { CreateGameStackParamList } from "../navigation/types";
 import { useGameStore } from "../store/useGameStore";
+import { FontAwesome } from "@expo/vector-icons";
+import GameSettingsModal from "../components/modals/GameSettingsModal";
+import AudioManager from "../utils/audioManager";
 
 type Nav = StackNavigationProp<CreateGameStackParamList, "PlayersNumber">;
 
 const PlayersNumberScreen = () => {
   const [players, setPlayers] = useState<string>("");
+  const [gameSettingsVisible, setGameSettingsVisible] =
+    useState<boolean>(false);
   const beginLocalGame = useGameStore((s) => s.beginLocalGame);
   const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
@@ -39,7 +44,7 @@ const PlayersNumberScreen = () => {
     <SafeAreaView className="flex-1" edges={["right", "left"]}>
       <ImageBackground
         source={backgrounds.bg001}
-        style={{ flex: 1, width: "100%", height: "100%" }}
+        style={{ flex: 1, width: "100%", height: "100%", position: "relative" }}
         resizeMode="cover"
       >
         <View className="flex-1 items-center w-full justify-between px-4 gap-3 relative pt-40">
@@ -73,8 +78,21 @@ const PlayersNumberScreen = () => {
               buttonClassName="mt-2"
               onPress={onContinue}
             />
+            <TouchableOpacity
+              className="flex-row items-center gap-2 justify-center mt-4"
+              onPress={() => {
+                setGameSettingsVisible(true);
+                AudioManager.playButtonClick();
+              }}
+            >
+              <FontAwesome name="gear" size={20} color="white" />
+              <CustomText variant="p">Game settings</CustomText>
+            </TouchableOpacity>
           </View>
         </View>
+        {gameSettingsVisible && (
+          <GameSettingsModal setGameSettingsVisible={setGameSettingsVisible} />
+        )}
       </ImageBackground>
     </SafeAreaView>
   );

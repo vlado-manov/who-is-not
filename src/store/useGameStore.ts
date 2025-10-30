@@ -1,3 +1,4 @@
+// store/useGameStore.ts
 import { create } from "zustand";
 
 export type Phase =
@@ -18,6 +19,24 @@ export type Player = {
   isHost?: boolean;
 };
 
+export type GamePackId =
+  | "main"
+  | "custom"
+  | "christmas"
+  | "halloween"
+  | "festival"
+  | "adult18";
+
+export type GameSettings = {
+  discussionSeconds: number;
+  selectedPacks: GamePackId[];
+};
+
+const defaultGameSettings = (): GameSettings => ({
+  discussionSeconds: 120,
+  selectedPacks: ["main"],
+});
+
 type GameState = {
   roomCode?: string;
   phase: Phase;
@@ -28,6 +47,7 @@ type GameState = {
   answers: Record<string, string>;
   takenCharacters: string[];
   targetPlayersCount?: number;
+  gameSettings: GameSettings;
 
   set: (p: Partial<GameState>) => void;
   reset: () => void;
@@ -37,6 +57,9 @@ type GameState = {
   assignCharacter: (playerId: string, characterId: string) => void;
   isCharacterTaken: (characterId: string) => boolean;
   getPlayersCount: () => number;
+
+  setGameSettings: (patch: Partial<GameSettings>) => void;
+  replaceGameSettings: (settings: GameSettings) => void;
 };
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -45,7 +68,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   round: 0,
   answers: {},
   takenCharacters: [],
+  gameSettings: defaultGameSettings(),
+
   set: (p) => set(p),
+
   reset: () =>
     set({
       roomCode: undefined,
@@ -57,6 +83,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       answers: {},
       takenCharacters: [],
       targetPlayersCount: undefined,
+      gameSettings: defaultGameSettings(), // NEW
     }),
 
   beginLocalGame: (count) =>
@@ -70,6 +97,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       oddOneId: undefined,
       timerSec: undefined,
       roomCode: undefined,
+      gameSettings: defaultGameSettings(),
     }),
 
   addPlayer: (p) =>
@@ -94,4 +122,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     get().takenCharacters.includes(characterId),
 
   getPlayersCount: () => get().players.length,
+
+  setGameSettings: (patch) =>
+    set((s) => ({ gameSettings: { ...s.gameSettings, ...patch } })),
+
+  replaceGameSettings: (settings) => set({ gameSettings: settings }),
 }));
