@@ -3,6 +3,7 @@ import React, { ReactNode, useMemo } from "react";
 import { Text, TextProps, useWindowDimensions } from "react-native";
 
 type TextVariant =
+  | "h0"
   | "h1"
   | "h2"
   | "h2-small"
@@ -41,6 +42,8 @@ export default function CustomText({
 
   const baseSize = useMemo(() => {
     switch (variant) {
+      case "h0":
+        return 180;
       case "h1":
         return 110;
       case "h2":
@@ -81,6 +84,7 @@ export default function CustomText({
 
   const fontClass = useMemo(() => {
     switch (variant) {
+      case "h0":
       case "h1":
       case "h2":
       case "h2-small":

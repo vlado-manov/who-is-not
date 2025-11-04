@@ -14,6 +14,7 @@ export type CreateGameStackParamList = {
   HeroPicker: { playerId: string; index: number };
   PassDevice: { index: number };
   Lobby: undefined;
+  Round: undefined;
 };
 
 export type GameStackParamList = {

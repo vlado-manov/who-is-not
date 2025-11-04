@@ -5,6 +5,7 @@ import NameScreen from "../screens/NameScreen";
 import HeroPickerScreen from "../screens/HeroPickerScreen";
 import LobbyScreen from "../screens/LobbyScreen";
 import PassDeviceScreen from "../components/PassDeviceScreen";
+import RoundScreen from "../components/RoundScreen";
 
 const Stack = createStackNavigator<CreateGameStackParamList>();
 
@@ -19,6 +20,7 @@ export default function CreateGameStackNavigator() {
       <Stack.Screen name="HeroPicker" component={HeroPickerScreen} />
       <Stack.Screen name="PassDevice" component={PassDeviceScreen} />
       <Stack.Screen name="Lobby" component={LobbyScreen} />
+      <Stack.Screen name="Round" component={RoundScreen} />
     </Stack.Navigator>
   );
 }

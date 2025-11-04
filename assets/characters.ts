@@ -16,14 +16,54 @@ export const characters = {
   tedimechov: require("./images/characters/picker/premium/Tedimechov.png"),
   vanessa: require("./images/characters/picker/Silent_Vanessa.png"),
   vape: require("./images/characters/picker/Uncle_Vape.png"),
-  vibeswitch: require("./images/characters/picker/premium/Vibeswitch.png"),
+  // vibeswitch: require("./images/characters/picker/premium/Vibeswitch.png"),
   virala: require("./images/characters/picker/premium/Virala.png"),
   winebender: require("./images/characters/picker/premium/Wine_Bender.png"),
 };
 
-export const characters_loss = {};
+export const characters_loss = {
+  allan: require("./images/characters/lost_images/premium/BitcoinAllan-L.png"),
+  booena: require("./images/characters/lost_images/Booena-L.png"),
+  cryptobro: require("./images/characters/lost_images/BroChain-L.png"),
+  dadgpt: require("./images/characters/lost_images/premium/DadGPT-L.png"),
+  drwrong: require("./images/characters/lost_images/DrWrong-L.png"),
+  dubai: require("./images/characters/lost_images/DuBai-L.png"),
+  goodtime: require("./images/characters/lost_images/premium/MrGoodTime-L.png"),
+  hangreta: require("./images/characters/lost_images/premium/Hangreta-L.png"),
+  monday: require("./images/characters/lost_images/premium/Monday-L.png"),
+  pete: require("./images/characters/lost_images/PluggedInPete-L.png"),
+  retrograda: require("./images/characters/lost_images/Retrograda-L.png"),
+  screena: require("./images/characters/lost_images/premium/Screena-L.png"),
+  simpalot: require("./images/characters/lost_images/SirSimpalot-L.png"),
+  susie: require("./images/characters/lost_images/RemoteSusie-L.png"),
+  tedimechov: require("./images/characters/lost_images/premium/Tedimechov-L.png"),
+  vanessa: require("./images/characters/lost_images/SilentVanessa-L.png"),
+  vape: require("./images/characters/lost_images/UncleVape-L.png"),
+  virala: require("./images/characters/lost_images/premium/Virala-L.png"),
+  winebender: require("./images/characters/lost_images/premium/WineBender-L.png"),
+};
 
-export const characters_win = {};
+export const characters_win = {
+  allan: require("./images/characters/win_images/premium/BitcoinAllan-W(2).png"),
+  booena: require("./images/characters/win_images/Booena-W.png"),
+  cryptobro: require("./images/characters/win_images/BroChain-W.png"),
+  dadgpt: require("./images/characters/win_images/premium/DadGPT-W.png"),
+  drwrong: require("./images/characters/win_images/DrWrong-W.png"),
+  dubai: require("./images/characters/win_images/DuBai-W.png"),
+  goodtime: require("./images/characters/win_images/premium/MrGoodTime-W.png"),
+  hangreta: require("./images/characters/win_images/premium/Hangreta-W.png"),
+  monday: require("./images/characters/win_images/premium/Monday-W(2).png"),
+  pete: require("./images/characters/win_images/PluggedInPete-W.png"),
+  retrograda: require("./images/characters/win_images/Retrograda-W.png"),
+  screena: require("./images/characters/win_images/premium/Screena-W.png"),
+  simpalot: require("./images/characters/win_images/SirSimpalot-W.png"),
+  susie: require("./images/characters/win_images/RemoteSusie-W.png"),
+  tedimechov: require("./images/characters/win_images/premium/Tedimechov-W.png"),
+  vanessa: require("./images/characters/win_images/SilentVanessa-W.png"),
+  vape: require("./images/characters/win_images/UncleVape-W.png"),
+  virala: require("./images/characters/win_images/premium/Virala-W.png"),
+  winebender: require("./images/characters/win_images/premium/WineBender-W.png"),
+};
 
 export const character_avatars = {
   abu_dubaiena: require("./images/characters/avatars/Dubai_Princess.png"),
@@ -43,7 +83,7 @@ export const character_avatars = {
   sir_simpalot: require("./images/characters/avatars/Sir_Simpalot.png"),
   tedimechov: require("./images/characters/avatars/tedimechov.png"),
   uncle_vape: require("./images/characters/avatars/Uncle_Vape.png"),
-  vibeswitch: require("./images/characters/avatars/vibeswitch.png"),
+  // vibeswitch: require("./images/characters/avatars/vibeswitch.png"),
   virala: require("./images/characters/avatars/virala.png"),
   wine_bender: require("./images/characters/avatars/wine_bender.png"),
 } as const;

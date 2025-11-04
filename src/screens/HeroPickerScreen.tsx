@@ -26,6 +26,7 @@ import { useGameStore } from "../store/useGameStore";
 import { StackNavigationProp } from "@react-navigation/stack";
 import LoadingScreen from "../components/LoadingScreen";
 import Fontisto from "@expo/vector-icons/Fontisto";
+import AudioManager from "../utils/audioManager";
 
 type HeroNav = StackNavigationProp<CreateGameStackParamList, "HeroPicker">;
 type HeroRoute = RouteProp<CreateGameStackParamList, "HeroPicker">;
@@ -155,6 +156,7 @@ export default function HeroPickerScreen() {
     if (target && index < target) {
       navigation.navigate("PassDevice", { index: index + 1 });
     } else {
+      AudioManager.stopBackground();
       navigation.navigate("Lobby");
     }
   };
@@ -175,7 +177,7 @@ export default function HeroPickerScreen() {
     assignCharacter(playerId, hero.id);
     setSelected(true);
     setQuote(randomOf(hero.quotes_selected));
-    skipTimerRef.current = setTimeout(goNext, 5000);
+    skipTimerRef.current = setTimeout(goNext, 1800);
   };
 
   const onSkip = () => goNext();

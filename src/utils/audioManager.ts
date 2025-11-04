@@ -48,6 +48,19 @@ class AudioManager {
       console.warn("Error playing bg music", error);
     }
   }
+  static async playBackgroundGame() {
+    if (!this.enabled) return;
+    if (this.bgSound) return; // вече свири
+    try {
+      this.bgSound = new Audio.Sound();
+      await this.bgSound.loadAsync(require("../../assets/audio/audio02.wav"));
+      await this.bgSound.setIsLoopingAsync(true);
+      await this.bgSound.setVolumeAsync(0.75);
+      await this.bgSound.playAsync();
+    } catch (error) {
+      console.warn("Error playing bg music", error);
+    }
+  }
 
   static async stopBackground() {
     if (!this.bgSound) return;
@@ -69,6 +82,32 @@ class AudioManager {
         require("../../assets/audio/audioCurtains.wav")
       );
       await this.curtainSound.setVolumeAsync(0.7);
+      await this.curtainSound.playAsync();
+    } catch (error) {
+      console.warn("Error playing curtain sound", error);
+    }
+  }
+  static async playCurtainSoundClose() {
+    if (!this.enabled) return;
+    try {
+      this.curtainSound = new Audio.Sound();
+      await this.curtainSound.loadAsync(
+        require("../../assets/audio/closeCurtain.wav")
+      );
+      await this.curtainSound.setVolumeAsync(1);
+      await this.curtainSound.playAsync();
+    } catch (error) {
+      console.warn("Error playing curtain sound", error);
+    }
+  }
+  static async playCount() {
+    if (!this.enabled) return;
+    try {
+      this.curtainSound = new Audio.Sound();
+      await this.curtainSound.loadAsync(
+        require("../../assets/audio/count.wav")
+      );
+      await this.curtainSound.setVolumeAsync(1);
       await this.curtainSound.playAsync();
     } catch (error) {
       console.warn("Error playing curtain sound", error);

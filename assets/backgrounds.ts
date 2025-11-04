@@ -17,5 +17,7 @@ export const backgrounds = {
   bg015: require("./images/bg/bg015.png"),
   bg016: require("./images/bg/bg016.png"),
   bg017: require("./images/bg/bg017.png"),
+  bg018: require("./images/bg/bg018.png"),
+  bg019: require("./images/bg/bg019.png"),
   bgheroes01: require("./images/bg/bg-heroes01.png"),
 };
