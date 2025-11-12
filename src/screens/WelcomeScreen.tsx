@@ -42,26 +42,8 @@ export default function WelcomeScreen() {
         style={{ flex: 1, width: "100%", height: "100%", position: "relative" }}
         resizeMode="cover"
       >
-        {/* <TouchableOpacity
-          className="absolute top-1/2 right-6 z-[9999]"
-          onPress={() => {
-            toggleSound();
-            setSoundEnabled(!soundEnabled);
-          }}
-        >
-          <Entypo
-            name={soundEnabled ? "sound" : "sound-mute"}
-            size={48}
-            color="white"
-            className=""
-          />
-        </TouchableOpacity> */}
         <View className="flex-1 items-center w-full justify-center px-4">
-          <CustomText
-            variant="h2-headline"
-            className="text-center w-full"
-            shadow
-          >
+          <CustomText variant="h2-headline" className="text-center w-full">
             {t("title_00")}
             <TouchableOpacity
               className="px-4"

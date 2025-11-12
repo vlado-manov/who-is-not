@@ -69,7 +69,7 @@ const BundleSliderComponent = ({ title, data, onSelect }: Props) => {
 
   return (
     <View className="w-full mt-[40px]">
-      <CustomText variant="h3-small" className="px-8 my-4">
+      <CustomText variant="h3-small" className="px-8 my-4" shadow>
         {title}
       </CustomText>
 

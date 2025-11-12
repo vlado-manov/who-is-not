@@ -10,7 +10,7 @@ import "./src/i18n";
 
 import { backgrounds } from "./assets/backgrounds";
 import { character_avatars } from "./assets/characters";
-import { htp_images, images, store_images } from "./assets/images";
+import { game_images, htp_images, images, store_images } from "./assets/images";
 import { HEROES } from "./src/data/heroes";
 
 import RootNavigator from "./src/navigation/RootNavigator";
@@ -75,6 +75,7 @@ export default function App() {
           ...values(character_avatars),
           ...values(store_images),
           ...values(images),
+          ...values(game_images),
           ...values(htp_images),
           ...HEROES.map((h) => h.main_image),
         ];

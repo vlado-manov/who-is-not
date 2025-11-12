@@ -1,3 +1,4 @@
+// src/screens/Game/PassDeviceGameplayScreen.tsx
 import React from "react";
 import { View, ImageBackground, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -5,29 +6,26 @@ import { useTranslation } from "react-i18next";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 
-import CustomText from "./common/CustomText";
-import CustomButton from "./common/CustomButton";
-import { backgrounds } from "../../assets/backgrounds";
-import { game_images } from "../../assets/images";
-import { CreateGameStackParamList } from "../navigation/types";
-import { useGameStore } from "../store/useGameStore";
+import { GameStackParamList } from "../../navigation/types";
+import { useGameStore } from "../../store/useGameStore";
+import { backgrounds } from "../../../assets/backgrounds";
+import CustomText from "../../components/common/CustomText";
+import { game_images } from "../../../assets/images";
+import CustomButton from "../../components/common/CustomButton";
 
-type R = RouteProp<CreateGameStackParamList, "PassDevice">;
-type Nav = StackNavigationProp<CreateGameStackParamList, "PassDevice">;
+type R = RouteProp<GameStackParamList, "PassDeviceGameplay">;
+type Nav = StackNavigationProp<GameStackParamList, "PassDeviceGameplay">;
 
-const PassDeviceScreen = () => {
+const PassDeviceGameplayScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
-  const { index } = useRoute<R>().params;
+  const { playerIndex } = useRoute<R>().params;
 
-  const target = useGameStore((s) => s.targetPlayersCount);
+  const players = useGameStore((s) => s.players);
+  const currentPlayer = players[playerIndex];
 
   const onContinue = () => {
-    if (target && index <= target) {
-      navigation.navigate("Name", { index });
-    } else {
-      navigation.navigate("Lobby");
-    }
+    navigation.navigate("Question", { playerIndex });
   };
 
   return (
@@ -45,16 +43,25 @@ const PassDeviceScreen = () => {
             <CustomText variant="h2" className="-rotate-3 text-center" shadow>
               {t("title_01")}
             </CustomText>
+
             <CustomText
               variant="h4-headline"
               className="mt-24 text-center z-50 px-6"
             >
               {t("pass_device_sub", {
-                defaultValue: "Hand the phone to player {{index}}",
-                index,
+                defaultValue: `Hand the phone to`,
+                playerName: currentPlayer?.name,
               })}
             </CustomText>
+            <CustomText variant="h4" shadow className="capitalize">
+              {currentPlayer?.name}
+            </CustomText>
+
+            <CustomText variant="p-small">
+              ({t("no_peeking", { defaultValue: "No peeking" })})
+            </CustomText>
           </View>
+
           <View className="flex-1 w-full h-full items-center justify-around mt-16">
             <Image
               source={game_images.passDevice}
@@ -65,8 +72,13 @@ const PassDeviceScreen = () => {
         </View>
 
         <View className="mb-16 px-16">
+          <CustomText variant="p" className="text-center px-8 mb-10">
+            {currentPlayer
+              ? `${currentPlayer.name}, click NEXT once the phone is in your hands and nobody is looking`
+              : "Click NEXT once the phone is in your hands and nobody is looking"}
+          </CustomText>
           <CustomButton
-            title={t("continue_btn", { defaultValue: "Continue" })}
+            title={t("next_btn", { defaultValue: "Next" })}
             color="bg-primary-500"
             fullWidth
             onPress={onContinue}
@@ -77,4 +89,4 @@ const PassDeviceScreen = () => {
   );
 };
 
-export default PassDeviceScreen;
+export default PassDeviceGameplayScreen;

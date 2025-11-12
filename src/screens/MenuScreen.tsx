@@ -10,12 +10,10 @@ import CustomText from "../components/common/CustomText";
 import CustomButton from "../components/common/CustomButton";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { OnboardingStackParamList } from "../navigation/types";
 import { Entypo } from "@expo/vector-icons";
 import { useAuthStore } from "../store/useUserStore";
-import { useState } from "react";
 import AudioManager from "../utils/audioManager";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Menu">;
@@ -44,7 +42,7 @@ const MenuScreen = () => {
         >
           <View className="flex-1 items-center w-full justify-center px-4 pt-40">
             <View className="justify-center items-center absolute top-24  w-full">
-              <CustomText variant="h2-headline" className="text-center" shadow>
+              <CustomText variant="h2-headline" className="text-center">
                 {t("title_00")}
                 <TouchableOpacity
                   className="px-4"
@@ -108,13 +106,6 @@ const MenuScreen = () => {
                 fullWidth
                 onPress={() => navigation.navigate("Rules")}
               />
-              {/* <CustomButton
-                title="News"
-                color="bg-primary-700"
-                btnSize="sm"
-                fullWidth
-                onPress={() => navigation.navigate("Rules")}
-              /> */}
             </View>
           </View>
         </ScrollView>

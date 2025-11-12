@@ -53,7 +53,7 @@ const NameScreen = () => {
       >
         <View className="flex-1 items-center w-full justify-between px-4 gap-3 relative pt-40">
           <View className="justify-center items-center absolute top-24 w-full">
-            <CustomText variant="h2-headline" className="text-center" shadow>
+            <CustomText variant="h2-headline" className="text-center">
               {t("title_00")}
             </CustomText>
             <CustomText variant="h2" className="-rotate-3 text-center" shadow>
@@ -77,7 +77,6 @@ const NameScreen = () => {
             <CustomButton
               title={t("continue_btn")}
               color="bg-primary-500"
-              btnSize="lg"
               fullWidth
               buttonClassName="mt-2"
               onPress={onContinue}

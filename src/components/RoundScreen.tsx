@@ -1,3 +1,4 @@
+// src/components/RoundScreen.tsx
 import React, { useRef, useState } from "react";
 import {
   View,
@@ -13,19 +14,26 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { useNavigation, RouteProp } from "@react-navigation/native";
+import {
+  CompositeNavigationProp,
+  useNavigation,
+} from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 
-import CustomText from "../components/common/CustomText";
-import CustomButton from "../components/common/CustomButton";
+import CustomText from "./common/CustomText";
+import CustomButton from "./common/CustomButton";
 import { backgrounds } from "../../assets/backgrounds";
 import { htp_images } from "../../assets/images";
-import { CreateGameStackParamList } from "../navigation/types";
+import {
+  CreateGameStackParamList,
+  RootStackParamList,
+} from "../navigation/types";
 import { useGameStore } from "../store/useGameStore";
 import AudioManager from "../utils/audioManager";
 
-type R = RouteProp<CreateGameStackParamList, "Round">;
-type Nav = StackNavigationProp<CreateGameStackParamList, "Round">;
+type CreateNav = StackNavigationProp<CreateGameStackParamList, "Round">;
+type RootNav = StackNavigationProp<RootStackParamList>;
+type Nav = CompositeNavigationProp<CreateNav, RootNav>;
 
 const { width: W } = Dimensions.get("window");
 
@@ -68,6 +76,7 @@ const TUTORIAL_STEPS: Step[] = [
     image: htp_images.htp05,
   },
 ];
+
 function TutorialOverlay({
   visible,
   onSkipAll,
@@ -79,13 +88,17 @@ function TutorialOverlay({
 }) {
   const [index, setIndex] = useState(0);
   const ref = useRef<FlatList<Step>>(null);
+
   AudioManager.playBackgroundGame();
+
   const getItemLayout = (_: any, i: number) => ({
     length: W,
     offset: W * i,
     index: i,
   });
+
   const viewabilityConfig = { itemVisiblePercentThreshold: 70 };
+
   const onViewableItemsChanged = useRef<
     FlatListProps<Step>["onViewableItemsChanged"]
   >(
@@ -110,6 +123,7 @@ function TutorialOverlay({
   return (
     <View className="absolute inset-0 z-[99] items-center justify-center">
       <View className="inset-0 absolute bg-[rgba(0,0,0,0.85)] w-full h-full" />
+
       <View className="absolute top-20 right-12 z-[100]">
         <TouchableOpacity onPress={onSkipAll}>
           <CustomText variant="h3-headline" className="underline">
@@ -117,6 +131,7 @@ function TutorialOverlay({
           </CustomText>
         </TouchableOpacity>
       </View>
+
       <View style={{ width: W, paddingTop: 24 }}>
         <FlatList
           ref={ref}
@@ -193,6 +208,7 @@ function TutorialOverlay({
           viewabilityConfig={viewabilityConfig}
           disableIntervalMomentum
         />
+
         <View className="w-full items-center justify-center mt-6 mb-2 flex-row">
           {TUTORIAL_STEPS.map((_, i) => {
             const active = i === index;
@@ -228,18 +244,21 @@ function TutorialOverlay({
 const RoundScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
-  const target = useGameStore((s) => s.targetPlayersCount);
+
   const round = useGameStore((s) => s.round) || 1;
   const players = useGameStore((s) => s.players);
   const firstPlayerName = players?.[0]?.name;
+  const initRoundQuestions = useGameStore((s) => s.initRoundQuestions);
+
   const [showTutorial, setShowTutorial] = useState(true);
 
   const onContinue = () => {
-    // if (target && index <= target) {
-    //   navigation.navigate("Name", { index } as never);
-    // } else {
-    //   navigation.navigate("Lobby" as never);
-    // }
+    if (!players.length) return;
+    initRoundQuestions();
+    navigation.navigate("Game", {
+      screen: "PassDeviceGameplay",
+      params: { playerIndex: 0 },
+    } as never);
   };
 
   return (
@@ -250,7 +269,7 @@ const RoundScreen = () => {
         onDoneAll={() => setShowTutorial(false)}
       />
       <ImageBackground
-        source={backgrounds.bg019}
+        source={backgrounds.bg009}
         className="flex-1 relative"
         resizeMode="cover"
       >
@@ -264,14 +283,9 @@ const RoundScreen = () => {
             </CustomText>
           </View>
           <View className="mb-16 px-16 absolute bottom-0 left-0 right-0">
-            <CustomText variant="h3-small" className="text-center mb-6">
-              {firstPlayerName
-                ? `${firstPlayerName} is first`
-                : "[imeto na purviq igrach] is first."}
-            </CustomText>
             <CustomText className="text-center my-2">
-              {firstPlayerName}, Click START once the phone is in your hands and
-              nobody is looking
+              <CustomText className="underline">{firstPlayerName}</CustomText>,
+              Click START once the phone is in your hands.
             </CustomText>
             <CustomButton
               title={t("start_btn", { defaultValue: "Start" })}

@@ -24,7 +24,7 @@ import BundleSliderComponent from "../components/store/BundleSliderComponent";
 import { BUNDLES } from "../data/bundles";
 import PackSliderComponent from "../components/store/PackSliderComponent";
 import { PACKS } from "../data/packs";
-import { Entypo, FontAwesome5 } from "@expo/vector-icons";
+import { Entypo } from "@expo/vector-icons";
 import AudioManager from "../utils/audioManager";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Store">;
@@ -69,18 +69,10 @@ const StoreScreen = () => {
           </View>
 
           <View className="items-center w-full justify-center px-4 mt-[40px]">
-            <CustomText
-              variant="h3-headline"
-              className="text-center w-full"
-              shadow
-            >
+            <CustomText variant="h3-headline" className="text-center w-full">
               {t("menu_store_heading_01")}
             </CustomText>
-            <CustomText
-              variant="h3"
-              className="-rotate-3 text-center w-full"
-              shadow
-            >
+            <CustomText variant="h3" className="-rotate-3 text-center w-full">
               {t("menu_store_heading_02")}
             </CustomText>
           </View>

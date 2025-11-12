@@ -3,15 +3,8 @@
     "strict": true,
     "jsx": "react-native",
     "moduleResolution": "bundler",
-    "types": [
-      "nativewind/types"
-    ]
+    "types": ["nativewind/types"]
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "nativewind.d.ts",
-    "nativewind-env.d.ts"
-  ],
+  "include": ["**/*.ts", "**/*.tsx", "nativewind.d.ts", "nativewind-env.d.ts"],
   "extends": "expo/tsconfig.base"
 }

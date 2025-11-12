@@ -25,6 +25,7 @@ interface Props extends TextProps {
   variant?: TextVariant;
   className?: string;
   shadow?: boolean;
+  shadowStrong?: boolean;
   responsive?: boolean;
   textColor?: string;
 }
@@ -34,6 +35,7 @@ export default function CustomText({
   variant = "p",
   className,
   shadow = false,
+  shadowStrong = false,
   responsive = true,
   textColor,
   ...rest
@@ -130,16 +132,24 @@ export default function CustomText({
 
   return (
     <Text
-      className={[
-        fontClass,
-        colorClass,
-        shadow ? "text-shadow-default" : "",
-        sanitizedClassName,
-      ]
+      className={[fontClass, colorClass, sanitizedClassName]
         .filter(Boolean)
         .join(" ")
         .trim()}
-      style={[{ fontSize }, inlineColor]}
+      style={[
+        { fontSize },
+        inlineColor,
+        shadow && {
+          textShadowColor: "rgba(0,0,0,0.55)",
+          textShadowOffset: { width: 0, height: 1.75 },
+          textShadowRadius: 0,
+        },
+        shadowStrong && {
+          textShadowColor: "rgba(0,0,0,1)",
+          textShadowOffset: { width: 0, height: 1 },
+          textShadowRadius: 0,
+        },
+      ]}
       {...rest}
     >
       {children}

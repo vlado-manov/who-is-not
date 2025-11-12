@@ -45,7 +45,7 @@ const PackComponent = ({ pack, onSelect }: Props) => {
         </ImageBackground>
       </View>
       <View className="absolute bottom-0 left-1/2 -translate-x-1/2">
-        <CustomButton title={`$${pack.price}`} textClassName="px-12" />
+        <CustomButton title={`$ ${pack.price}`} textClassName="px-12" />
         {pack.priceNote && (
           <View className="bg-primary-400 py-2 px-4 rounded-full absolute -top-1/2 translate-y-6 z-20 left-1/2 -translate-x-1/2">
             <CustomText variant="p-small">{pack.priceNote}</CustomText>

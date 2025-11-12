@@ -18,6 +18,7 @@ const PremiumComponent = () => {
           <CustomText
             variant="h2-small"
             className="text-center items-center justify-center flex"
+            shadow
           >
             PREMIUM
           </CustomText>
@@ -27,15 +28,21 @@ const PremiumComponent = () => {
         </CustomText>
         <View className="items-center justify-center flex-row gap-2">
           <CustomText>only</CustomText>
-          <CustomText variant="h3" className="text-center">
-            $5.99
+          <CustomText variant="h3" className="text-center" shadow>
+            <CustomText
+              variant="h2-headline"
+              className="font-opensans-extrabold"
+              shadow
+            >
+              $
+            </CustomText>
+            5.99
           </CustomText>
         </View>
       </ImageBackground>
       <CustomButton
         title="Go premium"
         buttonClassName="mt-8 w-[106%] -ml-[3%] -rotate-1 absolute bottom-8"
-        btnSize="lg"
       />
     </View>
   );

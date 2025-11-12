@@ -7,7 +7,7 @@ import {
 import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { backgrounds } from "../../assets/backgrounds";
-import { Entypo, FontAwesome5 } from "@expo/vector-icons";
+import { Entypo } from "@expo/vector-icons";
 import CustomText from "../components/common/CustomText";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -27,7 +27,6 @@ const ProfileScreen = () => {
   const navigation = useNavigation<Nav>();
   const { t } = useTranslation();
   const authStatus = useAuthStore((s) => s.authStatus);
-  const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
@@ -57,23 +56,13 @@ const ProfileScreen = () => {
                 className="flex flex-row gap-2 items-center"
               >
                 <Entypo name="arrow-with-circle-left" size={48} color="white" />
-                {/* <FontAwesome5 name="arrow-left" size={16} color="white" />*/}
-                {/* <CustomText variant="h3-headline">{t("back_btn")}</CustomText> */}
               </TouchableOpacity>
             </View>
             <View className="items-center w-full justify-center px-4 mt-[40px]">
-              <CustomText
-                variant="h3-headline"
-                className="text-center w-full"
-                shadow
-              >
+              <CustomText variant="h3-headline" className="text-center w-full">
                 Your
               </CustomText>
-              <CustomText
-                variant="h3"
-                className="-rotate-3 text-center w-full"
-                shadow
-              >
+              <CustomText variant="h3" className="-rotate-3 text-center w-full">
                 Profile
               </CustomText>
             </View>

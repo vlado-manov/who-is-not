@@ -18,7 +18,8 @@ export type CreateGameStackParamList = {
 };
 
 export type GameStackParamList = {
-  Question: undefined;
+  PassDeviceGameplay: { playerIndex: number };
+  Question: { playerIndex: number };
   Results: undefined;
   Vote: undefined;
   VoteResults: undefined;

@@ -23,9 +23,10 @@ export type CustomInputHandle = {
   isFocused: () => boolean;
 };
 
-interface Props extends Omit<TextInputProps, "placeholder" | "onChange"> {
+interface Props extends Omit<TextInputProps, "onChange"> {
   value: string;
   onChangeText?: (text: string) => void;
+  placeholder?: string;
   containerStyle?: StyleProp<ViewStyle>;
   inputStyle?: StyleProp<TextStyle>;
   containerClassName?: string;
@@ -42,6 +43,7 @@ const CustomInput = forwardRef<CustomInputHandle | TextInput, Props>(
     {
       value,
       onChangeText = () => {},
+      placeholder,
       containerStyle,
       inputStyle,
       containerClassName,
@@ -88,6 +90,7 @@ const CustomInput = forwardRef<CustomInputHandle | TextInput, Props>(
           }}
           autoCapitalize={rest.autoCapitalize ?? "none"}
           autoCorrect={rest.autoCorrect ?? false}
+          placeholder={placeholder}
           className={inputClassName}
           style={[styles.input, inputStyle, rest.style]}
           {...rest}

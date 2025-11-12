@@ -68,7 +68,7 @@ export default function HeroComponent({
         <View className="-mt-8">
           {!item.adFree ? (
             <CustomButton
-              title={`$${price.toFixed(2)}`}
+              title={`$ ${price.toFixed(2)}`}
               btnSize="sm"
               onPress={() => onPress?.(item)}
             />

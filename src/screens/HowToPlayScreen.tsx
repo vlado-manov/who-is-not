@@ -1,5 +1,4 @@
-import { StatusBar } from "expo-status-bar";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   ImageBackground,
@@ -54,15 +53,6 @@ const STEPS: Step[] = [
     ],
     image: htp_images.htp08,
   },
-  // {
-  //   num: 3,
-  //   title: "Answer honestly",
-  //   bullets: [
-  //     "Everyone answers truthfully to their question.",
-  //     "This is important. Remember at this point you don't know if you are the impostor or not.",
-  //   ],
-  //   image: htp_images.htp09,
-  // },
   {
     num: 3,
     title: "Discuss & Accuse",
@@ -92,16 +82,6 @@ const STEPS: Step[] = [
     ],
     image: htp_images.htp07,
   },
-  // {
-  //   num: 7,
-  //   title: "Start next round",
-  //   bullets: [
-  //     "Laugh, scream, or cry — depends on how well you guessed.",
-
-  //     "Then after everything is said and done, prepare for new question, new Impostor, new chaos.",
-  //   ],
-  //   image: htp_images.htp10,
-  // },
 ];
 
 type StepCardProps = {
@@ -124,7 +104,6 @@ function StepCard({ step, showPrev, showNext, onPrev, onNext }: StepCardProps) {
       }}
     >
       <View style={{ width: "80%", position: "relative" }}>
-        {/* бейдж */}
         <View
           className="bg-primary-500 rounded-2xl items-center justify-center"
           style={{
@@ -144,8 +123,6 @@ function StepCard({ step, showPrev, showNext, onPrev, onNext }: StepCardProps) {
             {step.num}
           </CustomText>
         </View>
-
-        {/* Prev / Next – показваме според активния индекс от родителя */}
         {showPrev ? (
           <View className="absolute left-4">
             <TouchableOpacity
@@ -167,8 +144,6 @@ function StepCard({ step, showPrev, showNext, onPrev, onNext }: StepCardProps) {
             </TouchableOpacity>
           </View>
         ) : null}
-
-        {/* карта */}
         <View
           className="bg-white rounded-2xl p-8 mt-8 w-full overflow-hidden"
           style={{ justifyContent: "space-between" }}
@@ -244,7 +219,6 @@ const HowToPlayScreen = () => {
             flexGrow: 1,
           }}
         >
-          {/* Header */}
           <View className="px-8 w-full mt-6">
             <TouchableOpacity
               onPress={() => {
@@ -257,25 +231,15 @@ const HowToPlayScreen = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Заглавие */}
           <View className="items-center w-full justify-center px-4 mt-[40px]">
-            <CustomText
-              variant="h3-headline"
-              className="text-center w-full"
-              shadow
-            >
+            <CustomText variant="h3-headline" className="text-center w-full">
               How to
             </CustomText>
-            <CustomText
-              variant="h3"
-              className="-rotate-3 text-center w-full"
-              shadow
-            >
+            <CustomText variant="h3" className="-rotate-3 text-center w-full">
               Play
             </CustomText>
           </View>
 
-          {/* Карусел */}
           <View style={{ flex: 1, marginTop: 32 }}>
             <FlatList
               ref={flatRef}
@@ -301,7 +265,6 @@ const HowToPlayScreen = () => {
               disableIntervalMomentum
             />
 
-            {/* Dots */}
             <View className="w-full items-center justify-center mt-6 mb-8 flex-row">
               {STEPS.map((_, i) => {
                 const active = i === index;

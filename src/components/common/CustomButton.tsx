@@ -49,7 +49,6 @@ export default function CustomButton({
 }: CustomButtonProps) {
   const isHex = !!color && color[0] === "#";
 
-  // анимация при натискане
   const pressAnim = useRef(new Animated.Value(0)).current;
   const handlePressIn = () =>
     !disabled &&
@@ -96,7 +95,10 @@ export default function CustomButton({
   if (btnSize === "xs") textSizeClass = "text-[16px]";
 
   const tailwindBgClass = !isHex ? color || "bg-primary-500" : "";
-
+  const containsSpecial = title.includes("$");
+  const fontClass = containsSpecial
+    ? "font-overpass-extrabold"
+    : "font-seymour";
   return (
     <View
       className={`relative ${fullWidth ? "w-full" : ""}`}
@@ -117,7 +119,18 @@ export default function CustomButton({
         <Animated.View
           className={`items-center justify-center rounded-2xl py-6 ${fullWidth ? "px-4" : "px-8"} ${tailwindBgClass}`}
           style={[
-            { transform: [{ scale: containerScale }], borderRadius: 8 },
+            {
+              transform: [{ scale: containerScale }],
+              borderRadius: 8,
+              height:
+                btnSize === "lg"
+                  ? 88
+                  : btnSize === "sm"
+                    ? 72
+                    : btnSize === "xs"
+                      ? 64
+                      : 80,
+            },
             isHex ? { backgroundColor: color as string } : null,
           ]}
         >
@@ -153,7 +166,12 @@ export default function CustomButton({
           )}
 
           <Animated.Text
-            className={`text-white uppercase text-center font-seymour ${textSizeClass} ${textClassName || ""}`}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.5}
+            className={`text-white uppercase text-center font-seymour ${textSizeClass} ${
+              textClassName || ""
+            }`}
             style={{
               transform: [{ scale: textScale }],
               textShadowColor: "rgba(0,0,0,0.25)",
@@ -161,7 +179,24 @@ export default function CustomButton({
               textShadowRadius: 4,
             }}
           >
-            {title}
+            {title.split("").map((char, idx) => {
+              const isSymbol = char === "$";
+              return (
+                <Text
+                  key={idx}
+                  className={
+                    isSymbol ? "font-opensans-extrabold" : "font-seymour"
+                  }
+                  style={{
+                    fontFamily: isSymbol
+                      ? "OpenSans-ExtraBold"
+                      : "SeymourOne-Regular",
+                  }}
+                >
+                  {char}
+                </Text>
+              );
+            })}
           </Animated.Text>
         </Animated.View>
       </Pressable>
