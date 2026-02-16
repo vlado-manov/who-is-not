@@ -5,7 +5,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { IUser } from "../types/user";
 import { AvatarId, character_avatars } from "../../assets/characters";
-import { HEROES } from "../data/heroes";
+import { useHeroesStore } from "./useHeroesStore";
 
 export type AuthStatus = "guest" | "loggedIn";
 
@@ -25,7 +25,9 @@ const WORDS_A = ["Sunny", "Brave", "Clever", "Happy", "Mighty", "Lucky"];
 const WORDS_B = ["Panda", "Fox", "Koala", "Eagle", "Otter", "Tiger"];
 const rndUserName = () => `${rndFrom(WORDS_A)}${rndFrom(WORDS_B)}`;
 const rndUnlockedAvatarId = (): AvatarId => {
-  const unlockedHeroes = HEROES.filter((h) => h.unlocked);
+  const unlockedHeroes = useHeroesStore
+    .getState()
+    .heroes.filter((h) => h.unlocked);
   if (unlockedHeroes.length === 0) {
     return AVATAR_IDS[0];
   }

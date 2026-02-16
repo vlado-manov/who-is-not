@@ -1,6 +1,7 @@
 // src/store/useGameStore.ts
 import { create } from "zustand";
 import { QUESTIONS } from "../data/questions";
+import { GameMode } from "../api/analytics";
 
 export type Phase =
   | "lobby"
@@ -41,20 +42,36 @@ const defaultGameSettings = (): GameSettings => ({
 type QuestionType = "pick" | "number";
 
 type GameState = {
+  gameId?: string;
+  currentRoundId?: string;
+  mode: GameMode;
   roomCode?: string;
   phase: Phase;
   players: Player[];
-  round: number;
+  round: number; // брой завършени рундове
   timerSec?: number;
   oddOneId?: string;
   answers: Record<string, string>;
   takenCharacters: string[];
   targetPlayersCount?: number;
   gameSettings: GameSettings;
+
   currentBaseQuestionId?: string;
   currentOddQuestionId?: string;
   questionType?: QuestionType;
+
+  // voting result – voterId -> targetId
+  votes: Record<string, string>;
+
+  // ново: използвани въпроси в рамките на текущата игра
+  usedQuestionIds: string[];
+
+  // ново: точки по играч
+  scores: Record<string, number>;
+
   set: (p: Partial<GameState>) => void;
+  startGameSession: (mode: GameMode) => string;
+  setCurrentRoundId: (roundId?: string) => void;
   reset: () => void;
   beginLocalGame: (count: number) => void;
   addPlayer: (p: Player) => void;
@@ -63,11 +80,27 @@ type GameState = {
   getPlayersCount: () => number;
   setGameSettings: (patch: Partial<GameSettings>) => void;
   replaceGameSettings: (settings: GameSettings) => void;
+
   setAnswer: (playerId: string, answer: string) => void;
+
+  setVote: (voterId: string, targetId: string) => void;
+
   initRoundQuestions: () => void;
+
+  // стартира рунд (само подготвя въпросите, не вдига round)
+  startRound: () => void;
+
+  // вдига round след завършен рунд
+  goToNextRound: () => void;
+
+  // изчислява резултати за текущия рунд
+  applyRoundScores: () => void;
 };
 
 export const useGameStore = create<GameState>((set, get) => ({
+  gameId: undefined,
+  currentRoundId: undefined,
+  mode: "LOCAL",
   phase: "lobby",
   players: [],
   round: 0,
@@ -78,10 +111,27 @@ export const useGameStore = create<GameState>((set, get) => ({
   currentOddQuestionId: undefined,
   questionType: undefined,
   oddOneId: undefined,
+
+  votes: {},
+
+  usedQuestionIds: [],
+  scores: {},
+
   set: (p) => set(p),
+
+  startGameSession: (mode) => {
+    const gameId = `game_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    set({ gameId, mode, currentRoundId: undefined });
+    return gameId;
+  },
+
+  setCurrentRoundId: (roundId) => set({ currentRoundId: roundId }),
 
   reset: () =>
     set({
+      gameId: undefined,
+      currentRoundId: undefined,
+      mode: "LOCAL",
       roomCode: undefined,
       phase: "lobby",
       players: [],
@@ -95,10 +145,16 @@ export const useGameStore = create<GameState>((set, get) => ({
       currentBaseQuestionId: undefined,
       currentOddQuestionId: undefined,
       questionType: undefined,
+      votes: {},
+      usedQuestionIds: [],
+      scores: {},
     }),
 
   beginLocalGame: (count) =>
     set((s) => ({
+      gameId: undefined,
+      currentRoundId: undefined,
+      mode: "LOCAL",
       phase: "lobby",
       players: [],
       round: 0,
@@ -112,6 +168,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       currentBaseQuestionId: undefined,
       currentOddQuestionId: undefined,
       questionType: undefined,
+      votes: {},
+      usedQuestionIds: [],
+      scores: {},
     })),
 
   addPlayer: (p) =>
@@ -150,19 +209,37 @@ export const useGameStore = create<GameState>((set, get) => ({
       },
     })),
 
+  setVote: (voterId, targetId) =>
+    set((s) => ({
+      votes: {
+        ...s.votes,
+        [voterId]: targetId,
+      },
+    })),
+
   initRoundQuestions: () => {
     const players = get().players;
     if (!players.length) return;
 
+    const used = get().usedQuestionIds || [];
+
     const active = QUESTIONS.filter((q) => q.active);
 
-    const byType = (type: QuestionType) =>
-      active.filter((q) => q.type === type);
+    const pickSourceForType = (type: QuestionType) => {
+      const byTypeAll = active.filter((q) => q.type === type);
+      const byTypeUnused = byTypeAll.filter((q) => !used.includes(q.id));
+
+      // ако има поне 2 неизползвани за този тип, ползваме тях.
+      if (byTypeUnused.length >= 2) return byTypeUnused;
+
+      // иначе падъм към всички активни от този тип (възможно повторение на въпрос чак когато свършат).
+      return byTypeAll;
+    };
 
     const possibleTypes: QuestionType[] = ["pick", "number"];
 
     const candidates = possibleTypes
-      .map((t) => ({ type: t, list: byType(t) }))
+      .map((t) => ({ type: t, list: pickSourceForType(t) }))
       .filter((x) => x.list.length >= 2);
 
     if (!candidates.length) {
@@ -182,12 +259,65 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const oddPlayer = players[Math.floor(Math.random() * players.length)];
 
-    set({
+    set((s) => ({
       questionType: chosen.type,
       currentBaseQuestionId: base.id,
       currentOddQuestionId: odd.id,
       oddOneId: oddPlayer.id,
       answers: {},
-    });
+      votes: {},
+      usedQuestionIds: [...s.usedQuestionIds, base.id, odd.id],
+    }));
   },
+
+  // само подготвяме новия рунд (без да пипаме round)
+  startRound: () => {
+    get().initRoundQuestions();
+  },
+
+  // вдигаме броя на завършените рундове
+  goToNextRound: () =>
+    set((s) => ({
+      round: s.round + 1,
+    })),
+
+  // изчисляваме точки за текущия рунд
+  applyRoundScores: () =>
+    set((s) => {
+      const { votes, oddOneId, players } = s;
+      if (!oddOneId) return {};
+
+      const imposterId = oddOneId;
+      const imposter = players.find((p) => p.id === imposterId);
+      if (!imposter) return {};
+
+      const nextScores: Record<string, number> = { ...s.scores };
+
+      // гарантираме, че всеки има entry
+      players.forEach((p) => {
+        if (nextScores[p.id] == null) nextScores[p.id] = 0;
+      });
+
+      // импостър: +2 за всеки, който НЕ е гласувал за него
+      const fooledCount = Object.entries(votes).reduce(
+        (acc, [voterId, targetId]) => {
+          if (voterId === imposterId) return acc;
+          if (targetId !== imposterId) return acc + 1;
+          return acc;
+        },
+        0
+      );
+
+      nextScores[imposterId] += fooledCount * 1.5;
+
+      // не импостър: +1 ако са гласували за импостъра
+      Object.entries(votes).forEach(([voterId, targetId]) => {
+        if (voterId === imposterId) return;
+        if (targetId === imposterId) {
+          nextScores[voterId] += 1;
+        }
+      });
+
+      return { scores: nextScores };
+    }),
 }));

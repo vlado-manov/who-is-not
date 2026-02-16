@@ -1,5 +1,6 @@
 import "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
 import { useEffect, useState } from "react";
@@ -9,14 +10,38 @@ import "./global.css";
 import "./src/i18n";
 
 import { backgrounds } from "./assets/backgrounds";
-import { character_avatars } from "./assets/characters";
-import { game_images, htp_images, images, store_images } from "./assets/images";
+import {
+  character_avatars,
+  character_standing_backgrounds,
+  character_videos,
+  characters_wonRound,
+} from "./assets/characters";
+import {
+  game_images,
+  htp_images,
+  images,
+  loaderFrames,
+  store_images,
+} from "./assets/images";
 import { HEROES } from "./src/data/heroes";
 
 import RootNavigator from "./src/navigation/RootNavigator";
 import InitialLoadingScreen from "./src/components/InitialLoadingScreen";
 import { useAuthStore } from "./src/store/useUserStore";
 import AudioManager from "./src/utils/audioManager";
+import { character_sounds } from "./assets/audio";
+import { assertContractCompatibility } from "./src/api/contracts";
+import { queryClient } from "./src/api/queryClient";
+import { useSyncHeroesStore } from "./src/api/hooks/useSyncHeroesStore";
+import { usePrefetchCharacterMedia } from "./src/api/hooks/usePrefetchCharacterMedia";
+import { setApiErrorHandler } from "./src/api/errorHandler";
+import { ApiError } from "./src/api/types";
+
+function ApiBootstrap() {
+  useSyncHeroesStore();
+  usePrefetchCharacterMedia();
+  return null;
+}
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -76,7 +101,12 @@ export default function App() {
           ...values(store_images),
           ...values(images),
           ...values(game_images),
+          ...values(character_videos),
           ...values(htp_images),
+          ...values(character_standing_backgrounds),
+          ...values(character_sounds),
+          ...values(loaderFrames),
+          ...values(characters_wonRound),
           ...HEROES.map((h) => h.main_image),
         ];
         await Asset.loadAsync(toPreload);
@@ -103,14 +133,38 @@ export default function App() {
     }
   }, [heroBgReady, restReady, fontsLoaded]);
 
+  useEffect(() => {
+    void assertContractCompatibility().catch((e) => {
+      console.warn(
+        "[api-contract]",
+        e instanceof Error
+          ? e.message
+          : "Failed to validate API contract compatibility"
+      );
+    });
+  }, []);
+
+  useEffect(() => {
+    setApiErrorHandler((error: ApiError) => {
+      console.warn(
+        "[api-error]",
+        `code=${error.code} status=${error.status ?? "n/a"} trace=${error.traceId ?? "n/a"} message=${error.message}`
+      );
+    });
+    return () => setApiErrorHandler(null);
+  }, []);
+
   return (
-    <NavigationContainer>
-      <StatusBar style="light" />
-      {appReady ? (
-        <RootNavigator />
-      ) : (
-        <InitialLoadingScreen heroReady={heroBgReady} />
-      )}
-    </NavigationContainer>
+    <QueryClientProvider client={queryClient}>
+      <ApiBootstrap />
+      <NavigationContainer>
+        <StatusBar style="light" />
+        {appReady ? (
+          <RootNavigator />
+        ) : (
+          <InitialLoadingScreen heroReady={heroBgReady} />
+        )}
+      </NavigationContainer>
+    </QueryClientProvider>
   );
 }

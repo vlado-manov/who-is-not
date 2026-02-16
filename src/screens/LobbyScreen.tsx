@@ -1,17 +1,32 @@
+// src/screens/LobbyScreen.tsx
 import React, { useEffect, useRef, useState } from "react";
 import { View, Image, Dimensions, Animated, Easing } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CustomText from "../components/common/CustomText";
 import { images } from "../../assets/images";
-import { useNavigation } from "@react-navigation/native";
+import {
+  CompositeNavigationProp,
+  useNavigation,
+} from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
-import { CreateGameStackParamList } from "../navigation/types";
+import {
+  CreateGameStackParamList,
+  RootStackParamList,
+} from "../navigation/types";
 import { preloadAssets } from "../utils/preloadAssets";
 import { characters_loss, characters_win } from "../../assets/characters";
 import AudioManager from "../utils/audioManager";
+import { useGameStore } from "../store/useGameStore";
+import { useAuthStore } from "../store/useUserStore";
+import { useTrackGameStartedMutation } from "../api/hooks/useAnalyticsMutations";
 
 const { height: H, width: W } = Dimensions.get("window");
-type HeroNav = StackNavigationProp<CreateGameStackParamList, "HeroPicker">;
+
+// ✅ навигация: от CreateGame stack + Root stack
+type CreateNav = StackNavigationProp<CreateGameStackParamList, "Lobby">;
+type RootNav = StackNavigationProp<RootStackParamList>;
+type HeroNav = CompositeNavigationProp<CreateNav, RootNav>;
+
 const pct = (p: number) => (p / 100) * H;
 
 const TOP_START = -pct(70);
@@ -22,6 +37,12 @@ const BOT_MID = +pct(13.25);
 
 export default function LobbyScreen() {
   const navigation = useNavigation<HeroNav>();
+  const playersCount = useGameStore((s) => s.targetPlayersCount ?? s.players.length);
+  const mode = useGameStore((s) => s.mode);
+  const existingGameId = useGameStore((s) => s.gameId);
+  const startGameSession = useGameStore((s) => s.startGameSession);
+  const userId = useAuthStore((s) => s.user.id);
+  const trackGameStartedMutation = useTrackGameStartedMutation();
   const topY = useRef(new Animated.Value(TOP_START)).current;
   const botY = useRef(new Animated.Value(BOT_START)).current;
   const overlayOpacity = useRef(new Animated.Value(0.35)).current;
@@ -110,7 +131,7 @@ export default function LobbyScreen() {
             }),
           ]).start(() => res());
         });
-        await new Promise((r) => setTimeout(r, 200));
+        await new Promise<void>((resolve) => setTimeout(resolve, 200));
       };
 
       await doStep("3");
@@ -150,6 +171,7 @@ export default function LobbyScreen() {
       }),
     ]);
     (AudioManager.playCurtainSoundClose(),
+      AudioManager.stopBackground(),
       (async () => {
         // Отваряне до средата
         await new Promise<void>((res) => openMid.start(() => res()));
@@ -157,7 +179,7 @@ export default function LobbyScreen() {
         // Показваме надпис
         setShowReady(true);
         await new Promise<void>((res) => showReadyIn.start(() => res()));
-        await new Promise((r) => setTimeout(r, 1500));
+        await new Promise<void>((resolve) => setTimeout(resolve, 1500));
 
         // Старт прелоуд
         let loaded = false;
@@ -185,7 +207,24 @@ export default function LobbyScreen() {
 
         // Затваряме и продължаваме
         await new Promise<void>((res) => closeAll.start(() => res()));
-        navigation.navigate("Round" as never);
+
+        // ✅ Първо извикване на Round вече е през Game stack
+        const gameId = existingGameId ?? startGameSession(mode);
+        try {
+          await trackGameStartedMutation.mutateAsync({
+            gameId,
+            mode,
+            playersCount: Math.max(playersCount || 1, 1),
+            userId,
+          });
+        } catch (e) {
+          console.warn("track GAME_STARTED failed", e);
+        }
+
+        AudioManager.playBackgroundGame();
+        navigation.navigate("Game", {
+          screen: "Round",
+        } as never);
       })());
   }, []);
 

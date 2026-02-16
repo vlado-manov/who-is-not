@@ -3,7 +3,9 @@
 module.exports = {
   content: ["./App.{js,jsx,ts,tsx}", "./src/**/*.{js,jsx,ts,tsx}"],
   presets: [require("nativewind/preset")],
+
   safelist: [
+    // colors
     "bg-primary-100",
     "bg-primary-200",
     "bg-primary-300",
@@ -13,9 +15,23 @@ module.exports = {
     "bg-primary-700",
     "bg-primary-800",
     "bg-primary-900",
+
+    // widths
+    "w-full",
+    "w-1/2",
+    "w-1/3",
+    "w-2/3",
+    "w-1/4",
+    "w-3/4",
+
+    // heights
+    "h-full",
+    "h-1/2",
   ],
+
   theme: {
     extend: {
+      /* ----------------------------- COLORS ----------------------------- */
       colors: {
         primary: {
           100: "#49D0B5",
@@ -32,10 +48,30 @@ module.exports = {
           500: "#3F3F3F",
         },
       },
-      boxShadow: {
-        custom: "0 4px 4px 0 rgba(0,0,0,0.25)",
-        custom50: "0 4px 4px 0 rgba(0,0,0,0.5)",
+
+      /* ----------------------------- WIDTH ------------------------------ */
+      width: {
+        "1/2": "50%",
+        "1/3": "33.333333%",
+        "2/3": "66.666667%",
+        "1/4": "25%",
+        "3/4": "75%",
+        full: "100%",
       },
+
+      /* ----------------------------- HEIGHT ----------------------------- */
+      height: {
+        "1/2": "50%",
+        full: "100%",
+      },
+
+      /* ----------------------------- SHADOW ----------------------------- */
+      boxShadow: {
+        custom: "0 4px 4px rgba(0,0,0,0.25)",
+        custom50: "0 4px 4px rgba(0,0,0,0.5)",
+      },
+
+      /* ----------------------------- FONTS ------------------------------ */
       fontFamily: {
         amatic: ["AmaticSC-Regular"],
         "amatic-bold": ["AmaticSC-Bold"],
@@ -60,6 +96,7 @@ module.exports = {
       },
     },
   },
+
   plugins: [
     function ({ addUtilities }) {
       addUtilities({

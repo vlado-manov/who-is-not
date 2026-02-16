@@ -41,7 +41,7 @@ const NameScreen = () => {
     const id = Date.now().toString();
     addPlayer({ id, name: trimmed, connected: true });
 
-    navigation.navigate("HeroPicker", { playerId: id, index });
+    navigation.navigate("HeroPicker", { index });
   };
 
   return (

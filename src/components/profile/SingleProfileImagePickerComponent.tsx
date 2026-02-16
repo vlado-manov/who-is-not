@@ -21,8 +21,10 @@ const SingleProfileImagePickerComponent = ({ item }: Props) => {
       className="items-center relative focus:scale-100 active_scale-100"
     >
       <Image
+        key={`profile-picker-${item.id}`}
         source={item.profileImage}
         resizeMode="contain"
+        fadeDuration={0}
         className="w-[132px] h-[132px]"
         blurRadius={item.unlocked ? 0 : 4}
       />

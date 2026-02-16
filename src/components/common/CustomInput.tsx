@@ -1,4 +1,3 @@
-// src/components/common/CustomInput.tsx
 import React, {
   forwardRef,
   useImperativeHandle,
@@ -27,12 +26,17 @@ interface Props extends Omit<TextInputProps, "onChange"> {
   value: string;
   onChangeText?: (text: string) => void;
   placeholder?: string;
+
   containerStyle?: StyleProp<ViewStyle>;
   inputStyle?: StyleProp<TextStyle>;
   containerClassName?: string;
   inputClassName?: string;
+
   borderColor?: string;
   focusBorderColor?: string;
+
+  /** If true → no border, no shadow, no wrapper styling */
+  unstyled?: boolean;
 }
 
 const DEFAULT_BORDER = "#FA8900";
@@ -50,6 +54,7 @@ const CustomInput = forwardRef<CustomInputHandle | TextInput, Props>(
       inputClassName,
       borderColor,
       focusBorderColor,
+      unstyled = false,
       ...rest
     },
     ref
@@ -64,6 +69,32 @@ const CustomInput = forwardRef<CustomInputHandle | TextInput, Props>(
       isFocused: () => !!inputRef.current?.isFocused(),
     }));
 
+    // ---------- UNSTYLED MODE ----------
+    if (unstyled) {
+      return (
+        <TextInput
+          ref={inputRef}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          autoCapitalize={rest.autoCapitalize ?? "none"}
+          autoCorrect={rest.autoCorrect ?? false}
+          className={inputClassName}
+          style={[styles.unstyledInput, inputStyle, rest.style]}
+          onFocus={(e) => {
+            setFocused(true);
+            rest.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            rest.onBlur?.(e);
+          }}
+          {...rest}
+        />
+      );
+    }
+
+    // ---------- DEFAULT STYLED MODE ----------
     const dynamicContainer: StyleProp<ViewStyle> = [
       styles.container,
       {
@@ -80,6 +111,11 @@ const CustomInput = forwardRef<CustomInputHandle | TextInput, Props>(
           ref={inputRef}
           value={value}
           onChangeText={onChangeText}
+          placeholder={placeholder}
+          autoCapitalize={rest.autoCapitalize ?? "none"}
+          autoCorrect={rest.autoCorrect ?? false}
+          className={inputClassName}
+          style={[styles.input, inputStyle, rest.style]}
           onFocus={(e) => {
             setFocused(true);
             rest.onFocus?.(e);
@@ -88,11 +124,6 @@ const CustomInput = forwardRef<CustomInputHandle | TextInput, Props>(
             setFocused(false);
             rest.onBlur?.(e);
           }}
-          autoCapitalize={rest.autoCapitalize ?? "none"}
-          autoCorrect={rest.autoCorrect ?? false}
-          placeholder={placeholder}
-          className={inputClassName}
-          style={[styles.input, inputStyle, rest.style]}
           {...rest}
         />
       </View>
@@ -119,6 +150,7 @@ const styles = StyleSheet.create({
       },
     }),
   },
+
   input: {
     width: "100%",
     paddingVertical: 16,
@@ -128,6 +160,17 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#000",
     borderRadius: 16,
+  },
+
+  /** Used when unstyled = true */
+  unstyledInput: {
+    width: "100%",
+    paddingVertical: 4,
+    paddingHorizontal: 0,
+    fontSize: 28,
+    textAlign: "center",
+    color: "#592410",
+    backgroundColor: "transparent",
   },
 });
 

@@ -2,9 +2,26 @@
   "compilerOptions": {
     "strict": true,
     "jsx": "react-native",
+    "target": "es2017",
+    "lib": [
+      "es2017"
+    ],
+    "module": "esnext",
     "moduleResolution": "bundler",
-    "types": ["nativewind/types"]
+    "allowJs": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "types": [
+      "nativewind/types"
+    ]
   },
-  "include": ["**/*.ts", "**/*.tsx", "nativewind.d.ts", "nativewind-env.d.ts"],
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "nativewind.d.ts",
+    "nativewind-env.d.ts"
+  ],
   "extends": "expo/tsconfig.base"
 }

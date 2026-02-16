@@ -9,8 +9,8 @@ import {
 import CustomText from "../common/CustomText";
 import { EvilIcons } from "@expo/vector-icons";
 import CustomButton from "../common/CustomButton";
-import { HEROES } from "../../data/heroes";
 import SingleProfileImagePickerComponent from "./SingleProfileImagePickerComponent";
+import { useHeroesStore } from "../../store/useHeroesStore";
 
 type Props = {
   setImagePickerVisible: React.Dispatch<React.SetStateAction<boolean>>;
@@ -19,6 +19,7 @@ type Props = {
 export default function ProfileImagePickerComponent({
   setImagePickerVisible,
 }: Props) {
+  const heroes = useHeroesStore((s) => s.heroes);
   const backdrop = useRef(new Animated.Value(0)).current;
   const slide = useRef(new Animated.Value(0)).current;
   const [sheetH, setSheetH] = useState(0);
@@ -96,7 +97,7 @@ export default function ProfileImagePickerComponent({
         </CustomText>
 
         <FlatList
-          data={HEROES}
+          data={heroes}
           horizontal
           keyExtractor={(item) => item.id}
           showsHorizontalScrollIndicator={false}

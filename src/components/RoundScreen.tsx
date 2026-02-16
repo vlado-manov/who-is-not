@@ -14,26 +14,20 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import {
-  CompositeNavigationProp,
-  useNavigation,
-} from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 
 import CustomText from "./common/CustomText";
 import CustomButton from "./common/CustomButton";
 import { backgrounds } from "../../assets/backgrounds";
 import { htp_images } from "../../assets/images";
-import {
-  CreateGameStackParamList,
-  RootStackParamList,
-} from "../navigation/types";
+import { GameStackParamList } from "../navigation/types";
 import { useGameStore } from "../store/useGameStore";
 import AudioManager from "../utils/audioManager";
+import { useAuthStore } from "../store/useUserStore";
+import { useTrackRoundStartedMutation } from "../api/hooks/useAnalyticsMutations";
 
-type CreateNav = StackNavigationProp<CreateGameStackParamList, "Round">;
-type RootNav = StackNavigationProp<RootStackParamList>;
-type Nav = CompositeNavigationProp<CreateNav, RootNav>;
+type Nav = StackNavigationProp<GameStackParamList, "Round">;
 
 const { width: W } = Dimensions.get("window");
 
@@ -89,8 +83,6 @@ function TutorialOverlay({
   const [index, setIndex] = useState(0);
   const ref = useRef<FlatList<Step>>(null);
 
-  AudioManager.playBackgroundGame();
-
   const getItemLayout = (_: any, i: number) => ({
     length: W,
     offset: W * i,
@@ -126,7 +118,7 @@ function TutorialOverlay({
 
       <View className="absolute top-20 right-12 z-[100]">
         <TouchableOpacity onPress={onSkipAll}>
-          <CustomText variant="h3-headline" className="underline">
+          <CustomText variant="p" className="underline">
             Skip
           </CustomText>
         </TouchableOpacity>
@@ -148,7 +140,7 @@ function TutorialOverlay({
             >
               <View style={{ width: "80%", position: "relative" }}>
                 <View
-                  className="bg-primary-500 rounded-2xl items-center justify-center"
+                  className="bg-primary-400 rounded-2xl items-center justify-center"
                   style={{
                     position: "absolute",
                     top: -8,
@@ -234,6 +226,11 @@ function TutorialOverlay({
             onPress={() =>
               index < TUTORIAL_STEPS.length - 1 ? goTo(index + 1) : onDoneAll()
             }
+            backgroundImage={backgrounds.bg026}
+            glow
+            glowColor="rgba(41,255,25,0.8)"
+            shadowColor="#005f07"
+            horizontalPadding={48}
           />
         </View>
       </View>
@@ -245,19 +242,47 @@ const RoundScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
 
-  const round = useGameStore((s) => s.round) || 1;
+  const round = useGameStore((s) => s.round);
+  const gameId = useGameStore((s) => s.gameId);
+  const mode = useGameStore((s) => s.mode);
+  const setCurrentRoundId = useGameStore((s) => s.setCurrentRoundId);
   const players = useGameStore((s) => s.players);
   const firstPlayerName = players?.[0]?.name;
-  const initRoundQuestions = useGameStore((s) => s.initRoundQuestions);
+  const userId = useAuthStore((s) => s.user.id);
+  const trackRoundStartedMutation = useTrackRoundStartedMutation();
 
-  const [showTutorial, setShowTutorial] = useState(true);
+  const startRound = useGameStore((s) => s.startRound);
 
-  const onContinue = () => {
+  // ✅ туториал само на първия рунд (когато round === 0)
+  const [showTutorial, setShowTutorial] = useState(round === 0);
+
+  const displayRound = (round || 0) + 1;
+
+  const onContinue = async () => {
     if (!players.length) return;
-    initRoundQuestions();
-    navigation.navigate("Game", {
-      screen: "PassDeviceGameplay",
-      params: { playerIndex: 0 },
+
+    const roundIndex = (round || 0) + 1;
+    const roundId = `${gameId ?? "game_local"}_round_${roundIndex}`;
+    setCurrentRoundId(roundId);
+
+    if (gameId) {
+      try {
+        await trackRoundStartedMutation.mutateAsync({
+          gameId,
+          roundId,
+          mode,
+          roundIndex,
+          userId,
+        });
+      } catch (e) {
+        console.warn("track ROUND_STARTED failed", e);
+      }
+    }
+
+    startRound();
+    // вече сме в GameStack, навигираме директно
+    navigation.navigate("PassDeviceGameplay", {
+      playerIndex: 0,
     } as never);
   };
 
@@ -269,7 +294,7 @@ const RoundScreen = () => {
         onDoneAll={() => setShowTutorial(false)}
       />
       <ImageBackground
-        source={backgrounds.bg009}
+        source={backgrounds.bg019}
         className="flex-1 relative"
         resizeMode="cover"
       >
@@ -279,17 +304,23 @@ const RoundScreen = () => {
               Round
             </CustomText>
             <CustomText className="text-center" variant="h0" shadow>
-              {round}
+              {displayRound}
             </CustomText>
           </View>
           <View className="mb-16 px-16 absolute bottom-0 left-0 right-0">
-            <CustomText className="text-center my-2">
+            <CustomText className="text-center mb-4">
               <CustomText className="underline">{firstPlayerName}</CustomText>,
-              Click START once the phone is in your hands.
+              <CustomText>
+                Click START once the phone is in your hands.
+              </CustomText>
             </CustomText>
             <CustomButton
               title={t("start_btn", { defaultValue: "Start" })}
-              color="bg-primary-500"
+              backgroundImage={backgrounds.bg026}
+              glow
+              glowColor="rgba(41,255,25,0.8)"
+              shadowColor="#005f07"
+              horizontalPadding={48}
               fullWidth
               onPress={onContinue}
             />

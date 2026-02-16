@@ -2,212 +2,364 @@ import React, { useRef } from "react";
 import {
   Pressable,
   Text,
-  GestureResponderEvent,
   View,
   Animated,
   Platform,
+  Image,
+  ImageSourcePropType,
+  GestureResponderEvent,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import AudioManager from "../../utils/audioManager";
+
+/* -------------------------------------------------------------------------- */
+/* TYPES */
+/* -------------------------------------------------------------------------- */
+
+export type ButtonVariant = "default" | "pill" | "circle";
+export type ButtonAppearance =
+  | "primary"
+  | "secondary"
+  | "tertiary"
+  | "danger"
+  | "custom";
+
+export type ButtonFontSize = "xs" | "sm" | "md" | "lg" | "xl";
+export type ButtonSize = "xs" | "sm" | "md" | "lg";
 
 interface CustomButtonProps {
   title: string;
   onPress?: (e: GestureResponderEvent) => void;
-  color?: string;
-  label?: boolean;
-  labelTitle?: string;
+
+  variant?: ButtonVariant;
+  appearance?: ButtonAppearance;
+
   fullWidth?: boolean;
-  buttonClassName?: string;
-  textClassName?: string;
-  labelClassName?: string;
-  btnSize?: "xs" | "sm" | "lg";
   disabled?: boolean;
+
+  /** visuals */
+  gradientColors?: [string, string];
+  backgroundImage?: ImageSourcePropType;
+  solidColor?: string;
+
+  /** icon */
+  icon?: ImageSourcePropType;
+  iconSize?: number;
+
+  /** sizing */
+  btnSize?: ButtonSize;
+  height?: number;
+  diameter?: number;
+
+  /** text */
+  fontSize?: ButtonFontSize;
+  fontSizePx?: number;
+
+  /** badge */
+  label?: string;
+  horizontalPadding?: number;
+  /** glow */
+  glow?: boolean;
+  glowColor?: string;
+  glowIntensity?: number;
+  shadowColor?: string;
+  /** classes */
+  buttonClassName?: string;
 }
 
-function darkenHex(hex: string, amount = 0.1) {
-  const clamp = (v: number) => Math.max(0, Math.min(255, v));
-  const m = hex?.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
-  if (!m) return hex;
-  const r = clamp(Math.round(parseInt(m[1], 16) * (1 - amount)));
-  const g = clamp(Math.round(parseInt(m[2], 16) * (1 - amount)));
-  const b = clamp(Math.round(parseInt(m[3], 16) * (1 - amount)));
-  const toHex = (n: number) => n.toString(16).padStart(2, "0");
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-}
+/* -------------------------------------------------------------------------- */
+/* PRESETS */
+/* -------------------------------------------------------------------------- */
+
+type PresetAppearance = Exclude<ButtonAppearance, "custom">;
+
+const APPEARANCE_PRESETS: Record<PresetAppearance, [string, string]> = {
+  primary: ["#ff711c", "#FA3A00"],
+  secondary: ["#cc4eed", "#e878be"],
+  tertiary: ["#82b52f", "#beca2c"],
+  danger: ["#FF4D4D", "#D91E18"],
+};
+
+const FONT_SIZE_MAP: Record<ButtonFontSize, number> = {
+  xs: 14,
+  sm: 18,
+  md: 24,
+  lg: 30,
+  xl: 36,
+};
+
+const BTN_SIZE_HEIGHT: Record<ButtonSize, number> = {
+  xs: 56,
+  sm: 64,
+  md: 80,
+  lg: 96,
+};
+
+/* -------------------------------------------------------------------------- */
+/* COMPONENT */
+/* -------------------------------------------------------------------------- */
 
 export default function CustomButton({
   title,
   onPress,
-  color,
-  label = false,
-  labelTitle,
-  fullWidth = false,
-  buttonClassName,
-  textClassName,
-  labelClassName,
-  btnSize,
-  disabled = false,
-}: CustomButtonProps) {
-  const isHex = !!color && color[0] === "#";
 
+  variant = "default",
+  appearance = "primary",
+
+  fullWidth = false,
+  disabled = false,
+
+  gradientColors,
+  backgroundImage,
+  solidColor,
+
+  icon,
+  iconSize = 36,
+
+  btnSize = "md",
+  height,
+  diameter = 180,
+
+  fontSize = "md",
+  fontSizePx,
+
+  label,
+  horizontalPadding = 24,
+  glow = false,
+  glowColor = "rgba(253, 193, 194, 0.8)",
+  glowIntensity = 8,
+  shadowColor = "#000",
+  buttonClassName,
+}: CustomButtonProps) {
   const pressAnim = useRef(new Animated.Value(0)).current;
-  const handlePressIn = () =>
-    !disabled &&
+
+  /* ----------------------------- Animations ------------------------------ */
+
+  const onPressIn = () =>
     Animated.timing(pressAnim, {
       toValue: 1,
       duration: 80,
       useNativeDriver: true,
     }).start();
-  const handlePressOut = () =>
+
+  const onPressOut = () =>
     Animated.timing(pressAnim, {
       toValue: 0,
       duration: 120,
       useNativeDriver: true,
     }).start();
 
-  const containerScale = pressAnim.interpolate({
+  const translateY = pressAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [1, 1.04],
+    outputRange: [0, 6],
   });
-  const textScale = pressAnim.interpolate({
+
+  const scale = pressAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [1, 1.08],
+    outputRange: [1, 0.97],
   });
 
   const overlayOpacity = pressAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 0.08],
+    outputRange: [0, 0.15],
   });
 
-  const shadowStyle =
-    Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: { elevation: 6 },
-    }) || {};
+  /* ------------------------------ Styling -------------------------------- */
 
-  let textSizeClass = "text-[24px]";
-  if (btnSize === "lg") textSizeClass = "text-[32px]";
-  if (btnSize === "sm") textSizeClass = "text-[20px]";
-  if (btnSize === "xs") textSizeClass = "text-[16px]";
+  const resolvedHeight =
+    variant === "circle" ? diameter : (height ?? BTN_SIZE_HEIGHT[btnSize]);
 
-  const tailwindBgClass = !isHex ? color || "bg-primary-500" : "";
-  const containsSpecial = title.includes("$");
-  const fontClass = containsSpecial
-    ? "font-overpass-extrabold"
-    : "font-seymour";
+  const radius =
+    variant === "circle" ? diameter / 2 : variant === "pill" ? 999 : 20;
+
+  const colors: [string, string] =
+    gradientColors ||
+    (appearance !== "custom"
+      ? APPEARANCE_PRESETS[appearance]
+      : APPEARANCE_PRESETS.primary);
+
+  const resolvedFontSize = fontSizePx ?? FONT_SIZE_MAP[fontSize];
+
+  const shadow =
+    Platform.OS === "ios"
+      ? {
+          shadowColor: shadowColor,
+          shadowOffset: { width: 0, height: 5 },
+          shadowOpacity: 0.8,
+          shadowRadius: 0.5,
+        }
+      : { elevation: 10 };
+
+  const glowShadow =
+    glow && Platform.OS === "ios"
+      ? {
+          shadowColor: glowColor,
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 1,
+          shadowRadius: glowIntensity,
+        }
+      : {};
+
+  /* ------------------------------------------------------------------------ */
+
   return (
     <View
-      className={`relative ${fullWidth ? "w-full" : ""}`}
-      style={[{ borderRadius: 8 }, shadowStyle]}
+      className={buttonClassName}
+      style={[glowShadow, fullWidth && { width: "100%" }]}
     >
-      <Pressable
-        disabled={disabled}
-        accessibilityState={{ disabled }}
-        onPress={(e) => {
-          AudioManager.playButtonClick();
-          onPress?.(e);
-        }}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        className={`${fullWidth ? "w-full" : ""} ${buttonClassName || ""}`}
-        style={{ borderRadius: 8, opacity: disabled ? 0.55 : 1 }}
-      >
-        <Animated.View
-          className={`items-center justify-center rounded-2xl py-6 ${fullWidth ? "px-4" : "px-8"} ${tailwindBgClass}`}
-          style={[
-            {
-              transform: [{ scale: containerScale }],
-              borderRadius: 8,
-              height:
-                btnSize === "lg"
-                  ? 88
-                  : btnSize === "sm"
-                    ? 72
-                    : btnSize === "xs"
-                      ? 64
-                      : 80,
-            },
-            isHex ? { backgroundColor: color as string } : null,
-          ]}
-        >
-          {!isHex && (
-            <Animated.View
-              pointerEvents="none"
-              style={{
-                position: "absolute",
-                top: 0,
-                right: 0,
-                bottom: 0,
-                left: 0,
-                backgroundColor: "#000",
-                opacity: overlayOpacity,
-                borderRadius: 16,
-              }}
-            />
-          )}
-          {isHex && (
-            <Animated.View
-              pointerEvents="none"
-              style={{
-                position: "absolute",
-                top: 0,
-                right: 0,
-                bottom: 0,
-                left: 0,
-                backgroundColor: darkenHex(color as string, 0.08),
-                opacity: pressAnim,
-                borderRadius: 16,
-              }}
-            />
-          )}
+      {glow && (
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            inset: -2,
+            borderRadius: radius + 2,
+            backgroundColor: glowColor,
+            opacity: 0.45,
+            zIndex: -1,
+          }}
+        />
+      )}
 
-          <Animated.Text
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.5}
-            className={`text-white uppercase text-center font-seymour ${textSizeClass} ${
-              textClassName || ""
-            }`}
+      <View style={[shadow, { borderRadius: radius, width: "100%" }]}>
+        <Pressable
+          style={{ width: "100%" }}
+          disabled={disabled}
+          onPress={(e) => {
+            AudioManager.playButtonClick();
+            onPress?.(e);
+          }}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
+        >
+          <Animated.View
             style={{
-              transform: [{ scale: textScale }],
-              textShadowColor: "rgba(0,0,0,0.25)",
-              textShadowOffset: { width: 0, height: 4 },
-              textShadowRadius: 4,
+              transform: [{ translateY }, { scale }],
+              borderRadius: radius,
+              overflow: "hidden",
+              height: resolvedHeight,
+              width: variant === "circle" ? diameter : "100%",
+              opacity: disabled ? 0.5 : 1,
             }}
           >
-            {title.split("").map((char, idx) => {
-              const isSymbol = char === "$";
-              return (
-                <Text
-                  key={idx}
-                  className={
-                    isSymbol ? "font-opensans-extrabold" : "font-seymour"
-                  }
-                  style={{
-                    fontFamily: isSymbol
-                      ? "OpenSans-ExtraBold"
-                      : "SeymourOne-Regular",
-                  }}
-                >
-                  {char}
-                </Text>
-              );
-            })}
-          </Animated.Text>
-        </Animated.View>
-      </Pressable>
+            {/* BACKGROUND */}
+            {backgroundImage ? (
+              <Image
+                source={backgroundImage}
+                resizeMode="cover"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                }}
+              />
+            ) : solidColor ? (
+              <View
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  backgroundColor: solidColor,
+                }}
+              />
+            ) : (
+              <LinearGradient
+                colors={colors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{ position: "absolute", inset: 0 }}
+              />
+            )}
 
-      {label && (
-        <Text
-          className={`mt-2 text-sm text-white text-center shadow-custom absolute -top-2 -translate-y-1/2 -right-4 uppercase font-opensans-extrabold text-[16px] px-4 py-2 bg-primary-500 rounded-full ${labelClassName || ""}`}
-        >
-          {labelTitle}
-        </Text>
-      )}
+            {/* GLOSS */}
+            <View
+              style={{
+                position: "absolute",
+                top: 4,
+                left: 4,
+                right: 4,
+                height: "45%",
+                borderRadius: radius,
+                backgroundColor: "rgba(255,255,255,0.25)",
+              }}
+            />
+
+            {/* CONTENT */}
+            <View
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 14,
+                paddingHorizontal: horizontalPadding,
+              }}
+            >
+              {icon && (
+                <Image
+                  source={icon}
+                  resizeMode="contain"
+                  style={{ width: iconSize, height: iconSize }}
+                />
+              )}
+
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.5}
+                style={{
+                  color: "#fff",
+                  fontSize: resolvedFontSize,
+                  textTransform: "uppercase",
+                  fontFamily: "SeymourOne-Regular",
+                  textShadowColor: "rgba(0,0,0,0.35)",
+                  textShadowOffset: { width: 0, height: 3 },
+                  textShadowRadius: 4,
+                }}
+              >
+                {title}
+              </Text>
+            </View>
+
+            {/* PRESS OVERLAY */}
+            <Animated.View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                inset: 0,
+                backgroundColor: "#000",
+                opacity: overlayOpacity,
+              }}
+            />
+          </Animated.View>
+        </Pressable>
+
+        {/* BADGE */}
+        {label && (
+          <View
+            style={{
+              position: "absolute",
+              top: -10,
+              right: -10,
+              backgroundColor: "#FFD966",
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 999,
+            }}
+          >
+            <Text
+              style={{
+                color: "#000",
+                fontSize: 12,
+                fontWeight: "800",
+                textTransform: "uppercase",
+              }}
+            >
+              {label}
+            </Text>
+          </View>
+        )}
+      </View>
     </View>
   );
 }

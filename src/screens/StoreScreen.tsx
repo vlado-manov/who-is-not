@@ -17,7 +17,6 @@ import PremiumComponent from "../components/store/PremiumComponent";
 import HeroSliderComponent from "../components/store/HeroSliderComponent";
 import LoadingComponent from "../components/store/LoadingComponent";
 import SuccessComponent from "../components/store/SuccessComponent";
-import { HEROES } from "../data/heroes";
 import { OnboardingStackParamList } from "../navigation/types";
 import { ICharacter } from "../types/character";
 import BundleSliderComponent from "../components/store/BundleSliderComponent";
@@ -26,6 +25,7 @@ import PackSliderComponent from "../components/store/PackSliderComponent";
 import { PACKS } from "../data/packs";
 import { Entypo } from "@expo/vector-icons";
 import AudioManager from "../utils/audioManager";
+import { useHeroesStore } from "../store/useHeroesStore";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Store">;
 
@@ -36,12 +36,13 @@ const StoreScreen = () => {
   const [loading, setLoading] = useState(false);
   const [successHero, setSuccessHero] = useState<ICharacter | null>(null);
 
-  const paidHeroes = HEROES.filter((h) => !h.free && !h.unlocked);
+  const heroes = useHeroesStore((s) => s.heroes);
+  const paidHeroes = heroes.filter((h) => !h.free && !h.unlocked);
 
   const handleBuy = async (hero: ICharacter) => {
     try {
       setLoading(true);
-      await new Promise((r) => setTimeout(r, 1200));
+      await new Promise<void>((resolve) => setTimeout(() => resolve(), 1200));
       setSuccessHero(hero);
     } finally {
       setLoading(false);

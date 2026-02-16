@@ -34,6 +34,12 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
 
 # typescript
 *.tsbuildinfo
+
+# Large local media (do not commit/push)
+assets/audio/
+assets/images/
+assets/videos/

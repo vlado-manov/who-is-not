@@ -1,6 +1,15 @@
 // src/screens/Game/QuestionScreen.tsx
-import React, { useMemo, useState } from "react";
-import { ImageBackground, ScrollView, View } from "react-native";
+import React, { useMemo, useRef, useState } from "react";
+import {
+  ImageBackground,
+  ScrollView,
+  View,
+  Pressable,
+  Image,
+  StyleSheet,
+  Animated,
+  Easing,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
@@ -14,22 +23,165 @@ import { Player, useGameStore } from "../../store/useGameStore";
 import { IQuestion } from "../../types/question";
 import { QUESTIONS } from "../../data/questions";
 import { GameStackParamList } from "../../navigation/types";
-
-const COLOR_CLASSES = [
-  "bg-primary-500",
-  "bg-primary-400",
-  "bg-primary-300",
-  "bg-primary-200",
-  "bg-primary-100",
-  "bg-primary-600",
-  "bg-primary-700",
-  "bg-primary-800",
-  "bg-primary-900",
-  "bg-customBlack-500",
-];
+import { LinearGradient } from "expo-linear-gradient";
+import AudioManager from "../../utils/audioManager";
+import { useHeroesStore } from "../../store/useHeroesStore";
 
 type Nav = StackNavigationProp<GameStackParamList, "Question">;
 type R = RouteProp<GameStackParamList, "Question">;
+
+/* -------------------------------------------------------------------------- */
+/* Avatar Pick Button (LOCAL, GAME-SPECIFIC) */
+/* -------------------------------------------------------------------------- */
+
+type AvatarPickButtonProps = {
+  name: string;
+  avatar?: any;
+  color: string;
+  selected?: boolean;
+  onPress: () => void;
+};
+
+const AvatarPickButton = ({
+  name,
+  avatar,
+  color,
+  selected,
+  onPress,
+}: AvatarPickButtonProps) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+
+  const longPressTimeout = useRef<number | null>(null);
+  const isLongPressActive = useRef(false);
+
+  /* -------------------- SCALE (avatar + button) -------------------- */
+
+  const scaleUp = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1.1,
+      friction: 6,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const scaleDown = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 6,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  /* -------------------- ROTATION (avatar ONLY) -------------------- */
+
+  const startSlowRotation = () => {
+    isLongPressActive.current = true;
+    rotateAnim.setValue(0);
+
+    Animated.loop(
+      Animated.timing(rotateAnim, {
+        toValue: 1,
+        duration: 3000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+  };
+
+  const releaseSpin = () => {
+    if (!isLongPressActive.current) return;
+
+    isLongPressActive.current = false;
+    rotateAnim.stopAnimation();
+
+    Animated.sequence([
+      Animated.timing(rotateAnim, {
+        toValue: 4,
+        duration: 600,
+        easing: Easing.out(Easing.exp),
+        useNativeDriver: true,
+      }),
+      Animated.timing(rotateAnim, {
+        toValue: 0,
+        duration: 400,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  /* -------------------- PRESS HANDLERS -------------------- */
+
+  const onPressIn = () => {
+    scaleUp();
+
+    longPressTimeout.current = setTimeout(() => {
+      startSlowRotation();
+    }, 1500);
+  };
+
+  const onPressOut = () => {
+    scaleDown();
+
+    if (longPressTimeout.current !== null) {
+      clearTimeout(longPressTimeout.current);
+      longPressTimeout.current = null;
+    }
+
+    releaseSpin();
+  };
+
+  const rotate = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
+
+  return (
+    <Pressable onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}>
+      {/* SCALE WRAPPER (avatar + button) */}
+      <Animated.View
+        style={{
+          alignItems: "center",
+          transform: [{ scale: scaleAnim }],
+        }}
+      >
+        {/* ROTATE WRAPPER (avatar ONLY) */}
+        <Animated.View style={{ transform: [{ rotate }] }}>
+          <View
+            style={[
+              styles.avatarCircle,
+              {
+                borderColor: selected ? "#fff" : color,
+                shadowColor: color,
+                shadowOpacity: selected ? 0.9 : 0.4,
+                shadowRadius: selected ? 14 : 6,
+              },
+            ]}
+          >
+            {avatar && <Image source={avatar} style={styles.avatarImage} />}
+          </View>
+        </Animated.View>
+
+        {/* BUTTON (NO ROTATION) */}
+        <CustomButton
+          title={name}
+          appearance="tertiary"
+          btnSize="xs"
+          fontSize="sm"
+          backgroundImage={backgrounds.bg018}
+          glow
+          fullWidth
+          onPress={onPress}
+          glowColor="rgba(255,204,0,1)"
+          shadowColor="#834400"
+        />
+      </Animated.View>
+    </Pressable>
+  );
+};
+
+/* -------------------------------------------------------------------------- */
 
 const QuestionScreen = () => {
   const navigation = useNavigation<Nav>();
@@ -37,10 +189,14 @@ const QuestionScreen = () => {
 
   const round = useGameStore((s) => s.round) || 1;
   const players = useGameStore((s) => s.players);
+  const heroes = useHeroesStore((s) => s.heroes);
   const oddOneId = useGameStore((s) => s.oddOneId);
   const baseQuestionId = useGameStore((s) => s.currentBaseQuestionId);
   const oddQuestionId = useGameStore((s) => s.currentOddQuestionId);
   const setAnswer = useGameStore((s) => s.setAnswer);
+  const plateScale = useRef(new Animated.Value(40)).current;
+  const plateOpacity = useRef(new Animated.Value(0)).current;
+  const screenShake = useRef(new Animated.Value(0)).current;
 
   const currentPlayer = players[playerIndex];
 
@@ -64,9 +220,7 @@ const QuestionScreen = () => {
     return QUESTIONS.find((q) => q.id === targetId) ?? null;
   }, [currentPlayer, baseQuestionId, oddQuestionId, oddOneId]);
 
-  if (!currentPlayer || !question) {
-    return null;
-  }
+  if (!currentPlayer || !question) return null;
 
   const isNumber = question.type === "number";
   const isPick = question.type === "pick";
@@ -79,15 +233,14 @@ const QuestionScreen = () => {
         playerIndex: playerIndex + 1,
       });
     } else {
+      AudioManager.stopBackground();
       navigation.navigate("Results");
     }
   };
 
   const handleSubmitNumber = () => {
-    const trimmed = numberAnswer.trim();
-    if (!trimmed) return;
-
-    setAnswer(currentPlayer.id, trimmed);
+    if (!numberAnswer.trim()) return;
+    setAnswer(currentPlayer.id, numberAnswer.trim());
     goToNextStep();
   };
 
@@ -96,12 +249,52 @@ const QuestionScreen = () => {
     setAnswer(currentPlayer.id, pickedId);
     goToNextStep();
   };
+  React.useEffect(() => {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(plateScale, {
+          toValue: 1,
+          duration: 400,
+          easing: Easing.out(Easing.back(3)),
+          useNativeDriver: true,
+        }),
+        Animated.timing(plateOpacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]),
+
+      Animated.sequence([
+        Animated.timing(screenShake, {
+          toValue: 1,
+          duration: 60,
+          useNativeDriver: true,
+        }),
+        Animated.timing(screenShake, {
+          toValue: -1,
+          duration: 60,
+          useNativeDriver: true,
+        }),
+        Animated.timing(screenShake, {
+          toValue: 1,
+          duration: 60,
+          useNativeDriver: true,
+        }),
+        Animated.timing(screenShake, {
+          toValue: 0,
+          duration: 60,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, []);
 
   return (
     <SafeAreaView className="flex-1" edges={["right", "left"]}>
       <ImageBackground
-        source={backgrounds.bg009}
-        style={{ flex: 1, width: "100%", height: "100%" }}
+        source={backgrounds.bg023}
+        style={{ flex: 1 }}
         resizeMode="cover"
       >
         <ScrollView
@@ -112,92 +305,120 @@ const QuestionScreen = () => {
             justifyContent: "space-between",
           }}
         >
-          <View className="items-center w-full justify-center px-4">
-            <CustomText variant="h3-headline" className="text-center w-full">
-              Round {round}
-            </CustomText>
-            <CustomText
-              variant="h4"
-              className="-rotate-2 text-center w-full mt-8 px-4"
-              shadow
-            >
-              {question.text}
-            </CustomText>
-          </View>
+          <Animated.View
+            style={{
+              transform: [
+                {
+                  translateX: screenShake.interpolate({
+                    inputRange: [-1, 1],
+                    outputRange: [-8, 8],
+                  }),
+                },
+              ],
+            }}
+          >
+            <View style={{ paddingHorizontal: 24 }}>
+              <Animated.View
+                style={[
+                  styles.namePlateShadow,
+                  {
+                    opacity: plateOpacity,
+                    transform: [{ scale: plateScale }],
+                  },
+                ]}
+              >
+                <ImageBackground
+                  source={backgrounds.bg005}
+                  resizeMode="stretch"
+                  imageStyle={{ borderRadius: 18 }}
+                  style={styles.namePlate}
+                >
+                  {/* <LinearGradient
+                  colors={["#FFF7EC", "#F3E1C8"]}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                /> */}
 
-          <View className="justify-between">
+                  {/* CONTENT */}
+                  <CustomText
+                    variant="p"
+                    className="text-center"
+                    textColor="#762a05"
+                  >
+                    ROUND {round}
+                  </CustomText>
+
+                  <View style={styles.nameDivider} />
+
+                  <CustomText
+                    variant="h6-headline"
+                    className="text-center"
+                    textColor="#592410"
+                  >
+                    {question.text}
+                  </CustomText>
+
+                  <View style={styles.nameDivider} />
+
+                  <CustomText
+                    variant="p-small"
+                    className="text-center"
+                    textColor="#762a05"
+                  >
+                    Pick who fits best
+                  </CustomText>
+                </ImageBackground>
+              </Animated.View>
+            </View>
+            {/* CONTENT */}
+            {isPick && (
+              <View className="px-6" style={{ marginTop: 64 }}>
+                {playerRows.map((row, rowIndex) => (
+                  <View key={`row-${rowIndex}`} style={styles.row}>
+                    {row.map((player) => {
+                      const characterData = heroes.find(
+                        (h) => h.id === player.characterId
+                      );
+
+                      return (
+                        <View key={player.id} style={styles.cell}>
+                          <View>
+                            <AvatarPickButton
+                              name={player.name}
+                              avatar={characterData?.profileImage}
+                              color={`#${characterData?.color ?? "ffffff"}`}
+                              selected={selectedPlayerId === player.id}
+                              onPress={() => handlePickPlayer(player.id)}
+                            />
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ))}
+              </View>
+            )}
+
             {isNumber && (
-              <View className="px-6 flex-row gap-4">
+              <View className="px-6 gap-6">
                 <CustomInput
                   value={numberAnswer}
                   onChangeText={setNumberAnswer}
                   keyboardType="numeric"
                   placeholder="Type your magic number"
                 />
-
-                <View className="mt-8">
-                  <CustomButton
-                    title="Next"
-                    color="bg-primary-500"
-                    fullWidth
-                    btnSize="sm"
-                    onPress={handleSubmitNumber}
-                  />
-                </View>
+                <CustomButton title="Next" onPress={handleSubmitNumber} />
               </View>
             )}
 
-            {isPick && (
-              <View className="mt-16 w-full px-6">
-                {playerRows.map((row, rowIndex) => (
-                  <View
-                    key={rowIndex}
-                    className="flex-row justify-between items-center mb-3"
-                    style={{ gap: 8 }}
-                  >
-                    {row.map((player, i) => {
-                      const colorClass =
-                        COLOR_CLASSES[
-                          (rowIndex * 2 + i) % COLOR_CLASSES.length
-                        ];
-                      const selected = selectedPlayerId === player.id;
-
-                      return (
-                        <View key={player.id} className="flex-1">
-                          <CustomButton
-                            title={player.name}
-                            color={colorClass}
-                            btnSize="sm"
-                            fullWidth
-                            buttonClassName="w-full -rotate-4"
-                            textClassName={selected ? "underline" : ""}
-                            onPress={() => handlePickPlayer(player.id)}
-                          />
-                        </View>
-                      );
-                    })}
-
-                    {row.length === 1 && <View className="flex-1" />}
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-
-          {isPick && (
+            {/* {isPick && (
             <CustomText variant="p" className="text-center px-8 mt-10">
-              Pick whoever you think is the most fitting answer (you can pick
-              yourself as well)
+              Pick whoever you think fits this question best
+              {"\n"}(you can pick yourself as well)
             </CustomText>
-          )}
-          {isNumber && (
-            <View className="gap-2 px-8">
-              <CustomText variant="p" className="text-center px-8">
-                Type the number that best fits you, then hit NEXT.
-              </CustomText>
-              <CustomButton title="Next" onPress={handleSubmitNumber} />
-            </View>
-          )}
+          )} */}
+          </Animated.View>
         </ScrollView>
       </ImageBackground>
     </SafeAreaView>
@@ -205,3 +426,134 @@ const QuestionScreen = () => {
 };
 
 export default QuestionScreen;
+
+/* -------------------------------------------------------------------------- */
+/* STYLES */
+/* -------------------------------------------------------------------------- */
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    // gap: 32,
+    marginBottom: 40,
+    width: "100%",
+  },
+
+  cell: {
+    width: "50%",
+    paddingHorizontal: 16, // ≈ 32px gap
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  nameDivider: {
+    width: "88%",
+    height: 1,
+    marginVertical: 8,
+    backgroundColor: "rgba(89,36,16,0.5)",
+  },
+  avatarCircle: {
+    // width: 104,
+    // height: 104,
+    // borderRadius: 52,
+    // borderWidth: 4,
+    // backgroundColor: "#1f1f1f",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowOffset: { width: 0, height: 6 },
+  },
+  avatarImage: {
+    width: 164,
+    height: 164,
+    marginBottom: -20,
+    // borderRadius: 39,
+  },
+  headerContainer: {
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.85)",
+    borderRadius: 20,
+    marginVertical: 24,
+    marginHorizontal: 24,
+    padding: 24,
+    position: "relative",
+    backgroundColor: "rgba(0,0,0,0.25)",
+
+    // iOS shadow (bottom)
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+
+    // Android
+    elevation: 14,
+  },
+
+  roundButton: {
+    position: "absolute",
+    top: -22,
+    alignSelf: "center",
+
+    backgroundColor: "#FA3A00",
+    paddingVertical: 10,
+    paddingHorizontal: 40,
+    borderRadius: 32,
+
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.7,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+
+  headerGlowWrapper: {
+    position: "relative",
+    marginHorizontal: 24,
+    marginVertical: 24,
+  },
+
+  headerBackGlow: {
+    position: "absolute",
+    top: -45, // излиза над card-а
+    left: -20,
+    right: -20,
+    height: 120, // височина на светлината
+
+    backgroundColor: "rgba(250, 58, 0, 0.45)", // 🔴 ЧЕРВЕНО
+
+    borderRadius: 80,
+
+    // iOS – истински blur halo
+    shadowColor: "#FA3A00",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 60,
+
+    // Android – най-доброто възможно
+    elevation: 24,
+  },
+  namePlateShadow: {
+    shadowColor: "#fff",
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 14,
+    zIndex: 999,
+  },
+  namePlate: {
+    borderRadius: 18,
+    paddingHorizontal: 32,
+    paddingVertical: 24,
+    alignItems: "center",
+    shadowColor: "#ffd800",
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 14,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(251,192,32,1)",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(160,110,60,0.7)",
+  },
+  questionText: {},
+  questionSubText: {},
+});

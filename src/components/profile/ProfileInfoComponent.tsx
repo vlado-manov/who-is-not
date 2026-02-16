@@ -4,18 +4,13 @@ import * as Clipboard from "expo-clipboard";
 import ProfileImageComponent from "./ProfileImageComponent";
 import { useAuthStore } from "../../store/useUserStore";
 import CustomText from "../common/CustomText";
-import { FontAwesome, Ionicons } from "@expo/vector-icons";
-import AudioManager from "../../utils/audioManager";
+import { Ionicons } from "@expo/vector-icons";
 
 type Props = {
   setImagePickerVisible: React.Dispatch<React.SetStateAction<boolean>>;
-  setSettingsVisible: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
-const ProfileInfoComponent = ({
-  setImagePickerVisible,
-  setSettingsVisible,
-}: Props) => {
+const ProfileInfoComponent = ({ setImagePickerVisible }: Props) => {
   const authStatus = useAuthStore((s) => s.authStatus);
   const userName = useAuthStore((s) => s.user.name);
   const userId = useAuthStore((s) => s.user.id);
@@ -53,14 +48,6 @@ const ProfileInfoComponent = ({
         >
           {userName}
         </CustomText>
-        <TouchableOpacity
-          onPress={() => {
-            AudioManager.playButtonClick();
-            setSettingsVisible(true);
-          }}
-        >
-          <FontAwesome name="gear" size={24} color="white" />
-        </TouchableOpacity>
       </View>
 
       {authStatus === "guest" ? (

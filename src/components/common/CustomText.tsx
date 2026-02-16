@@ -14,8 +14,12 @@ type TextVariant =
   | "h4"
   | "h4-headline"
   | "h5"
+  | "h6"
+  | "h5-headline"
+  | "h6-headline"
   | "p"
   | "p-small"
+  | "p-xsmall"
   | "label"
   | "footnote"
   | "quote";
@@ -57,19 +61,27 @@ export default function CustomText({
       case "h3":
         return 56;
       case "h3-headline":
-        return 20;
+        return 28;
       case "h3-small":
-        return 24;
+        return 28;
       case "h4":
         return 40;
       case "h5":
-        return 24;
-      case "h4-headline":
         return 28;
+      case "h6":
+        return 15;
+      case "h4-headline":
+        return 32;
+      case "h5-headline":
+        return 20;
+      case "h6-headline":
+        return 32;
       case "p":
         return 16;
       case "p-small":
         return 12;
+      case "p-xsmall":
+        return 10;
       case "label":
         return 32;
       case "footnote":
@@ -102,7 +114,12 @@ export default function CustomText({
         return "font-opensans";
       case "h4-headline":
       case "p-small":
+      case "p-small":
         return "font-opensans-bold";
+      case "h5-headline":
+      case "h6":
+      case "h6-headline":
+        return "font-opensans-extrabold";
       case "footnote":
         return "font-messiri";
       case "quote":
@@ -140,7 +157,7 @@ export default function CustomText({
         { fontSize },
         inlineColor,
         shadow && {
-          textShadowColor: "rgba(0,0,0,0.55)",
+          // textShadowColor: "rgba(0,0,0,0.55)",
           textShadowOffset: { width: 0, height: 1.75 },
           textShadowRadius: 0,
         },
