@@ -40,6 +40,7 @@ yarn-error.*
 *.tsbuildinfo
 
 # Large local media (do not commit/push)
+assets/
 assets/audio/
 assets/images/
 assets/videos/
