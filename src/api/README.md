@@ -36,3 +36,9 @@ This folder is the single entry point for backend communication.
 
 - Existing startup preload in `App.tsx` for fonts/local images/audio stays as-is.
 - Remote character media from backend is prefetched additionally after `/characters` query resolves.
+
+## Questions
+
+- `fetchQuestions()` in `questions.ts` fetches game questions from `GET /questions` (packs, lang).
+- When using backend questions, call `fetchQuestions({ packs: ['main'], lang: 'en' })` and inject into game store.
+- Media URLs: relative paths (e.g. `/storage/catalog/xxx.webp`) are resolved with `getApiBaseUrl()` in `heroes.ts`.

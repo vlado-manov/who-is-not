@@ -10,8 +10,8 @@ import {
   ViewToken,
   ScrollView,
   ImageSourcePropType,
-  Image,
 } from "react-native";
+import AppImage from "../components/AppImage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { backgrounds } from "../../assets/backgrounds";
 import { Entypo } from "@expo/vector-icons";
@@ -34,55 +34,40 @@ type Step = {
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
-const STEPS: Step[] = [
-  {
-    num: 1,
-    title: "Gather your crew",
-    bullets: [
-      "Get your friends together — in one room or on a quick call or video chat.",
-      "You’ll need to talk, bluff, and overanalyze everything.",
-    ],
-    image: htp_images.htp03,
-  },
-  {
-    num: 2,
-    title: "Everyone gets a question",
-    bullets: [
-      "Each player gets a question — except one who secretly gets a *different* one.",
-      "That person is the Impostor… but even they don’t know it yet! Everyone answers truthfully — no lying yet!",
-    ],
-    image: htp_images.htp08,
-  },
-  {
-    num: 3,
-    title: "Discuss & Accuse",
-    bullets: [
-      "All answers appear. Talk, argue, defend, and accuse.",
-      "This is when the Impostor finally sees the real question — and realizes it’s them.Now they must blend in… or fake it till they make it.",
-      "Your goal? Find him.",
-    ],
-    image: htp_images.htp05,
-  },
-  {
-    num: 4,
-    title: "Vote",
-    bullets: [
-      "When time’s up, everyone votes who they think the Impostor is.",
-      "Votes are revealed — but the suspense stays until the end! Did you caught it?",
-    ],
-    image: htp_images.htp06,
-  },
-  {
-    num: 5,
-    title: "Reveal the twist 🤯",
-    bullets: [
-      "The true Impostor is revealed — and so is their secret question!",
-      "Laugh, scream, or cry — depends on how well you guessed.",
-      "Then brace yourself for a new round of chaos.",
-    ],
-    image: htp_images.htp07,
-  },
-];
+function getHtpSteps(t: (key: string) => string): Step[] {
+  return [
+    {
+      num: 1,
+      title: t("htp_gather_title"),
+      bullets: [t("htp_gather_1"), t("htp_gather_2")],
+      image: htp_images.htp03,
+    },
+    {
+      num: 2,
+      title: t("htp_question_title"),
+      bullets: [t("htp_question_1"), t("htp_question_2")],
+      image: htp_images.htp08,
+    },
+    {
+      num: 3,
+      title: t("htp_discuss_title"),
+      bullets: [t("htp_discuss_1"), t("htp_discuss_2"), t("htp_discuss_3")],
+      image: htp_images.htp05,
+    },
+    {
+      num: 4,
+      title: t("htp_vote_title"),
+      bullets: [t("htp_vote_1"), t("htp_vote_2")],
+      image: htp_images.htp06,
+    },
+    {
+      num: 5,
+      title: t("htp_reveal_title"),
+      bullets: [t("htp_reveal_1"), t("htp_reveal_2"), t("htp_reveal_3")],
+      image: htp_images.htp07,
+    },
+  ];
+}
 
 type StepCardProps = {
   step: Step;
@@ -90,9 +75,17 @@ type StepCardProps = {
   showNext?: boolean;
   onPrev?: () => void;
   onNext?: () => void;
+  t: (key: string) => string;
 };
 
-function StepCard({ step, showPrev, showNext, onPrev, onNext }: StepCardProps) {
+function StepCard({
+  step,
+  showPrev,
+  showNext,
+  onPrev,
+  onNext,
+  t,
+}: StepCardProps) {
   return (
     <View
       style={{
@@ -129,7 +122,7 @@ function StepCard({ step, showPrev, showNext, onPrev, onNext }: StepCardProps) {
               onPress={onPrev}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <CustomText className="underline">Prev</CustomText>
+              <CustomText className="underline">{t("htp_prev")}</CustomText>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -140,7 +133,7 @@ function StepCard({ step, showPrev, showNext, onPrev, onNext }: StepCardProps) {
               onPress={onNext}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <CustomText className="underline">Next</CustomText>
+              <CustomText className="underline">{t("htp_next")}</CustomText>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -148,9 +141,9 @@ function StepCard({ step, showPrev, showNext, onPrev, onNext }: StepCardProps) {
           className="bg-white rounded-2xl p-8 mt-8 w-full overflow-hidden"
           style={{ justifyContent: "space-between" }}
         >
-          <Image
+          <AppImage
             source={step.image}
-            resizeMode="contain"
+            contentFit="contain"
             style={{ width: "100%", height: 225 }}
           />
           <View>
@@ -176,7 +169,7 @@ function StepCard({ step, showPrev, showNext, onPrev, onNext }: StepCardProps) {
 const HowToPlayScreen = () => {
   const navigation = useNavigation<Nav>();
   const { t } = useTranslation();
-
+  const steps = React.useMemo(() => getHtpSteps(t), [t]);
   const [index, setIndex] = useState(0);
   const flatRef = useRef<FlatList<Step>>(null);
 
@@ -197,7 +190,7 @@ const HowToPlayScreen = () => {
     }) => {
       const i = info.viewableItems?.[0]?.index;
       if (typeof i === "number") setIndex(i);
-    }
+    },
   ).current;
 
   const goTo = (i: number) => {
@@ -208,7 +201,7 @@ const HowToPlayScreen = () => {
   return (
     <SafeAreaView className="flex-1" edges={["right", "left"]}>
       <ImageBackground
-        source={backgrounds.bg001}
+        source={backgrounds.bg023}
         style={{ flex: 1 }}
         resizeMode="cover"
       >
@@ -231,27 +224,28 @@ const HowToPlayScreen = () => {
             </TouchableOpacity>
           </View>
 
-          <View className="items-center w-full justify-center px-4 mt-[40px]">
+          <View className="items-center w-full justify-center px-4">
             <CustomText variant="h3-headline" className="text-center w-full">
-              How to
+              {t("htp_heading_1")}
             </CustomText>
             <CustomText variant="h3" className="-rotate-3 text-center w-full">
-              Play
+              {t("htp_heading_2")}
             </CustomText>
           </View>
 
           <View style={{ flex: 1, marginTop: 32 }}>
             <FlatList
               ref={flatRef}
-              data={STEPS}
+              data={steps}
               keyExtractor={(it) => `step-${it.num}`}
               renderItem={({ item }) => (
                 <StepCard
                   step={item}
                   showPrev={index > 0}
-                  showNext={index < STEPS.length - 1}
+                  showNext={index < steps.length - 1}
                   onPrev={() => goTo(index - 1)}
                   onNext={() => goTo(index + 1)}
+                  t={t}
                 />
               )}
               horizontal
@@ -265,8 +259,8 @@ const HowToPlayScreen = () => {
               disableIntervalMomentum
             />
 
-            <View className="w-full items-center justify-center mt-6 mb-8 flex-row">
-              {STEPS.map((_, i) => {
+            <View className="w-full items-center justify-center flex-row">
+              {steps.map((_: Step, i: number) => {
                 const active = i === index;
                 return (
                   <TouchableWithoutFeedback key={i} onPress={() => goTo(i)}>

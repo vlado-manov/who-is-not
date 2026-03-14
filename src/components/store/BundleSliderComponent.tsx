@@ -91,7 +91,7 @@ const BundleSliderComponent = ({ title, data, onSelect }: Props) => {
         ItemSeparatorComponent={() => <View className="w-[24px]" />}
         renderItem={({ item, index }) => (
           <View style={{ width: layout.widths[index] }}>
-            <BundleComponent item={item} />
+            <BundleComponent item={item} onSelect={onSelect} />
           </View>
         )}
         extraData={[

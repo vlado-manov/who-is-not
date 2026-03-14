@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { Image, ImageSourcePropType } from "react-native";
+import { Image } from "expo-image";
+import type { ImageSourcePropType } from "react-native";
 import { useCharactersQuery } from "./useCharactersQuery";
 
 function getUri(source: ImageSourcePropType | undefined) {
@@ -18,8 +19,10 @@ export function usePrefetchCharacterMedia() {
     for (const hero of data) {
       const mainUri = getUri(hero.main_image);
       const profileUri = getUri(hero.profileImage);
+      const rateUri = getUri(hero.rateImage);
       if (mainUri && !prefetched.current.has(mainUri)) uris.push(mainUri);
       if (profileUri && !prefetched.current.has(profileUri)) uris.push(profileUri);
+      if (rateUri && !prefetched.current.has(rateUri)) uris.push(rateUri);
     }
     if (uris.length === 0) return;
 

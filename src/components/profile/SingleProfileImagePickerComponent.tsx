@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, Image } from "react-native";
+import { View, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import AppImage from "../AppImage";
 import React from "react";
 import { ICharacter } from "../../types/character";
 import { AvatarId } from "../../../assets/characters";
@@ -6,10 +7,13 @@ import { useAuthStore } from "../../store/useUserStore";
 import { FontAwesome } from "@expo/vector-icons";
 import AudioManager from "../../utils/audioManager";
 
+const AVATAR_SIZE = 132;
+
 type Props = {
   item: ICharacter;
+  selected?: boolean;
 };
-const SingleProfileImagePickerComponent = ({ item }: Props) => {
+const SingleProfileImagePickerComponent = ({ item, selected }: Props) => {
   const updateAvatar = useAuthStore((s) => s.updateAvatar);
   return (
     <TouchableOpacity
@@ -18,23 +22,56 @@ const SingleProfileImagePickerComponent = ({ item }: Props) => {
         AudioManager.playButtonClick();
         item.unlocked ? updateAvatar(item.slug as AvatarId) : null;
       }}
-      className="items-center relative focus:scale-100 active_scale-100"
+      style={[styles.wrapper, selected && styles.wrapperSelected]}
     >
-      <Image
+      <AppImage
         key={`profile-picker-${item.id}`}
         source={item.profileImage}
-        resizeMode="contain"
-        fadeDuration={0}
-        className="w-[132px] h-[132px]"
+        contentFit="contain"
+        style={styles.avatar}
         blurRadius={item.unlocked ? 0 : 4}
       />
       {!item.unlocked && (
-        <View className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+        <View style={styles.lockWrap}>
           <FontAwesome name="lock" size={64} color="white" />
         </View>
       )}
     </TouchableOpacity>
   );
 };
+
+const styles = StyleSheet.create({
+  wrapper: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 14,
+    borderWidth: 3,
+    borderColor: "transparent",
+  },
+  wrapperSelected: {
+    borderColor: "rgba(251,192,32,0.95)",
+    ...(Platform.OS === "ios"
+      ? {
+          shadowColor: "#ffd800",
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.9,
+          shadowRadius: 12,
+        }
+      : { elevation: 12 }),
+  },
+  avatar: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+  },
+  avatarLocked: {},
+  lockWrap: {
+    position: "absolute",
+    alignSelf: "center",
+    top: "50%",
+    marginTop: -32,
+  },
+});
 
 export default SingleProfileImagePickerComponent;

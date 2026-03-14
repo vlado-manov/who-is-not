@@ -1,13 +1,14 @@
 // src/components/VoteScreen.tsx
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import {
   View,
   ImageBackground,
   ScrollView,
-  Image,
   StyleSheet,
   Pressable,
 } from "react-native";
+import AppImage from "../../components/AppImage";
+import ImageBackgroundWithLoadGate from "../../components/ImageBackgroundWithLoadGate";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
@@ -18,13 +19,17 @@ import { backgrounds } from "../../../assets/backgrounds";
 import CustomText from "../../components/common/CustomText";
 import CustomButton from "../../components/common/CustomButton";
 import { useHeroesStore } from "../../store/useHeroesStore";
+import { usePreventBack } from "../../hooks/usePreventBack";
+import { useTranslation } from "react-i18next";
 
 type R = RouteProp<GameStackParamList, "Vote">;
 type Nav = StackNavigationProp<GameStackParamList, "Vote">;
 
 const VoteScreen = () => {
+  const { t } = useTranslation();
   const { voterIndex } = useRoute<R>().params;
   const navigation = useNavigation<Nav>();
+  usePreventBack();
 
   const players = useGameStore((s) => s.players);
   const heroes = useHeroesStore((s) => s.heroes);
@@ -32,8 +37,26 @@ const VoteScreen = () => {
 
   const voter = players[voterIndex];
 
+  const otherPlayers = useMemo(
+    () => (voter ? players.filter((p) => p.id !== voter.id) : []),
+    [players, voter?.id]
+  );
+
+  const playerRows = useMemo<Player[][]>(() => {
+    const rows: Player[][] = [];
+    for (let i = 0; i < otherPlayers.length; i += 2) {
+      rows.push(otherPlayers.slice(i, i + 2));
+    }
+    return rows;
+  }, [otherPlayers]);
+
+  useEffect(() => {
+    if (!voter) {
+      navigation.navigate("PreReveal" as never);
+    }
+  }, [voter, navigation]);
+
   if (!voter) {
-    navigation.navigate("PreReveal" as never);
     return null;
   }
 
@@ -50,24 +73,9 @@ const VoteScreen = () => {
     }
   };
 
-  // ❗ само другите играчи (без voter-а)
-  const otherPlayers = useMemo(
-    () => players.filter((p) => p.id !== voter.id),
-    [players, voter.id]
-  );
-
-  // 👉 същата логика като QuestionScreen
-  const playerRows = useMemo<Player[][]>(() => {
-    const rows: Player[][] = [];
-    for (let i = 0; i < otherPlayers.length; i += 2) {
-      rows.push(otherPlayers.slice(i, i + 2));
-    }
-    return rows;
-  }, [otherPlayers]);
-
   return (
     <SafeAreaView className="flex-1" edges={["right", "left"]}>
-      <ImageBackground
+      <ImageBackgroundWithLoadGate
         source={backgrounds.bg023}
         style={{ flex: 1 }}
         resizeMode="cover"
@@ -94,7 +102,7 @@ const VoteScreen = () => {
                   className="text-center"
                   textColor="#762a05"
                 >
-                  cast your vote
+                  {t("vote_cast_your_vote")}
                 </CustomText>
 
                 <View style={styles.nameDivider} />
@@ -104,7 +112,7 @@ const VoteScreen = () => {
                   className="text-center"
                   textColor="#592410"
                 >
-                  Who is not one of you?
+                  {t("vote_who_is_not")}
                 </CustomText>
 
                 <View style={styles.nameDivider} />
@@ -114,7 +122,7 @@ const VoteScreen = () => {
                   className="text-center"
                   textColor="#762a05"
                 >
-                  pick the imposter
+                  {t("vote_pick_imposter")}
                 </CustomText>
               </ImageBackground>
             </View>
@@ -137,10 +145,10 @@ const VoteScreen = () => {
                       >
                         <View style={styles.avatarWrapper}>
                           {character?.profileImage && (
-                            <Image
+                            <AppImage
                               source={character.profileImage}
                               style={styles.avatarImage}
-                              resizeMode="contain"
+                              contentFit="contain"
                             />
                           )}
                         </View>
@@ -168,11 +176,11 @@ const VoteScreen = () => {
 
           <View style={{ opacity: 0 }}>
             <CustomText variant="p" className="text-center px-8 mt-10">
-              Pick the player you believe is the odd one out.
+              {t("vote_hint_pick")}
             </CustomText>
           </View>
         </ScrollView>
-      </ImageBackground>
+      </ImageBackgroundWithLoadGate>
     </SafeAreaView>
   );
 };

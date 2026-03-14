@@ -2,15 +2,15 @@
 import React, { useMemo, useRef, useState } from "react";
 import {
   View,
-  ImageBackground,
   TouchableOpacity,
   Image,
   Pressable,
   Animated,
 } from "react-native";
+import ImageBackgroundWithLoadGate from "../components/ImageBackgroundWithLoadGate";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 
 import CustomText from "../components/common/CustomText";
@@ -23,6 +23,7 @@ import AudioManager from "../utils/audioManager";
 import { Entypo, FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../store/useUserStore";
 import { game_images } from "../../assets/images";
+import { trackPlayerSessionStarted } from "../api/analytics";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Welcome">;
 const useIconPressAnim = () => {
@@ -63,9 +64,10 @@ const useIconPressAnim = () => {
 };
 export default function WelcomeScreen() {
   const navigation = useNavigation<Nav>();
+  const route = useRoute<RouteProp<OnboardingStackParamList, "Welcome">>();
   const { t, i18n } = useTranslation();
-  const { settings, updateSettings } = useAuthStore();
-  const [curtainActive, setCurtainActive] = useState(true);
+  const { settings, updateSettings, user } = useAuthStore();
+  const [curtainActive, setCurtainActive] = useState(!route.params?.skipCurtain);
   const settingsAnim = useIconPressAnim();
   const profileAnim = useIconPressAnim();
   const logoSource = useMemo(() => {
@@ -91,13 +93,20 @@ export default function WelcomeScreen() {
   const onCurtainDone = () => setCurtainActive(false);
 
   const handleStart = async () => {
-    await AudioManager.playBackground();
+    void trackPlayerSessionStarted({
+      userId: user.id,
+      source: "WELCOME",
+      step: "play_tapped",
+      language: i18n.language,
+    }).catch((e) => {
+      console.warn("track PLAYER_SESSION_STARTED(play_tapped) failed", e);
+    });
     navigation.navigate("MenuPlay");
   };
 
   return (
     <SafeAreaView className="flex-1 relative" edges={["right", "left"]}>
-      <ImageBackground
+      <ImageBackgroundWithLoadGate
         source={backgrounds.bg023}
         style={{ flex: 1, width: "100%", height: "100%", position: "relative" }}
         resizeMode="cover"
@@ -243,7 +252,7 @@ export default function WelcomeScreen() {
         </View>
 
         {curtainActive && <CurtainOverlay onDone={onCurtainDone} />}
-      </ImageBackground>
+      </ImageBackgroundWithLoadGate>
     </SafeAreaView>
   );
 }

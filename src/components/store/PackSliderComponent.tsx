@@ -79,7 +79,7 @@ const PackSliderComponent = ({ title, data, onSelect }: Props) => {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={{ width: layout.widths[0] }}>
-            <PackComponent pack={item} />
+            <PackComponent pack={item} onSelect={onSelect} />
           </View>
         )}
         horizontal

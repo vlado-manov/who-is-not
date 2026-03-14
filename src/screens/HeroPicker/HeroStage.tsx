@@ -1,21 +1,25 @@
-﻿import React, { useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
-  Image,
   Animated,
   Pressable,
   PanResponderInstance,
   Easing,
 } from "react-native";
+import { Image } from "expo-image";
+import AppImage from "../../components/AppImage";
+
+const AnimatedImage = Animated.createAnimatedComponent(Image);
 import { game_images } from "../../../assets/images";
-import { HEROES } from "../../data/heroes";
 import { Dimensions } from "react-native";
+import { ICharacter } from "../../types/character";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 type Props = {
-  hero: (typeof HEROES)[number];
-  translateX: Animated.Value;
+  hero: ICharacter;
+  opacity: Animated.Value;
+  translateX: Animated.Value | Animated.AnimatedInterpolation<number>;
   panResponder: PanResponderInstance | undefined;
 
   canInteract: boolean;
@@ -38,10 +42,13 @@ type Props = {
   onUnlockVisualComplete?: () => void;
   styles: any;
   heroScale: Animated.Value;
+  /** When false, arrows are hidden (e.g. during overlap carousel animation). */
+  showArrows?: boolean;
 };
 
 export function HeroStage({
   hero,
+  opacity,
   translateX,
   panResponder,
   canInteract,
@@ -54,6 +61,7 @@ export function HeroStage({
   onPlayLockAnim,
   onUnlockVisualComplete,
   heroScale,
+  showArrows = true,
 }: Props) {
   const lockFrames = [
     game_images.lock,
@@ -68,6 +76,7 @@ export function HeroStage({
   const lockScale = useRef(new Animated.Value(1)).current;
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [lockFrame, setLockFrame] = useState(0);
+  const isLocked = !hero.unlocked;
   const bounceHero = () => {
     Animated.sequence([
       Animated.spring(heroScale, {
@@ -86,98 +95,140 @@ export function HeroStage({
   };
 
   const playLockBreakAnimation = () => {
-    // reset
-    setIsUnlocking(true); // 🔒 само този герой влиза в unlock flow
+    setIsUnlocking(true);
     setLockFrame(0);
     sepiaOpacity.setValue(0.8);
     lockTranslate.setValue({ x: 0, y: 0 });
     lockScale.setValue(1);
 
-    // frame-by-frame animation
-    lockFrames.forEach((_, i) => {
-      setTimeout(() => {
-        setLockFrame(i);
-      }, i * 80); // 🔥 бързо, game-feel
-    });
-    bounceHero();
+    // 1) Катинарът остава на място, scale 1 → 1.15 → 1, после започва отварянето
+    Animated.sequence([
+      Animated.timing(lockScale, {
+        toValue: 1.15,
+        duration: 140,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(lockScale, {
+        toValue: 1,
+        duration: 140,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // 2) frame-by-frame crack
+      lockFrames.forEach((_, i) => {
+        setTimeout(() => setLockFrame(i), i * 80);
+      });
+      bounceHero();
 
-    // след последния фрейм → излитане
-    setTimeout(
-      () => {
-        onUnlockVisualComplete?.();
-        Animated.parallel([
-          Animated.timing(sepiaOpacity, {
-            toValue: 0,
-            duration: 1500,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(lockTranslate.y, {
-            toValue: SCREEN_HEIGHT + 200,
-            duration: 1000,
-            easing: Easing.in(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(lockScale, {
-            toValue: 0.6,
-            duration: 1000,
-            easing: Easing.in(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ]).start(() => {
-          setIsUnlocking(false);
-          bounceHero();
-          // onUnlockVisualComplete?.();
-        });
-      },
-      lockFrames.length * 250 + 20
-    );
+      // 3) след последния фрейм → излитане надолу
+      setTimeout(
+        () => {
+          onUnlockVisualComplete?.();
+          Animated.parallel([
+            Animated.timing(sepiaOpacity, {
+              toValue: 0,
+              duration: 1500,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }),
+            Animated.timing(lockTranslate.y, {
+              toValue: SCREEN_HEIGHT + 200,
+              duration: 1000,
+              easing: Easing.in(Easing.cubic),
+              useNativeDriver: true,
+            }),
+            Animated.timing(lockScale, {
+              toValue: 0.6,
+              duration: 1000,
+              easing: Easing.in(Easing.cubic),
+              useNativeDriver: true,
+            }),
+          ]).start(() => {
+            setIsUnlocking(false);
+            bounceHero();
+          });
+        },
+        lockFrames.length * 250 + 20
+      );
+    });
   };
   React.useEffect(() => {
     onPlayLockAnim?.(playLockBreakAnimation);
   }, [hero.id]);
+
+  // Sync sepia opacity when hero changes so first pass (and every mount) shows correct state
+  React.useEffect(() => {
+    sepiaOpacity.setValue(isLocked ? 0.8 : 0);
+  }, [hero.id, isLocked, sepiaOpacity]);
 
   return (
     <View
       style={styles.stage}
       {...(panResponder ? panResponder.panHandlers : {})}
     >
-      {/* LEFT ARROW */}
-      <Pressable
-        style={[styles.arrowLeft, !canInteract && { opacity: 0.4 }]}
-        disabled={!canInteract}
-        hitSlop={16}
-        onPressIn={leftArrowAnim.pressIn}
-        onPressOut={leftArrowAnim.pressOut}
-        onPress={onPrev}
-      >
-        <Animated.Image
-          source={game_images.leftArrow}
-          style={[{ width: 58, height: 56 }, leftArrowAnim.style]}
-        />
-      </Pressable>
+      {showArrows && (
+        <Pressable
+          style={[styles.arrowLeft, !canInteract && { opacity: 0.4 }]}
+          disabled={!canInteract}
+          hitSlop={16}
+          onPressIn={leftArrowAnim.pressIn}
+          onPressOut={leftArrowAnim.pressOut}
+          onPress={onPrev}
+        >
+          <AnimatedImage
+            source={game_images.leftArrow}
+            style={[{ width: 58, height: 56 }, leftArrowAnim.style]}
+            contentFit="contain"
+          />
+        </Pressable>
+      )}
 
       {/* HERO IMAGE */}
       <Animated.View
         style={[
           styles.heroImageWrap,
           {
+            opacity,
             transform: [{ translateX }, { scale: heroScale }],
           },
         ]}
       >
         {/* BASE IMAGE */}
-        <Image
+        <AppImage
+          key={`hero-main-${hero.id}`}
           source={hero.main_image}
-          resizeMode="contain"
+          contentFit="contain"
           style={styles.heroImage}
         />
 
-        {/* SEPIA TINT LAYER */}
-        {(isUnlocking || !hero.unlocked) && (
-          <Animated.Image
+        {/* Static lock overlay (no animation state leakage between heroes) */}
+        {isLocked && !isUnlocking && (
+          <>
+            <AppImage
+              key={`hero-sepia-static-${hero.id}`}
+              source={hero.main_image}
+              contentFit="contain"
+              style={[
+                styles.heroImage,
+                styles.sepiaImageOverlay,
+                { opacity: 0.8 },
+              ]}
+            />
+            <AnimatedImage
+              source={lockFrames[0]}
+              contentFit="contain"
+              style={styles.heroLockIcon}
+            />
+          </>
+        )}
+
+        {/* Unlock animation overlay */}
+        {isUnlocking && (
+          <AnimatedImage
             source={hero.main_image}
-            resizeMode="contain"
+            contentFit="contain"
             style={[
               styles.heroImage,
               styles.sepiaImageOverlay,
@@ -186,14 +237,17 @@ export function HeroStage({
           />
         )}
 
-        {(isUnlocking || !hero.unlocked) && (
-          <Animated.Image
+        {isUnlocking && (
+          <AnimatedImage
             source={lockFrames[lockFrame]}
-            resizeMode="contain"
+            contentFit="contain"
             style={[
               styles.heroLockIcon,
               {
                 transform: [
+                  { translateX: -66 },
+                  { translateY: -66 },
+                  { rotate: "15deg" },
                   { translateX: lockTranslate.x },
                   { translateY: lockTranslate.y },
                   { scale: lockScale },
@@ -204,20 +258,22 @@ export function HeroStage({
         )}
       </Animated.View>
 
-      {/* RIGHT ARROW */}
-      <Pressable
-        style={[styles.arrowRight, !canInteract && { opacity: 0.4 }]}
-        disabled={!canInteract}
-        hitSlop={16}
-        onPressIn={rightArrowAnim.pressIn}
-        onPressOut={rightArrowAnim.pressOut}
-        onPress={onNext}
-      >
-        <Animated.Image
-          source={game_images.rightArrow}
-          style={[{ width: 58, height: 56 }, rightArrowAnim.style]}
-        />
-      </Pressable>
+      {showArrows && (
+        <Pressable
+          style={[styles.arrowRight, !canInteract && { opacity: 0.4 }]}
+          disabled={!canInteract}
+          hitSlop={16}
+          onPressIn={rightArrowAnim.pressIn}
+          onPressOut={rightArrowAnim.pressOut}
+          onPress={onNext}
+        >
+          <AnimatedImage
+            source={game_images.rightArrow}
+            style={[{ width: 58, height: 56 }, rightArrowAnim.style]}
+            contentFit="contain"
+          />
+        </Pressable>
+      )}
     </View>
   );
 }

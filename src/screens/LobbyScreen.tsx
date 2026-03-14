@@ -1,6 +1,7 @@
 // src/screens/LobbyScreen.tsx
 import React, { useEffect, useRef, useState } from "react";
-import { View, Image, Dimensions, Animated, Easing } from "react-native";
+import { View, Dimensions, Animated, Easing, Alert } from "react-native";
+import AppImage from "../components/AppImage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CustomText from "../components/common/CustomText";
 import { images } from "../../assets/images";
@@ -13,12 +14,13 @@ import {
   CreateGameStackParamList,
   RootStackParamList,
 } from "../navigation/types";
-import { preloadAssets } from "../utils/preloadAssets";
-import { characters_loss, characters_win } from "../../assets/characters";
 import AudioManager from "../utils/audioManager";
 import { useGameStore } from "../store/useGameStore";
 import { useAuthStore } from "../store/useUserStore";
 import { useTrackGameStartedMutation } from "../api/hooks/useAnalyticsMutations";
+import { fetchQuestions } from "../api/questions";
+import i18n from "../i18n";
+import { usePreventBack } from "../hooks/usePreventBack";
 
 const { height: H, width: W } = Dimensions.get("window");
 
@@ -27,25 +29,33 @@ type CreateNav = StackNavigationProp<CreateGameStackParamList, "Lobby">;
 type RootNav = StackNavigationProp<RootStackParamList>;
 type HeroNav = CompositeNavigationProp<CreateNav, RootNav>;
 
-const pct = (p: number) => (p / 100) * H;
-
-const TOP_START = -pct(70);
-const TOP_MID = -pct(13.25);
-
-const BOT_START = +pct(70);
-const BOT_MID = +pct(13.25);
+/** Curtains closed (meeting in middle) */
+const CURTAIN_CLOSED = 0;
 
 export default function LobbyScreen() {
   const navigation = useNavigation<HeroNav>();
-  const playersCount = useGameStore((s) => s.targetPlayersCount ?? s.players.length);
+  usePreventBack();
+  const playersCount = useGameStore(
+    (s) => s.targetPlayersCount ?? s.players.length,
+  );
   const mode = useGameStore((s) => s.mode);
   const existingGameId = useGameStore((s) => s.gameId);
+  const gameSettings = useGameStore((s) => s.gameSettings);
+  const setGameQuestions = useGameStore((s) => s.setGameQuestions);
   const startGameSession = useGameStore((s) => s.startGameSession);
   const userId = useAuthStore((s) => s.user.id);
   const trackGameStartedMutation = useTrackGameStartedMutation();
-  const topY = useRef(new Animated.Value(TOP_START)).current;
-  const botY = useRef(new Animated.Value(BOT_START)).current;
-  const overlayOpacity = useRef(new Animated.Value(0.35)).current;
+  const topY = useRef(new Animated.Value(CURTAIN_CLOSED)).current;
+  const botY = useRef(new Animated.Value(CURTAIN_CLOSED)).current;
+  const curtainTopSource =
+    typeof images.curtainTop === "string"
+      ? { uri: images.curtainTop }
+      : images.curtainTop;
+  const curtainBottomSource =
+    typeof images.curtainBottom === "string"
+      ? { uri: images.curtainBottom }
+      : images.curtainBottom;
+  const overlayOpacity = useRef(new Animated.Value(0.88)).current;
 
   const readyOpacity = useRef(new Animated.Value(0)).current;
   const readyScale = useRef(new Animated.Value(0.8)).current;
@@ -56,21 +66,6 @@ export default function LobbyScreen() {
   const countScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    const openMid = Animated.parallel([
-      Animated.timing(topY, {
-        toValue: TOP_MID,
-        duration: 800,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(botY, {
-        toValue: BOT_MID,
-        duration: 800,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]);
-
     const showReadyIn = Animated.parallel([
       Animated.timing(readyOpacity, {
         toValue: 1,
@@ -131,7 +126,7 @@ export default function LobbyScreen() {
             }),
           ]).start(() => res());
         });
-        await new Promise<void>((resolve) => setTimeout(resolve, 200));
+        await new Promise<void>((resolve) => setTimeout(resolve, 150));
       };
 
       await doStep("3");
@@ -147,34 +142,11 @@ export default function LobbyScreen() {
         }).start(() => res());
       });
       setCount(null);
-      AudioManager.playCurtainSound();
     };
 
-    const closeAll = Animated.parallel([
-      Animated.timing(topY, {
-        toValue: TOP_START,
-        duration: 600,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(botY, {
-        toValue: BOT_START,
-        duration: 600,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(overlayOpacity, {
-        toValue: 0,
-        duration: 600,
-        easing: Easing.inOut(Easing.ease),
-        useNativeDriver: true,
-      }),
-    ]);
-    (AudioManager.playCurtainSoundClose(),
-      AudioManager.stopBackground(),
+    (AudioManager.stopBackground(),
       (async () => {
-        // Отваряне до средата
-        await new Promise<void>((res) => openMid.start(() => res()));
+        // Завесите вече са затворени (от HeroPicker), няма нужда от openMid
 
         // Показваме надпис
         setShowReady(true);
@@ -182,21 +154,7 @@ export default function LobbyScreen() {
         await new Promise<void>((resolve) => setTimeout(resolve, 1500));
 
         // Старт прелоуд
-        let loaded = false;
-        const preloadPromise = (async () => {
-          try {
-            await preloadAssets(Object.values(characters_loss));
-            await preloadAssets(Object.values(characters_win));
-          } catch (e) {
-            console.warn("preload error", e);
-          } finally {
-            loaded = true;
-          }
-        })();
-
-        while (!loaded) {
-          await new Promise<void>((res) => pulseOnce().start(() => res()));
-        }
+        await new Promise<void>((res) => pulseOnce().start(() => res()));
 
         // Скриваме надпис
         await new Promise<void>((res) => hideReady.start(() => res()));
@@ -205,32 +163,62 @@ export default function LobbyScreen() {
         // Броим
         await runCount();
 
-        // Затваряме и продължаваме
-        await new Promise<void>((res) => closeAll.start(() => res()));
+        // Зареждаме въпроси ПРЕДИ отваряне на завесите, за да е готово съдържанието отдолу
+        const packSlugs = (gameSettings?.selectedPacks ?? ["main"]).slice(0, 5);
+        const lang = (i18n.language ?? "en").slice(0, 2).toLowerCase();
+        let questions: Awaited<ReturnType<typeof fetchQuestions>> = [];
+        try {
+          questions = await fetchQuestions({ packs: packSlugs, lang });
+          if (!questions.length) {
+            Alert.alert("Error", "No questions loaded. Check your connection.");
+            return;
+          }
+          setGameQuestions(questions);
+        } catch (e) {
+          console.warn("fetchQuestions failed", e);
+          Alert.alert("Error", "Could not load questions. Try again.");
+          return;
+        }
 
-        // ✅ Първо извикване на Round вече е през Game stack
         const gameId = existingGameId ?? startGameSession(mode);
         try {
           await trackGameStartedMutation.mutateAsync({
             gameId,
             mode,
             playersCount: Math.max(playersCount || 1, 1),
+            language: i18n.language,
             userId,
+            packs: packSlugs,
           });
         } catch (e) {
           console.warn("track GAME_STARTED failed", e);
         }
 
         AudioManager.playBackgroundGame();
+
+        // Бърз fade към Round 1 – завесите и звукът се случват в RoundScreen
         navigation.navigate("Game", {
           screen: "Round",
         } as never);
       })());
   }, []);
 
+  const lobbyBgUri =
+    "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/ba09f448-5270-4b9b-84d1-aaac8869f4b4-bg-heroes01.webp";
+
   return (
     <SafeAreaView className="flex-1" edges={["right", "left"]}>
       <View className="bg-black relative w-full h-full flex-1 justify-center items-center">
+        <AppImage
+          source={{ uri: lobbyBgUri }}
+          contentFit="cover"
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: W,
+            height: H,
+          }}
+        />
         <Animated.View
           style={{
             position: "absolute",
@@ -282,13 +270,21 @@ export default function LobbyScreen() {
             top: 0,
             left: 0,
             right: 0,
+            width: W,
+            height: H / 2,
+            overflow: "visible",
             transform: [{ translateY: topY }],
           }}
         >
-          <Image
-            source={images.curtainTop}
-            resizeMode="contain"
-            style={{ width: W }}
+          <AppImage
+            source={curtainTopSource}
+            contentFit="contain"
+            style={{
+              position: "absolute",
+              width: W,
+              height: "100%",
+              bottom: -117,
+            }}
           />
         </Animated.View>
 
@@ -298,13 +294,21 @@ export default function LobbyScreen() {
             bottom: 0,
             left: 0,
             right: 0,
+            width: W,
+            height: H / 2,
+            overflow: "visible",
             transform: [{ translateY: botY }],
           }}
         >
-          <Image
-            source={images.curtainBottom}
-            resizeMode="contain"
-            style={{ width: W }}
+          <AppImage
+            source={curtainBottomSource}
+            contentFit="contain"
+            style={{
+              position: "absolute",
+              width: W,
+              height: "100%",
+              top: -117,
+            }}
           />
         </Animated.View>
       </View>

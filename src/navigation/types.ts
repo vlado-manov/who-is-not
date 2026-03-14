@@ -1,10 +1,10 @@
 export type OnboardingStackParamList = {
-  InitialLoading: undefined;
-  Welcome: undefined;
+  Welcome: { skipCurtain?: boolean } | undefined;
   Menu: undefined;
   MenuPlay: undefined;
   Store: undefined;
   Profile: undefined;
+  Referral: undefined;
   Settings: undefined;
   Rules: undefined;
 };
@@ -28,6 +28,8 @@ export type GameStackParamList = {
   VoteResults: undefined;
   PreReveal: undefined;
   Reveal: undefined;
+  LivesReveal: undefined;
+  Winner: undefined;
   Round: undefined;
   Standings: undefined;
 };

@@ -5,10 +5,10 @@ import {
   View,
   Animated,
   Platform,
-  Image,
   ImageSourcePropType,
   GestureResponderEvent,
 } from "react-native";
+import AppImage from "../AppImage";
 import { LinearGradient } from "expo-linear-gradient";
 import AudioManager from "../../utils/audioManager";
 
@@ -244,9 +244,9 @@ export default function CustomButton({
           >
             {/* BACKGROUND */}
             {backgroundImage ? (
-              <Image
+              <AppImage
                 source={backgroundImage}
-                resizeMode="cover"
+                contentFit="cover"
                 style={{
                   position: "absolute",
                   inset: 0,
@@ -296,9 +296,9 @@ export default function CustomButton({
               }}
             >
               {icon && (
-                <Image
+                <AppImage
                   source={icon}
-                  resizeMode="contain"
+                  contentFit="contain"
                   style={{ width: iconSize, height: iconSize }}
                 />
               )}

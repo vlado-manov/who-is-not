@@ -1,164 +1,500 @@
 // src/components/modals/GameSettingsModal.tsx
-import { View, TouchableOpacity, Alert } from "react-native";
-import React, { useMemo, useState } from "react";
+import {
+  View,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  Alert,
+  ActivityIndicator,
+  ImageBackground,
+  StyleSheet,
+  Animated,
+  Easing,
+  ScrollView,
+  Pressable,
+} from "react-native";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import CustomText from "../common/CustomText";
 import { EvilIcons, FontAwesome } from "@expo/vector-icons";
 import CustomButton from "../common/CustomButton";
-import { useGameStore, GamePackId } from "../../store/useGameStore";
+import { useGameStore } from "../../store/useGameStore";
+import { useTranslation } from "react-i18next";
+import { fetchQuestionPacks, type QuestionPackDto } from "../../api/questions";
+import { backgrounds } from "../../../assets/backgrounds";
 
 type Props = {
   setGameSettingsVisible: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
-const PACKS: { id: GamePackId; name: string }[] = [
-  { id: "main", name: "Main game" },
-  { id: "custom", name: "Custom questions" },
-  { id: "christmas", name: "Christmas Pack" },
-  { id: "halloween", name: "Halloween pack" },
-  { id: "festival", name: "Festival Pack" },
-  { id: "adult18", name: "18+ Pack" },
+const LIVES_OPTIONS = [
+  { label: "3", value: 3 as const },
+  { label: "5", value: 5 as const },
 ];
 
 const TIME_OPTIONS = [
   { label: "0:30", seconds: 30 },
   { label: "1:00", seconds: 60 },
+  { label: "1:30", seconds: 90 },
   { label: "2:00", seconds: 120 },
+  { label: "3:00", seconds: 180 },
   { label: "4:00", seconds: 240 },
-  { label: "6:00", seconds: 360 },
   { label: "8:00", seconds: 480 },
-  { label: "10:00", seconds: 600 },
-  { label: "12:00", seconds: 720 },
+  { label: "16:00", seconds: 960 },
 ];
 
+const isMainPack = (slug: string) => slug === "main" || slug === "main-pack";
+
 const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
+  const { t } = useTranslation();
   const gameSettings = useGameStore((s) => s.gameSettings);
   const setGameSettings = useGameStore((s) => s.setGameSettings);
 
   const [selectedSec, setSelectedSec] = useState<number>(
     gameSettings?.discussionSeconds ?? 120
   );
-  const [packs, setPacks] = useState<GamePackId[]>(
-    gameSettings?.selectedPacks?.length ? gameSettings.selectedPacks : ["main"]
+  const [selectedLives, setSelectedLives] = useState<3 | 5>(
+    gameSettings?.livesPerPlayer ?? 3
+  );
+  const [selectedSlugs, setSelectedSlugs] = useState<string[]>(
+    () => gameSettings?.selectedPacks ?? []
   );
   const [openDropdown, setOpenDropdown] = useState(false);
+  const [availablePacks, setAvailablePacks] = useState<QuestionPackDto[]>([]);
+  const [packsLoading, setPacksLoading] = useState(true);
+
+  const scaleAnim = useRef(new Animated.Value(0.3)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 380,
+        easing: Easing.out(Easing.back(1.2)),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [scaleAnim, opacityAnim]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchQuestionPacks()
+      .then((list) => {
+        if (!cancelled) {
+          setAvailablePacks(list);
+          setSelectedSlugs((prev) => {
+            if (list.length === 0) return prev;
+            const firstSlug = list[0].slug;
+            if (prev.includes(firstSlug)) return prev;
+            return [firstSlug, ...prev.filter((s) => s !== firstSlug)];
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setAvailablePacks([]);
+      })
+      .then(() => {
+        if (!cancelled) setPacksLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const selectedLabel = useMemo(
     () => TIME_OPTIONS.find((o) => o.seconds === selectedSec)?.label ?? "2:00",
     [selectedSec]
   );
 
-  const togglePack = (id: GamePackId) => {
-    const has = packs.includes(id);
-    if (has && packs.length === 1) {
-      Alert.alert("Required", "At least one pack must be selected.");
+  const togglePack = (slug: string) => {
+    const has = selectedSlugs.includes(slug);
+    if (has && selectedSlugs.length === 1) {
+      Alert.alert(t("required_alert_title"), t("required_alert_message"));
       return;
     }
     if (has) {
-      setPacks(packs.filter((x) => x !== id));
+      setSelectedSlugs(selectedSlugs.filter((x) => x !== slug));
       return;
     }
-    if (packs.length >= 2) {
-      Alert.alert("Limit", "You can select up to 2 packs.");
+    if (selectedSlugs.length >= 5) {
+      Alert.alert(t("limit_alert_title"), t("limit_alert_message"));
       return;
     }
-    setPacks([...packs, id]);
+    setSelectedSlugs([...selectedSlugs, slug]);
   };
 
   const onSave = () => {
-    const finalPacks = packs.length ? packs : (["main"] as GamePackId[]);
+    const finalPacks =
+      selectedSlugs.length > 0
+        ? selectedSlugs
+        : [availablePacks[0]?.slug ?? "main"];
     setGameSettings({
       discussionSeconds: selectedSec,
       selectedPacks: finalPacks,
+      livesPerPlayer: selectedLives,
     });
     setGameSettingsVisible(false);
   };
 
   return (
-    <View className="absolute inset-0 bg-[rgba(0,0,0,0.85)] items-center justify-center w-full h-full z-[99] px-6">
+    <Pressable style={styles.backdrop} onPress={() => setGameSettingsVisible(false)}>
       <TouchableOpacity
-        className="absolute top-16 right-4 z-10"
+        style={styles.closeBtn}
         onPress={() => setGameSettingsVisible(false)}
+        activeOpacity={0.8}
       >
-        <EvilIcons name="close" size={32} color="white" />
+        <EvilIcons name="close" size={36} color="rgba(255,255,255,0.95)" />
       </TouchableOpacity>
 
-      <View className="bg-white rounded-2xl p-8 mt-8 w-full overflow-hidden justify-center gap-6">
-        <View>
-          <CustomText textColor="black" className="mb-2 font-opensans-bold">
-            Time for discussion:
-          </CustomText>
-
-          <View className="relative">
-            <TouchableOpacity
-              className="border border-gray-300 rounded-xl px-4 py-3 bg-white"
-              onPress={() => setOpenDropdown((v) => !v)}
+      <TouchableWithoutFeedback>
+        <Animated.View
+          style={[
+            styles.modalWrap,
+            {
+              opacity: opacityAnim,
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+        >
+        <View style={styles.namePlateShadow}>
+          <ImageBackground
+            source={backgrounds.bg005}
+            resizeMode="stretch"
+            imageStyle={{ borderRadius: 18 }}
+            style={styles.namePlate}
+          >
+            <CustomText
+              variant="p"
+              className="text-center"
+              textColor="#762a05"
             >
-              <CustomText textColor="black">{selectedLabel}</CustomText>
-            </TouchableOpacity>
+              {t("game_settings")}
+            </CustomText>
 
-            {openDropdown ? (
-              <View className="absolute top-[52px] left-0 right-0 bg-white rounded-xl border border-gray-300 overflow-hidden z-10">
-                {TIME_OPTIONS.map((opt) => (
-                  <TouchableOpacity
-                    key={opt.seconds}
-                    className="px-4 py-3"
-                    onPress={() => {
-                      setSelectedSec(opt.seconds);
-                      setOpenDropdown(false);
-                    }}
-                  >
-                    <CustomText
-                      textColor={
-                        opt.seconds === selectedSec ? "#FA3A00" : "black"
-                      }
-                    >
-                      {opt.label}
-                    </CustomText>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ) : null}
-          </View>
-        </View>
+            <View style={styles.nameDivider} />
 
-        <View>
-          <CustomText textColor="black" className="mb-2 font-opensans-bold">
-            Packages included:
-          </CustomText>
-
-          <View className="gap-3">
-            {PACKS.map((p) => {
-              const checked = packs.includes(p.id);
-              return (
-                <TouchableOpacity
-                  key={p.id}
-                  className="flex-row items-center justify-between px-4 py-3 bg-[#F7F7F7] rounded-xl"
-                  onPress={() => togglePack(p.id)}
+            <CustomText
+              variant="h6-headline"
+              className="text-center"
+              textColor="#592410"
+            >
+              {t("lives_per_player")}
+            </CustomText>
+            <View style={styles.livesRow}>
+              {LIVES_OPTIONS.map((opt) => (
+                <Pressable
+                  key={opt.value}
+                  style={[
+                    styles.livesOption,
+                    selectedLives === opt.value && styles.livesOptionSelected,
+                  ]}
+                  onPress={() => setSelectedLives(opt.value)}
                 >
-                  <CustomText textColor="black">{p.name}</CustomText>
-                  <View
-                    className={`w-6 h-6 rounded-md border ${
-                      checked
-                        ? "bg-primary-500 border-primary-500"
-                        : "border-gray-400"
-                    } items-center justify-center`}
+                  <CustomText
+                    variant="p"
+                    textColor={
+                      selectedLives === opt.value ? "#592410" : "#762a05"
+                    }
                   >
-                    {checked ? (
-                      <View className="w-6 h-6 rounded-md items-center justify-center bg-primary-500">
-                        <FontAwesome name="check" size={14} color="white" />
-                      </View>
-                    ) : null}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      </View>
+                    {opt.label}
+                  </CustomText>
+                </Pressable>
+              ))}
+            </View>
 
-      <CustomButton title="Save" buttonClassName="mt-4" onPress={onSave} />
-    </View>
+            <View style={styles.nameDivider} />
+
+            <CustomText
+              variant="h6-headline"
+              className="text-center"
+              textColor="#592410"
+            >
+              {t("time_for_discussion")}
+            </CustomText>
+
+            <View style={styles.dropdownWrap}>
+              <Pressable
+                style={styles.dropdownTrigger}
+                onPress={() => setOpenDropdown((v) => !v)}
+              >
+                <CustomText variant="p" textColor="#592410">
+                  {selectedLabel}
+                </CustomText>
+                <FontAwesome
+                  name={openDropdown ? "angle-up" : "angle-down"}
+                  size={20}
+                  color="#762a05"
+                />
+              </Pressable>
+
+              {openDropdown ? (
+                <View style={styles.dropdownList}>
+                  {TIME_OPTIONS.map((opt) => (
+                    <Pressable
+                      key={opt.seconds}
+                      style={[
+                        styles.dropdownItem,
+                        opt.seconds === selectedSec && styles.dropdownItemSelected,
+                      ]}
+                      onPress={() => {
+                        setSelectedSec(opt.seconds);
+                        setOpenDropdown(false);
+                      }}
+                    >
+                      <CustomText
+                        variant="p-small"
+                        textColor={
+                          opt.seconds === selectedSec ? "#762a05" : "#592410"
+                        }
+                      >
+                        {opt.label}
+                      </CustomText>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+
+            <View style={styles.nameDivider} />
+
+            <CustomText
+              variant="h6-headline"
+              className="text-center"
+              textColor="#592410"
+            >
+              {t("packages_included")}
+            </CustomText>
+
+            {packsLoading ? (
+              <View style={styles.packsLoading}>
+                <ActivityIndicator size="small" color="#762a05" />
+              </View>
+            ) : (
+              <ScrollView
+                style={styles.packsScroll}
+                contentContainerStyle={styles.packsScrollContent}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled
+              >
+                {availablePacks.length === 0 ? (
+                  <CustomText
+                    variant="p-small"
+                    className="text-center py-2"
+                    textColor="#762a05"
+                  >
+                    {t("no_packs_available") || "No question packs available."}
+                  </CustomText>
+                ) : (
+                  <View style={styles.packsList}>
+                    {availablePacks.map((pack) => {
+                      const checked = selectedSlugs.includes(pack.slug);
+                      const isMain = isMainPack(pack.slug);
+                      return (
+                        <Pressable
+                          key={pack.slug}
+                          style={[
+                            styles.packRow,
+                            checked && styles.packRowChecked,
+                          ]}
+                          onPress={() => togglePack(pack.slug)}
+                        >
+                          <CustomText
+                            variant="p-small"
+                            textColor={checked ? "#592410" : "#762a05"}
+                          >
+                            {pack.title} ({pack.questionsCount})
+                            {isMain ? " ★" : ""}
+                          </CustomText>
+                          <View
+                            style={[
+                              styles.checkbox,
+                              checked && styles.checkboxChecked,
+                            ]}
+                          >
+                            {checked ? (
+                              <FontAwesome
+                                name="check"
+                                size={12}
+                                color="#fff"
+                              />
+                            ) : null}
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                )}
+              </ScrollView>
+            )}
+          </ImageBackground>
+        </View>
+
+        <CustomButton
+          title={t("save")}
+          buttonClassName="mt-5 w-full"
+          onPress={onSave}
+          backgroundImage={backgrounds.bg026}
+          glow
+          glowColor="rgba(41,255,25,0.6)"
+          shadowColor="#005f07"
+        />
+      </Animated.View>
+      </TouchableWithoutFeedback>
+    </Pressable>
   );
 };
 
 export default GameSettingsModal;
+
+const styles = StyleSheet.create({
+  backdrop: {
+    position: "absolute",
+    inset: 0,
+    backgroundColor: "rgba(0,0,0,0.82)",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    height: "100%",
+    zIndex: 99,
+    paddingHorizontal: 20,
+  },
+  closeBtn: {
+    position: "absolute",
+    top: 48,
+    right: 20,
+    zIndex: 10,
+    padding: 8,
+  },
+  modalWrap: {
+    width: "100%",
+    maxWidth: 380,
+    alignItems: "center",
+  },
+  namePlateShadow: {
+    shadowColor: "#fff",
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 14,
+    width: "100%",
+  },
+  namePlate: {
+    borderRadius: 18,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    alignItems: "center",
+    shadowColor: "#ffd800",
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 14,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(251,192,32,1)",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(160,110,60,0.7)",
+    overflow: "hidden",
+  },
+  nameDivider: {
+    width: "88%",
+    height: 1,
+    marginVertical: 10,
+    backgroundColor: "rgba(89,36,16,0.5)",
+  },
+  dropdownWrap: {
+    width: "100%",
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  dropdownTrigger: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,247,236,0.9)",
+    borderWidth: 1,
+    borderColor: "rgba(160,110,60,0.4)",
+  },
+  dropdownList: {
+    marginTop: 6,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,247,236,0.98)",
+    borderWidth: 1,
+    borderColor: "rgba(160,110,60,0.4)",
+    overflow: "hidden",
+  },
+  dropdownItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  dropdownItemSelected: {
+    backgroundColor: "rgba(251,192,32,0.25)",
+  },
+  packsLoading: {
+    paddingVertical: 20,
+    alignItems: "center",
+  },
+  packsScroll: {
+    width: "100%",
+    maxHeight: 200,
+  },
+  packsScrollContent: {
+    paddingVertical: 4,
+    gap: 8,
+  },
+  packsList: {
+    gap: 8,
+  },
+  packRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,247,236,0.6)",
+    borderWidth: 1,
+    borderColor: "rgba(160,110,60,0.3)",
+  },
+  packRowChecked: {
+    backgroundColor: "rgba(251,192,32,0.2)",
+    borderColor: "rgba(160,110,60,0.5)",
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: "rgba(89,36,16,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxChecked: {
+    backgroundColor: "#592410",
+    borderColor: "#592410",
+  },
+  livesRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 8,
+    marginBottom: 4,
+    justifyContent: "center",
+  },
+  livesOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,247,236,0.6)",
+    borderWidth: 1,
+    borderColor: "rgba(160,110,60,0.3)",
+  },
+  livesOptionSelected: {
+    backgroundColor: "rgba(251,192,32,0.25)",
+    borderColor: "rgba(160,110,60,0.5)",
+  },
+});

@@ -1,6 +1,7 @@
 // src/components/store/SuccessComponent.tsx
 import React, { useState } from "react";
-import { View, Image, StyleSheet, Dimensions } from "react-native";
+import { View, StyleSheet, Dimensions } from "react-native";
+import AppImage from "../AppImage";
 import {
   Confetti,
   ContinuousConfetti,
@@ -10,6 +11,7 @@ import CustomButton from "../common/CustomButton";
 import CustomText from "../common/CustomText";
 import { ICharacter } from "../../types/character";
 import AudioManager from "../../utils/audioManager";
+import { useTranslation } from "react-i18next";
 
 const { width, height } = Dimensions.get("window");
 
@@ -20,6 +22,7 @@ type Props = {
 };
 
 export default function SuccessComponent({ visible, hero, onContinue }: Props) {
+  const { t } = useTranslation();
   if (!visible || !hero) return null;
   AudioManager.playHeroBuy();
   const src = (hero.main_image as any) ?? (hero.profileImage as any);
@@ -43,15 +46,15 @@ export default function SuccessComponent({ visible, hero, onContinue }: Props) {
       <View style={styles.center}>
         <View className="text-center justify-center items-center flex">
           <CustomText variant="h3-headline" className="text-white mt-[40px]">
-            You've unlocked
+            {t("you_unlocked")}
           </CustomText>
           <CustomText variant="h4" className="mb-4 text-center">
             {hero.name}
           </CustomText>
         </View>
-        <Image source={src} resizeMode="contain" className="h-[60%]" />
+        <AppImage source={src} contentFit="contain" className="h-[60%]" style={{ width: 200, height: 300 }} />
         <CustomButton
-          title="Continue"
+          title={t("continue_btn")}
           color="bg-primary-500"
           onPress={onContinue}
           buttonClassName="mt-8"

@@ -1,6 +1,6 @@
 // src/utils/preloadAssets.ts
 import { Asset } from "expo-asset";
-import { Image } from "react-native";
+import { Image } from "expo-image";
 
 export async function preloadAssets(
   modules: any[],

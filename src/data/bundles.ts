@@ -1,6 +1,8 @@
 import { backgrounds } from "../../assets/backgrounds";
-import { store_images } from "../../assets/images";
 import { IBundle } from "../types/bundle";
+
+const EMPTY_IMAGE_URI =
+  "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
 
 export const BUNDLES: IBundle[] = [
   {
@@ -10,7 +12,7 @@ export const BUNDLES: IBundle[] = [
     slug: "all_roster_bundle",
     summary: "Unlock ALL currently available heroes",
     description: "Unlock ALL currently available heroes, best offer.",
-    image: store_images.rosterBundle,
+    image: EMPTY_IMAGE_URI,
     background: backgrounds.bg007,
     price: 19.99,
     currency: "USD",
@@ -30,8 +32,8 @@ export const BUNDLES: IBundle[] = [
     summary: "Screena, Аllan and Monday",
     description:
       "Unlock our collection of spooky heroes now for limited time only - get Screena, Bitcoin Allan and Monday just for $3.49 instead of $5.99.",
-    image: store_images.spookyPack,
-    background: backgrounds.bg017,
+    image: EMPTY_IMAGE_URI,
+    background: backgrounds.bg023,
     price: 5.99,
     currency: "USD",
     discountPrice: 3.49,
@@ -48,8 +50,8 @@ export const BUNDLES: IBundle[] = [
     summary: "Vibeswitch, Wine Bender and Virala",
     description:
       "Unlock our collection of powerful girls now for limited time only - get Vibeswitch, Wine Bender and Virala just for $3.49 instead of $5.99.",
-    image: store_images.girlBundle,
-    background: backgrounds.bg014,
+    image: EMPTY_IMAGE_URI,
+    background: backgrounds.bg023,
     price: 5.99,
     currency: "USD",
     discountPrice: 3.49,

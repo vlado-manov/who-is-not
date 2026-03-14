@@ -24,28 +24,6 @@ export const characters = {
   xglitch: require("./images/characters/picker/premium/xqc.png"),
 };
 
-export const characters_wonRound = {
-  allan: require("./images/characters/wonRound/Bitcoin_Allan-W.png"),
-  booena: require("./images/characters/wonRound/Booena-W3.png"),
-  franco: require("./images/characters/wonRound/Chef_franco-W.png"),
-  brochain: require("./images/characters/wonRound/Crypto_bro-W2.png"),
-  dad_gpt: require("./images/characters/wonRound/Dad_GPT-W.png"),
-  dr_wrong: require("./images/characters/wonRound/DrWrong-W2.png"),
-  dubai: require("./images/characters/wonRound/DuBai-W.png"),
-  hangreta: require("./images/characters/wonRound/Hangreta-W.png"),
-  monday: require("./images/characters/wonRound/monday-W.png"),
-  mr_good_time: require("./images/characters/wonRound/Mr_GoodTime-W.png"),
-  pete: require("./images/characters/wonRound/PluggedIn_pete-W2.png"),
-  susie: require("./images/characters/wonRound/RemoteSusie-W.png"),
-  retrograda: require("./images/characters/wonRound/Retrograda-W.png"),
-  screena: require("./images/characters/wonRound/screena-W.png"),
-  vanessa: require("./images/characters/wonRound/SilentVanessa-W.png"),
-  simpalot: require("./images/characters/wonRound/Sir_Simpalot-W2.png"),
-  tedimechov: require("./images/characters/wonRound/Tedimechov-W.png"),
-  uncle_vape: require("./images/characters/wonRound/UncleVape-W2.png"),
-  virala: require("./images/characters/wonRound/Virala-W.png"),
-  winebender: require("./images/characters/wonRound/WineBender_W.png"),
-};
 export const characters_lostRound = {
   allan: require("./images/characters/lostRound/Bitcoin_allan-L.png"),
   booena: require("./images/characters/lostRound/Booena-L2.png"),
@@ -137,6 +115,15 @@ export const character_avatars = {
   virala: require("./images/characters/avatars/virala.png"),
   wine_bender: require("./images/characters/avatars/wine_bender.png"),
   xglitch: require("./images/characters/avatars/xglitch.png"),
+} as const;
+
+/** Rate images for rate/number question results. Fallback: silent_vanessa. Add rate/ folder with Silent_Vanessa.png, Sir_Simpalot.png, Dubai_Princess.png, Retrograda.png, Screena.png when ready. */
+export const character_rate_images = {
+  silent_vanessa: require("./images/characters/avatars/Silent_Vanessa.png"),
+  sir_simpalot: require("./images/characters/avatars/Sir_Simpalot.png"),
+  abu_dubaiena: require("./images/characters/avatars/Dubai_Princess.png"),
+  retrograda: require("./images/characters/avatars/Retrograda.png"),
+  screena: require("./images/characters/avatars/screena.png"),
 } as const;
 
 export const character_videos = {

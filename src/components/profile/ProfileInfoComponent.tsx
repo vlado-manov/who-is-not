@@ -5,12 +5,14 @@ import ProfileImageComponent from "./ProfileImageComponent";
 import { useAuthStore } from "../../store/useUserStore";
 import CustomText from "../common/CustomText";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 
 type Props = {
   setImagePickerVisible: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 const ProfileInfoComponent = ({ setImagePickerVisible }: Props) => {
+  const { t } = useTranslation();
   const authStatus = useAuthStore((s) => s.authStatus);
   const userName = useAuthStore((s) => s.user.name);
   const userId = useAuthStore((s) => s.user.id);
@@ -51,7 +53,7 @@ const ProfileInfoComponent = ({ setImagePickerVisible }: Props) => {
       </View>
 
       {authStatus === "guest" ? (
-        <CustomText variant="p">(You’re playing as a guest)</CustomText>
+        <CustomText variant="p">{t("guest_playing")}</CustomText>
       ) : (
         <View className="flex-row items-center gap-2 mt-2">
           <CustomText>ID: {userId}</CustomText>
@@ -76,7 +78,7 @@ const ProfileInfoComponent = ({ setImagePickerVisible }: Props) => {
       >
         {copied && (
           <CustomText className="text-xs text-white/80 mt-1">
-            Copied to clipboard!
+            {t("copied_to_clipboard")}
           </CustomText>
         )}
       </Animated.View>

@@ -1,6 +1,7 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ICharacter } from "../../../types/character";
-import { Image, ImageSourcePropType } from "react-native";
+import { Image } from "expo-image";
+import type { ImageSourcePropType } from "react-native";
 
 const preloadedHeroUris = new Set<string>();
 

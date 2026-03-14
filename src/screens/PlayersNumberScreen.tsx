@@ -1,15 +1,19 @@
 import {
   View,
-  ImageBackground,
   Pressable,
   TouchableOpacity,
-  Image,
+  Animated,
 } from "react-native";
+import { Image } from "expo-image";
+import AppImage from "../components/AppImage";
+
+const AnimatedImage = Animated.createAnimatedComponent(Image);
+import ImageBackgroundWithLoadGate from "../components/ImageBackgroundWithLoadGate";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { backgrounds } from "../../assets/backgrounds";
 import CustomText from "../components/common/CustomText";
 import { useTranslation } from "react-i18next";
-import { useNavigation } from "@react-navigation/native";
+import { CommonActions, useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { useMemo, useState } from "react";
 import CustomButton from "../components/common/CustomButton";
@@ -20,8 +24,8 @@ import GameSettingsModal from "../components/modals/GameSettingsModal";
 import AudioManager from "../utils/audioManager";
 import { game_images } from "../../assets/images";
 import { useAuthStore } from "../store/useUserStore";
-import { Animated } from "react-native";
 import { useRef } from "react";
+import { trackPlayerSessionStarted } from "../api/analytics";
 
 type Nav = StackNavigationProp<CreateGameStackParamList, "PlayersNumber">;
 
@@ -37,7 +41,7 @@ const PlayersNumberScreen = () => {
   const startGameSession = useGameStore((s) => s.startGameSession);
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<Nav>();
-  const { settings, updateSettings } = useAuthStore();
+  const { settings, updateSettings, user } = useAuthStore();
 
   /* ----------------------------- LOGO PICKER ----------------------------- */
 
@@ -76,10 +80,41 @@ const PlayersNumberScreen = () => {
   };
 
   const onContinue = () => {
+    void trackPlayerSessionStarted({
+      userId: user.id,
+      source: "CREATE_GAME",
+      step: "players_count_confirmed",
+      mode: "LOCAL",
+      language: i18n.language,
+      playersCount: players,
+    }).catch((e) => {
+      console.warn(
+        "track PLAYER_SESSION_STARTED(players_count_confirmed) failed",
+        e
+      );
+    });
     beginLocalGame(players);
     startGameSession("LOCAL");
     // navigation.navigate("Name", { index: 1 });
     navigation.navigate("HeroPicker", { index: 1 });
+  };
+
+  const goBackToMenu = () => {
+    const parent = navigation.getParent();
+    parent?.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [
+          {
+            name: "Onboarding",
+            state: {
+              index: 0,
+              routes: [{ name: "MenuPlay" }],
+            },
+          },
+        ],
+      }),
+    );
   };
 
   /* --------------------------------------------------------------------- */
@@ -126,15 +161,23 @@ const PlayersNumberScreen = () => {
 
   return (
     <SafeAreaView className="flex-1" edges={["right", "left"]}>
-      <ImageBackground
+      <ImageBackgroundWithLoadGate
         source={backgrounds.bg023}
-        className="flex-1"
+        style={{ flex: 1 }}
         resizeMode="cover"
       >
+        <Pressable
+          onPress={goBackToMenu}
+          className="absolute left-5 top-6 z-20 flex-row items-center gap-2"
+        >
+          <FontAwesome name="chevron-left" size={18} color="white" />
+          <CustomText variant="p">Menu</CustomText>
+        </Pressable>
+
         <View className="flex-1 items-center px-4 pt-40">
           {/* LOGO */}
           <Pressable className="mt-[80px]" onPress={toggleSound}>
-            <Image
+            <AppImage
               source={game_images.storeIcon}
               style={{
                 width: 350,
@@ -143,12 +186,12 @@ const PlayersNumberScreen = () => {
                 top: -88,
                 left: 0,
               }}
-              resizeMode="contain"
+              contentFit="contain"
             />
-            <Image
+            <AppImage
               source={logoSource}
               style={{ width: 360, height: 280 }}
-              resizeMode="contain"
+              contentFit="contain"
             />
           </Pressable>
 
@@ -160,9 +203,9 @@ const PlayersNumberScreen = () => {
 
             {/* PLAYER COUNT CONTROL */}
             <View className="relative">
-              <Image
+              <AppImage
                 source={game_images.pplCountContainer}
-                resizeMode="contain"
+                contentFit="contain"
                 style={{ width: 360, height: 160 }}
               />
 
@@ -183,10 +226,10 @@ const PlayersNumberScreen = () => {
                   opacity: players <= MIN_PLAYERS ? 0.5 : 1,
                 }}
               >
-                <Animated.Image
+                <AnimatedImage
                   source={game_images.btnMinus}
                   style={[{ width: 90, height: 77 }, minusAnim.style]}
-                  resizeMode="contain"
+                  contentFit="contain"
                 />
               </Pressable>
 
@@ -224,10 +267,10 @@ const PlayersNumberScreen = () => {
                   opacity: players >= MAX_PLAYERS ? 0.5 : 1,
                 }}
               >
-                <Animated.Image
+                <AnimatedImage
                   source={game_images.btnPlus}
                   style={[{ width: 90, height: 77 }, plusAnim.style]}
-                  resizeMode="contain"
+                  contentFit="contain"
                 />
               </Pressable>
             </View>
@@ -256,7 +299,7 @@ const PlayersNumberScreen = () => {
               }}
             >
               <FontAwesome name="gear" size={20} color="white" />
-              <CustomText variant="p">Game settings</CustomText>
+              <CustomText variant="p">{t("game_settings")}</CustomText>
             </TouchableOpacity>
           </View>
         </View>
@@ -264,7 +307,7 @@ const PlayersNumberScreen = () => {
         {gameSettingsVisible && (
           <GameSettingsModal setGameSettingsVisible={setGameSettingsVisible} />
         )}
-      </ImageBackground>
+      </ImageBackgroundWithLoadGate>
     </SafeAreaView>
   );
 };

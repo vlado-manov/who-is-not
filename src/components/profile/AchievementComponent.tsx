@@ -1,4 +1,5 @@
-import { View, Text, Image } from "react-native";
+import { View, Text } from "react-native";
+import AppImage from "../AppImage";
 import React from "react";
 import { IAchievement } from "../../types/achievement";
 
@@ -12,11 +13,13 @@ const AchievementComponent = ({ item }: Props) => {
   return (
     <View className="items-center mb-4">
       <View className="overflow-hidden">
-        <Image
+        <AppImage
           source={item.image}
-          resizeMode="cover"
+          contentFit="cover"
           className="w-[100px] h-[100px]"
           style={{
+            width: 100,
+            height: 100,
             borderRadius: 16,
             opacity: item.isDone ? 1 : 0.6,
           }}

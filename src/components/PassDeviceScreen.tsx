@@ -1,6 +1,11 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { View, ImageBackground, Image, Pressable } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, Pressable, Dimensions } from "react-native";
+import AppImage from "./AppImage";
+import ImageBackgroundWithLoadGate from "./ImageBackgroundWithLoadGate";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
@@ -14,14 +19,17 @@ import { useGameStore } from "../store/useGameStore";
 import AudioManager from "../utils/audioManager";
 import i18n from "../i18n";
 import { useAuthStore } from "../store/useUserStore";
+import { usePreventBack } from "../hooks/usePreventBack";
 
 type R = RouteProp<CreateGameStackParamList, "PassDevice">;
 type Nav = StackNavigationProp<CreateGameStackParamList, "PassDevice">;
 
 const PassDeviceScreen = () => {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
   const { index } = useRoute<R>().params;
+  usePreventBack();
   AudioManager.playBackground();
   const { settings, updateSettings } = useAuthStore();
 
@@ -72,9 +80,9 @@ const PassDeviceScreen = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-primary-700" edges={["right", "left"]}>
-      <ImageBackground
+      <ImageBackgroundWithLoadGate
         source={backgrounds.bg023}
-        className="flex-1 relative"
+        style={{ flex: 1 }}
         resizeMode="cover"
       >
         <View className="absolute top-24 right-8 z-50">
@@ -93,13 +101,16 @@ const PassDeviceScreen = () => {
           </Pressable>
         </View>
 
-        <View className="flex-1 items-center w-full justify-center relative">
+        <View
+          className="flex-1 items-center w-full justify-start relative"
+          style={{ overflow: "visible" }}
+        >
           <View className="justify-center items-center w-full absolute top-24">
             <Pressable className="mt-[40px]" onPress={toggleSound}>
-              <Image
+              <AppImage
                 source={logoSource}
                 style={{ width: 360, height: 280 }}
-                resizeMode="contain"
+                contentFit="contain"
               />
             </Pressable>
             <CustomText
@@ -112,24 +123,29 @@ const PassDeviceScreen = () => {
               })}
             </CustomText>
           </View>
-          <View className="flex-1 w-full h-full items-center justify-around">
-            <Image
+          <View
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              paddingBottom: insets.bottom,
+              width: Dimensions.get("window").width,
+              overflow: "visible",
+            }}
+          >
+            <AppImage
               source={game_images.passDevice}
-              resizeMode="contain"
-              className="w-full"
+              contentFit="cover"
+              style={{
+                width: Dimensions.get("window").width,
+                top: "20%",
+                aspectRatio: 350 / 320,
+              }}
             />
           </View>
         </View>
-
-        <View className="mb-16 px-16">
-          {/* <CustomButton
-            title={t("continue_btn", { defaultValue: "Continue" })}
-            color="bg-primary-500"
-            fullWidth
-            onPress={onContinue}
-          /> */}
-        </View>
-      </ImageBackground>
+      </ImageBackgroundWithLoadGate>
     </SafeAreaView>
   );
 };

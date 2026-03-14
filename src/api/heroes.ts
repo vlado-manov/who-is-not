@@ -1,8 +1,12 @@
-import { apiGet } from "./client";
+import { Image } from "expo-image";
+import { apiGet, getApiBaseUrl } from "./client";
 import { ApiError } from "./types";
 import { ICharacter } from "../types/character";
 import { backgrounds } from "../../assets/backgrounds";
 import { characters, character_avatars } from "../../assets/characters";
+import type { ImageSourcePropType } from "react-native";
+
+type MediaDto = { type: string; url: string; variant?: string | null };
 
 type CharacterDto = {
   id: string;
@@ -17,19 +21,47 @@ type CharacterDto = {
   price: number | null;
   discountPrice: number | null;
   profileImageUrl: string | null;
+  rateImageUrl?: string | null;
   mainImageUrl: string | null;
+  medias?: MediaDto[];
   winImages: Array<{ url: string; variant: string | null }>;
   loseImages: Array<{ url: string; variant: string | null }>;
   quotes: {
     selected: string[];
     nameSelected: string[];
-    win: string[];
-    lose: string[];
+    /** Backend returns by variant: { NORMAL: string[], PERFECT_BLUFF: string[], ... } */
+    win: Record<string, string[]> | string[];
+    lose: Record<string, string[]> | string[];
   };
 };
 
+/** Resolves media URL - prepends API base when path is relative (e.g. /storage/...). */
+function resolveMediaUri(url?: string | null): string | null {
+  if (!url?.trim()) return null;
+  if (url.startsWith("/")) {
+    return `${getApiBaseUrl()}${url}`;
+  }
+  return url;
+}
+
 function asImage(url?: string | null, fallback?: any) {
-  return url ? { uri: url } : fallback;
+  const uri = resolveMediaUri(url);
+  return uri ? { uri } : fallback;
+}
+
+const VANESSA_SLUGS = ["silent_vanessa", "silent-vanessa", "vanessa"];
+
+function isVanessa(slug?: string | null): boolean {
+  const s = slug?.toLowerCase().replace(/-/g, "_") ?? "";
+  return VANESSA_SLUGS.some((v) => s === v || s.includes("vanessa"));
+}
+
+function getRateUrlFromRow(row: CharacterDto): string | null {
+  return (
+    row.rateImageUrl ??
+    row.medias?.find((m) => m.type === "RATE")?.url ??
+    null
+  );
 }
 
 function parseCharactersPayload(input: unknown): CharacterDto[] {
@@ -42,16 +74,19 @@ function parseCharactersPayload(input: unknown): CharacterDto[] {
   return input as CharacterDto[];
 }
 
-export async function fetchCharacters(): Promise<ICharacter[]> {
-  const rows = await apiGet<CharacterDto[]>("/characters", {
+export async function fetchCharacters(lang?: string): Promise<ICharacter[]> {
+  const path = lang
+    ? `/characters?lang=${encodeURIComponent(lang)}`
+    : "/characters";
+  const rows = await apiGet<CharacterDto[]>(path, {
     skipAuth: true,
     parse: parseCharactersPayload,
   });
 
-  return rows.map((row) => {
-    const winImages = row.winImages.map((m) => ({ uri: m.url }));
-    const loseImages = row.loseImages.map((m) => ({ uri: m.url }));
+  const vanessaRow = rows.find((r) => isVanessa(r.slug));
+  const vanessaRateUrl = vanessaRow ? getRateUrlFromRow(vanessaRow) : null;
 
+  return rows.map((row) => {
     const fallbackAvatar = character_avatars.screena;
     const fallbackMain = characters.screena;
 
@@ -69,17 +104,123 @@ export async function fetchCharacters(): Promise<ICharacter[]> {
       price: row.price ?? 0,
       discountPrice: row.discountPrice ?? 0,
       unlocked: !row.premium,
-      background: backgrounds.bg007,
+      background: backgrounds.bg023,
       main_image: asImage(row.mainImageUrl, fallbackMain),
       profileImage: asImage(row.profileImageUrl, fallbackAvatar),
-      winImages: winImages.length ? winImages : [fallbackMain],
-      loseImages: loseImages.length ? loseImages : [fallbackMain],
-      quotes_selected:
-        row.quotes.nameSelected.length > 0
-          ? row.quotes.nameSelected
-          : row.quotes.selected,
-      winQuotes: row.quotes.win,
-      loseQuotes: row.quotes.lose,
+      rateImage: (() => {
+        const rateUrl = getRateUrlFromRow(row) ?? vanessaRateUrl;
+        return asImage(rateUrl, null);
+      })(),
+      winImages: (() => {
+        const arr = row.winImages
+          .map((m) => resolveMediaUri(m.url))
+          .filter((u): u is string => Boolean(u));
+        return arr.length ? arr.map((uri) => ({ uri })) : [fallbackMain];
+      })(),
+      loseImages: (() => {
+        const arr = row.loseImages
+          .map((m) => resolveMediaUri(m.url))
+          .filter((u): u is string => Boolean(u));
+        return arr.length ? arr.map((uri) => ({ uri })) : [fallbackMain];
+      })(),
+      winImagesByVariant: (() => {
+        if (!row.winImages?.length) return undefined;
+        const map: Record<string, ImageSourcePropType[]> = {};
+        for (const media of row.winImages) {
+          const uri = resolveMediaUri(media.url);
+          if (!uri) continue;
+          const key = media.variant ?? "NORMAL";
+          if (!map[key]) {
+            map[key] = [];
+          }
+          map[key].push({ uri });
+        }
+        return Object.keys(map).length ? map : undefined;
+      })(),
+      loseImagesByVariant: (() => {
+        if (!row.loseImages?.length) return undefined;
+        const map: Record<string, ImageSourcePropType[]> = {};
+        for (const media of row.loseImages) {
+          const uri = resolveMediaUri(media.url);
+          if (!uri) continue;
+          const key = media.variant ?? "NORMAL";
+          if (!map[key]) {
+            map[key] = [];
+          }
+          map[key].push({ uri });
+        }
+        return Object.keys(map).length ? map : undefined;
+      })(),
+      quotes_nameSelected: row.quotes.nameSelected?.length
+        ? row.quotes.nameSelected
+        : [],
+      quotes_selected: row.quotes.selected?.length ? row.quotes.selected : [],
+      winQuotes: Array.isArray(row.quotes.win)
+        ? row.quotes.win
+        : Object.values(row.quotes.win as Record<string, string[]>).flat(),
+      loseQuotes: Array.isArray(row.quotes.lose)
+        ? row.quotes.lose
+        : Object.values(row.quotes.lose as Record<string, string[]>).flat(),
+      winQuotesByVariant:
+        typeof row.quotes.win === "object" && !Array.isArray(row.quotes.win)
+          ? (row.quotes.win as Record<string, string[]>)
+          : undefined,
+      loseQuotesByVariant:
+        typeof row.quotes.lose === "object" && !Array.isArray(row.quotes.lose)
+          ? (row.quotes.lose as Record<string, string[]>)
+          : undefined,
     };
   });
+}
+
+function getImageUri(
+  source: ImageSourcePropType | null | undefined,
+): string | null {
+  if (!source || typeof source === "number") return null;
+  if (Array.isArray(source)) return source[0]?.uri ?? null;
+  return (source as { uri?: string }).uri ?? null;
+}
+
+function collectUrisFromImages(
+  images: ImageSourcePropType[] | undefined,
+): string[] {
+  if (!images?.length) return [];
+  return images
+    .map((img) => getImageUri(img))
+    .filter((u): u is string => Boolean(u));
+}
+
+export function collectCharacterImageUris(list: ICharacter[]): string[] {
+  const uris: string[] = [];
+  for (const hero of list) {
+    const main = getImageUri(hero.main_image);
+    const profile = getImageUri(hero.profileImage);
+    const rate = getImageUri(hero.rateImage);
+    if (main) uris.push(main);
+    if (profile) uris.push(profile);
+    if (rate) uris.push(rate);
+    uris.push(...collectUrisFromImages(hero.winImages));
+    uris.push(...collectUrisFromImages(hero.loseImages));
+    if (hero.winImagesByVariant) {
+      for (const arr of Object.values(hero.winImagesByVariant)) {
+        uris.push(...collectUrisFromImages(arr));
+      }
+    }
+    if (hero.loseImagesByVariant) {
+      for (const arr of Object.values(hero.loseImagesByVariant)) {
+        uris.push(...collectUrisFromImages(arr));
+      }
+    }
+  }
+  return [...new Set(uris)];
+}
+
+/** Prefetch all character media: profile, main, rate, win, lose. Call during app bootstrap. */
+export async function prefetchCharacterImages(
+  list: ICharacter[],
+): Promise<void> {
+  const unique = collectCharacterImageUris(list);
+  await Promise.all(
+    unique.map((uri) => Image.prefetch(uri).catch(() => false)),
+  );
 }

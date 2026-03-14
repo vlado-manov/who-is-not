@@ -1,14 +1,15 @@
 import React from "react";
 import {
   View,
-  Image,
   Pressable,
   StyleSheet,
   ImageSourcePropType,
 } from "react-native";
+import AppImage from "../AppImage";
 import CustomText from "../common/CustomText";
 import { ICharacter } from "../../types/character";
 import CustomButton from "../common/CustomButton";
+import { useTranslation } from "react-i18next";
 
 type Props = {
   item: ICharacter;
@@ -26,6 +27,7 @@ export default function HeroComponent({
   onPress,
   disabled,
 }: Props) {
+  const { t } = useTranslation();
   const price = item.discountPrice > 0 ? item.discountPrice : item.price;
   const hasDiscount = item.discountPrice > 0 && item.discountPrice < item.price;
 
@@ -44,9 +46,9 @@ export default function HeroComponent({
       </CustomText>
 
       <View style={[{ width: size, height: size, borderRadius: size / 2 }]}>
-        <Image
+        <AppImage
           source={toSrc(item.profileImage || item.main_image)}
-          resizeMode="cover"
+          contentFit="cover"
           style={{ width: "100%", height: "100%" }}
         />
       </View>
@@ -74,7 +76,7 @@ export default function HeroComponent({
             />
           ) : (
             <CustomButton
-              title="Free"
+              title={t("free")}
               btnSize="sm"
               onPress={() => onPress?.(item)}
             />

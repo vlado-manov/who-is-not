@@ -1,9 +1,9 @@
 import {
   View,
-  Image,
   ImageSourcePropType,
   TouchableOpacity,
 } from "react-native";
+import AppImage from "../AppImage";
 import React from "react";
 import { useAuthStore } from "../../store/useUserStore";
 import { character_avatars } from "../../../assets/characters";
@@ -24,11 +24,11 @@ const ProfileImageComponent = ({ setImagePickerVisible }: Props) => {
   return (
     <View className="items-center pt-8 relative">
       <View className="relative">
-        <Image
+        <AppImage
           source={toSrc(avatarSource)}
-          resizeMode="contain"
-          fadeDuration={0}
+          contentFit="contain"
           className="w-[190px] h-[195px]"
+          style={{ width: 190, height: 195 }}
         />
 
         {authStatus != "guest" && (

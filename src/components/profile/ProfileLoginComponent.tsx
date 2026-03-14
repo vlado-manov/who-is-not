@@ -2,8 +2,8 @@ import {
   View,
   TouchableOpacity,
   ImageSourcePropType,
-  Image,
 } from "react-native";
+import AppImage from "../AppImage";
 import React from "react";
 import { AntDesign } from "@expo/vector-icons";
 import CustomText from "../common/CustomText";
@@ -24,10 +24,11 @@ const ProfileLoginComponent = () => {
         onPress={signInGoogle}
         className="max-w-[88%] w-full flex-row items-center justify-center rounded-2xl bg-white py-6 shadow-[0_2px_6px_rgba(0,0,0,0.15)]"
       >
-        <Image
+        <AppImage
           source={toSrc(images.googleIcon)}
-          resizeMode="contain"
+          contentFit="contain"
           className="w-[22px] h-[22px]"
+          style={{ width: 22, height: 22 }}
         />
         <CustomText
           variant="p"

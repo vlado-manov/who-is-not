@@ -6,6 +6,7 @@ import CustomButton from "../../components/common/CustomButton";
 import CustomInput from "../../components/common/CustomInput";
 import { backgrounds } from "../../../assets/backgrounds";
 import { ICharacter } from "../../types/character";
+import { useTranslation } from "react-i18next";
 
 type Props = {
   hero: ICharacter;
@@ -36,6 +37,7 @@ export function HeroPickerFooter({
   style,
   inputRef,
 }: Props) {
+  const { t } = useTranslation();
   const isNameValid =
     playerName.trim().length >= 3 && playerName.trim().length <= 8;
   const isLocked = !hero.unlocked;
@@ -75,13 +77,13 @@ export function HeroPickerFooter({
             </>
           ) : (
             <>
-              <CustomText
+              {/* <CustomText
                 variant="h5-headline"
                 className="text-center mb-2"
                 textColor="#592410"
               >
-                They call me
-              </CustomText>
+                {t("hero_picker_they_call_me")}
+              </CustomText> */}
 
               <CustomInput
                 ref={inputRef}
@@ -92,6 +94,12 @@ export function HeroPickerFooter({
                 maxLength={8}
                 autoFocus={false}
                 unstyled
+                style={{
+                  minWidth: "40%",
+                  minHeight: 56,
+                  fontSize: 28,
+                  textAlign: "center",
+                }}
                 editable={!disabled}
                 returnKeyType="done"
                 onSubmitEditing={onConfirm}
@@ -105,10 +113,10 @@ export function HeroPickerFooter({
         <CustomButton
           title={
             isLocked
-              ? `Unlock for $${hero.price.toFixed(2)}`
+              ? t("unlock_for_price", { price: (hero.price / 100).toFixed(2) })
               : isNaming
-                ? "Done"
-                : "THIS IS ME"
+                ? t("done_btn")
+                : t("this_is_me")
           }
           btnSize={isNaming ? "md" : "sm"}
           fontSize={isNaming ? "md" : "sm"}

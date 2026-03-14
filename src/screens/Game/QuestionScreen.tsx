@@ -1,15 +1,16 @@
 // src/screens/Game/QuestionScreen.tsx
 import React, { useMemo, useRef, useState } from "react";
 import {
-  ImageBackground,
-  ScrollView,
   View,
   Pressable,
-  Image,
+  ImageBackground,
   StyleSheet,
   Animated,
   Easing,
 } from "react-native";
+import AppImage from "../../components/AppImage";
+import ImageBackgroundWithLoadGate from "../../components/ImageBackgroundWithLoadGate";
+import { ScrollView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
@@ -17,18 +18,26 @@ import { StackNavigationProp } from "@react-navigation/stack";
 import { backgrounds } from "../../../assets/backgrounds";
 import CustomText from "../../components/common/CustomText";
 import CustomButton from "../../components/common/CustomButton";
+// import RateFloatMenu from "../../components/RateFloatMenu";
+import RatingSlider from "../../components/RatingSlider";
 import CustomInput from "../../components/common/CustomInput";
 
 import { Player, useGameStore } from "../../store/useGameStore";
 import { IQuestion } from "../../types/question";
-import { QUESTIONS } from "../../data/questions";
 import { GameStackParamList } from "../../navigation/types";
 import { LinearGradient } from "expo-linear-gradient";
 import AudioManager from "../../utils/audioManager";
 import { useHeroesStore } from "../../store/useHeroesStore";
+import { usePreventBack } from "../../hooks/usePreventBack";
+import { useTranslation } from "react-i18next";
+import { formatQuestionWithName } from "../../utils/formatQuestionText";
 
 type Nav = StackNavigationProp<GameStackParamList, "Question">;
 type R = RouteProp<GameStackParamList, "Question">;
+
+const INPUT_BACKGROUND = {
+  uri: "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/efba9ddd-bff8-436b-8c3e-946f53c01a3b-input.webp",
+};
 
 /* -------------------------------------------------------------------------- */
 /* Avatar Pick Button (LOCAL, GAME-SPECIFIC) */
@@ -159,7 +168,13 @@ const AvatarPickButton = ({
               },
             ]}
           >
-            {avatar && <Image source={avatar} style={styles.avatarImage} />}
+            {avatar && (
+              <AppImage
+                source={avatar}
+                style={styles.avatarImage}
+                contentFit="contain"
+              />
+            )}
           </View>
         </Animated.View>
 
@@ -184,7 +199,9 @@ const AvatarPickButton = ({
 /* -------------------------------------------------------------------------- */
 
 const QuestionScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
+  usePreventBack();
   const { playerIndex } = useRoute<R>().params;
 
   const round = useGameStore((s) => s.round) || 1;
@@ -193,15 +210,26 @@ const QuestionScreen = () => {
   const oddOneId = useGameStore((s) => s.oddOneId);
   const baseQuestionId = useGameStore((s) => s.currentBaseQuestionId);
   const oddQuestionId = useGameStore((s) => s.currentOddQuestionId);
+  const questionNameTarget = useGameStore((s) => s.questionNameTarget);
+  const impostorNameSubstitute = useGameStore((s) => s.impostorNameSubstitute);
+  const gameQuestions = useGameStore((s) => s.gameQuestions);
   const setAnswer = useGameStore((s) => s.setAnswer);
   const plateScale = useRef(new Animated.Value(40)).current;
   const plateOpacity = useRef(new Animated.Value(0)).current;
   const screenShake = useRef(new Animated.Value(0)).current;
+  const numberInputScale = useRef(new Animated.Value(0.8)).current;
+  const numberInputOpacity = useRef(new Animated.Value(0)).current;
 
   const currentPlayer = players[playerIndex];
 
   const [numberAnswer, setNumberAnswer] = useState("");
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const numberInputRef = useRef<any>(null);
+  const [rateSliderValue, setRateSliderValue] = useState(1);
+  const sliderGestureRef = useRef(null);
+  const numberHeroScale = useRef(new Animated.Value(1)).current;
+
+  // no extra rate animations – keep rate UX simple
 
   const playerRows = useMemo<Player[][]>(() => {
     const rows: Player[][] = [];
@@ -212,43 +240,24 @@ const QuestionScreen = () => {
   }, [players]);
 
   const question: IQuestion | null = useMemo(() => {
-    if (!currentPlayer || !baseQuestionId || !oddQuestionId) return null;
+    if (
+      !currentPlayer ||
+      !baseQuestionId ||
+      !oddQuestionId ||
+      !gameQuestions.length
+    )
+      return null;
 
     const isOdd = currentPlayer.id === oddOneId;
     const targetId = isOdd ? oddQuestionId : baseQuestionId;
 
-    return QUESTIONS.find((q) => q.id === targetId) ?? null;
-  }, [currentPlayer, baseQuestionId, oddQuestionId, oddOneId]);
+    return gameQuestions.find((q) => q.id === targetId) ?? null;
+  }, [currentPlayer, baseQuestionId, oddQuestionId, oddOneId, gameQuestions]);
 
-  if (!currentPlayer || !question) return null;
+  const isNumber = question?.type === "number";
+  const isRate = question?.type === "rate";
+  const isPick = question?.type === "pick";
 
-  const isNumber = question.type === "number";
-  const isPick = question.type === "pick";
-
-  const goToNextStep = () => {
-    const isLast = playerIndex >= players.length - 1;
-
-    if (!isLast) {
-      navigation.navigate("PassDeviceGameplay", {
-        playerIndex: playerIndex + 1,
-      });
-    } else {
-      AudioManager.stopBackground();
-      navigation.navigate("Results");
-    }
-  };
-
-  const handleSubmitNumber = () => {
-    if (!numberAnswer.trim()) return;
-    setAnswer(currentPlayer.id, numberAnswer.trim());
-    goToNextStep();
-  };
-
-  const handlePickPlayer = (pickedId: string) => {
-    setSelectedPlayerId(pickedId);
-    setAnswer(currentPlayer.id, pickedId);
-    goToNextStep();
-  };
   React.useEffect(() => {
     Animated.sequence([
       Animated.parallel([
@@ -290,17 +299,109 @@ const QuestionScreen = () => {
     ]).start();
   }, []);
 
+  React.useEffect(() => {
+    if (!isNumber) return;
+
+    numberInputScale.setValue(0.8);
+    numberInputOpacity.setValue(0);
+
+    Animated.parallel([
+      Animated.timing(numberInputScale, {
+        toValue: 1,
+        duration: 420,
+        easing: Easing.out(Easing.back(2.5)),
+        useNativeDriver: true,
+      }),
+      Animated.timing(numberInputOpacity, {
+        toValue: 1,
+        duration: 260,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [isNumber, numberInputOpacity, numberInputScale]);
+
+  if (!currentPlayer || !question) return null;
+
+  const questionDisplayText = formatQuestionWithName(question.text, {
+    isImpostor: currentPlayer.id === oddOneId,
+    substituteName: impostorNameSubstitute,
+    yourLabel: questionNameTarget ?? t("question_name_your"),
+  });
+
+  const goToNextStep = () => {
+    const isLast = playerIndex >= players.length - 1;
+
+    if (!isLast) {
+      navigation.navigate("PassDeviceGameplay", {
+        playerIndex: playerIndex + 1,
+      });
+    } else {
+      navigation.navigate("Results");
+    }
+  };
+
+  const handleSubmitNumber = () => {
+    if (!numberAnswer.trim()) return;
+    setAnswer(currentPlayer.id, numberAnswer.trim());
+    goToNextStep();
+  };
+
+  const handleNumberChange = (text: string) => {
+    const digitsOnly = text.replace(/\D/g, "").slice(0, 4);
+    setNumberAnswer(digitsOnly);
+
+    if (!digitsOnly) return;
+
+    Animated.sequence([
+      Animated.timing(numberInputScale, {
+        toValue: 1.04,
+        duration: 80,
+        useNativeDriver: true,
+      }),
+      Animated.spring(numberInputScale, {
+        toValue: 1,
+        friction: 6,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const handleRateSelect = (value: number) => {
+    setAnswer(currentPlayer.id, String(value));
+    goToNextStep();
+  };
+
+  const handlePickPlayer = (pickedId: string) => {
+    setSelectedPlayerId(pickedId);
+    setAnswer(currentPlayer.id, pickedId);
+    goToNextStep();
+  };
+
+  const getRateImage = ():
+    | import("react-native").ImageSourcePropType
+    | null => {
+    const vanessa = heroes.find(
+      (h) =>
+        h.slug?.toLowerCase().replace(/-/g, "_") === "silent_vanessa" ||
+        h.slug?.toLowerCase().includes("vanessa")
+    );
+    if (!currentPlayer?.characterId) return vanessa?.rateImage ?? null;
+    const hero = heroes.find((h) => h.id === currentPlayer.characterId);
+    return hero?.rateImage ?? vanessa?.rateImage ?? null;
+  };
+
   return (
     <SafeAreaView className="flex-1" edges={["right", "left"]}>
-      <ImageBackground
+      <ImageBackgroundWithLoadGate
         source={backgrounds.bg023}
         style={{ flex: 1 }}
         resizeMode="cover"
       >
         <ScrollView
+          waitFor={isRate ? [sliderGestureRef] : undefined}
           contentContainerStyle={{
             paddingTop: 96,
-            paddingBottom: isNumber ? 32 : 96,
+            paddingBottom: isNumber || isRate ? 32 : 96,
             flexGrow: 1,
             justifyContent: "space-between",
           }}
@@ -346,7 +447,7 @@ const QuestionScreen = () => {
                     className="text-center"
                     textColor="#762a05"
                   >
-                    ROUND {round}
+                    {t("question_round", { round })}
                   </CustomText>
 
                   <View style={styles.nameDivider} />
@@ -356,7 +457,7 @@ const QuestionScreen = () => {
                     className="text-center"
                     textColor="#592410"
                   >
-                    {question.text}
+                    {questionDisplayText}
                   </CustomText>
 
                   <View style={styles.nameDivider} />
@@ -366,7 +467,9 @@ const QuestionScreen = () => {
                     className="text-center"
                     textColor="#762a05"
                   >
-                    Pick who fits best
+                    {isPick && t("question_hint_pick")}
+                    {isRate && t("question_hint_rate")}
+                    {isNumber && t("question_hint_number")}
                   </CustomText>
                 </ImageBackground>
               </Animated.View>
@@ -400,15 +503,113 @@ const QuestionScreen = () => {
               </View>
             )}
 
-            {isNumber && (
-              <View className="px-6 gap-6">
-                <CustomInput
-                  value={numberAnswer}
-                  onChangeText={setNumberAnswer}
-                  keyboardType="numeric"
-                  placeholder="Type your magic number"
+            {isRate && (
+              <View className="px-6" style={{ marginTop: 40 }}>
+                <RatingSlider
+                  value={rateSliderValue}
+                  onValueChange={setRateSliderValue}
+                  gestureRef={sliderGestureRef}
+                  railFrameImage="https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/b179af07-61f2-46ea-812e-79ed27826ed0-border2.webp"
                 />
-                <CustomButton title="Next" onPress={handleSubmitNumber} />
+                <View className="mb-16 px-16">
+                  <CustomButton
+                    title={t("htp_next")}
+                    onPress={() => handleRateSelect(rateSliderValue)}
+                    backgroundImage={backgrounds.bg026}
+                    glow
+                    glowColor="rgba(41,255,25,0.8)"
+                    shadowColor="#005f07"
+                    horizontalPadding={48}
+                    fullWidth
+                  />
+                </View>
+              </View>
+            )}
+
+            {isNumber && !isRate && (
+              <View className="px-0" style={{ marginTop: 40 }}>
+                <Animated.View
+                  style={{
+                    opacity: numberInputOpacity,
+                    transform: [{ scale: numberInputScale }],
+                  }}
+                >
+                  <View style={styles.numberImageWrap}>
+                    <Pressable
+                      style={styles.numberImagePressable}
+                      onPress={() => numberInputRef.current?.focus?.()}
+                      onPressIn={() => {
+                        Animated.spring(numberHeroScale, {
+                          toValue: 1.08,
+                          friction: 4,
+                          useNativeDriver: true,
+                        }).start();
+                      }}
+                      onPressOut={() => {
+                        Animated.spring(numberHeroScale, {
+                          toValue: 1,
+                          friction: 4,
+                          useNativeDriver: true,
+                        }).start();
+                      }}
+                    >
+                      <Animated.View
+                        style={[
+                          styles.numberImageFullWrap,
+                          { transform: [{ scale: numberHeroScale }] },
+                        ]}
+                      >
+                        {(() => {
+                          const rateImg = getRateImage();
+                          return rateImg ? (
+                            <AppImage
+                              source={rateImg}
+                              style={styles.numberImageFull}
+                              contentFit="contain"
+                            />
+                          ) : null;
+                        })()}
+                        <View style={styles.numberImageInputOverlay}>
+                          <CustomInput
+                            ref={numberInputRef}
+                            value={numberAnswer}
+                            onChangeText={handleNumberChange}
+                            keyboardType="numeric"
+                            maxLength={4}
+                            placeholder="Type your number"
+                            placeholderTextColor="rgba(89,36,16,0.5)"
+                            unstyled
+                            inputStyle={styles.numberImageHiddenInput}
+                          />
+                          <View
+                            style={styles.numberImageValueDisplay}
+                            pointerEvents="none"
+                          >
+                            <CustomText
+                              variant="h4-headline"
+                              textColor="#592410"
+                            >
+                              {numberAnswer || "?"}
+                            </CustomText>
+                          </View>
+                        </View>
+                      </Animated.View>
+                    </Pressable>
+                  </View>
+                  <View style={styles.numberButtonWrap}>
+                    <CustomButton
+                      title={t("htp_next")}
+                      onPress={handleSubmitNumber}
+                      backgroundImage={backgrounds.bg026}
+                      glow
+                      glowColor="rgba(41,255,25,0.8)"
+                      shadowColor="#005f07"
+                      horizontalPadding={48}
+                      fullWidth
+                      buttonClassName="-mt-12"
+                    />
+                  </View>
+                </Animated.View>
               </View>
             )}
 
@@ -420,7 +621,7 @@ const QuestionScreen = () => {
           )} */}
           </Animated.View>
         </ScrollView>
-      </ImageBackground>
+      </ImageBackgroundWithLoadGate>
     </SafeAreaView>
   );
 };
@@ -556,4 +757,95 @@ const styles = StyleSheet.create({
   },
   questionText: {},
   questionSubText: {},
+  numberInputCard: {
+    // backgroundColor: "rgba(255,247,236,0.95)",
+    // borderRadius: 18,
+    // borderWidth: 1,
+    // borderColor: "rgba(89,36,16,0.3)",
+    // padding: 20,
+    // shadowColor: "#592410",
+    // shadowOffset: { width: 0, height: 4 },
+    // shadowOpacity: 0.2,
+    // shadowRadius: 8,
+    // elevation: 6,
+  },
+  numberInputWrapper: {
+    position: "relative",
+    minHeight: 96,
+    overflow: "hidden",
+    borderRadius: 18,
+    marginBottom: 16,
+  },
+  numberInputImageContainer: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 18,
+  },
+  numberInputImage: {
+    // borderRadius: 18,
+  },
+  numberInputOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    justifyContent: "center",
+  },
+  numberInputField: {
+    fontSize: 24,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    backgroundColor: "transparent",
+    color: "#592410",
+    width: "100%",
+  },
+  numberImageWrap: {
+    width: "100%",
+    alignItems: "center",
+  },
+  numberImagePressable: {
+    position: "relative",
+    width: "75%",
+    alignSelf: "center",
+    aspectRatio: 3 / 4,
+    minHeight: 240,
+  },
+  numberImageFullWrap: {
+    width: "100%",
+    height: "100%",
+    position: "relative",
+  },
+  numberImageFull: {
+    width: "100%",
+    height: "100%",
+  },
+  numberImageInputOverlay: {
+    position: "absolute",
+    top: 4,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  numberImageHiddenInput: {
+    fontSize: 24,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    backgroundColor: "transparent",
+    color: "#592410",
+    minWidth: 80,
+    textAlign: "center",
+    opacity: 0.01,
+  },
+  numberImageValueDisplay: {
+    position: "absolute",
+    top: 56,
+    left: 32,
+    right: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  numberButtonWrap: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    alignItems: "center",
+  },
 });

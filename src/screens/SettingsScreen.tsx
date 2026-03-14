@@ -3,10 +3,10 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
-  ImageBackground,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import ImageBackgroundWithLoadGate from "../components/ImageBackgroundWithLoadGate";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Entypo } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -18,11 +18,13 @@ import CustomText from "../components/common/CustomText";
 import CustomInput from "../components/common/CustomInput";
 import CustomButton from "../components/common/CustomButton";
 import { backgrounds } from "../../assets/backgrounds";
+import { useTranslation } from "react-i18next";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Settings">;
 
 export default function SettingsScreen() {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
   const { isGuest, name, email } = useAuthStore((s) => s.user);
   const updateName = useAuthStore((s) => s.updateName);
   const { settings, updateSettings } = useAuthStore();
@@ -67,7 +69,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView className="flex-1" edges={["right", "left"]}>
-      <ImageBackground
+      <ImageBackgroundWithLoadGate
         source={backgrounds.bg023}
         style={{ flex: 1, width: "100%", height: "100%" }}
         resizeMode="cover"
@@ -98,10 +100,10 @@ export default function SettingsScreen() {
 
             <View className="items-center w-full justify-center px-4 mt-6 mb-2">
               <CustomText variant="h3-headline" className="text-center w-full" shadow>
-                Game
+                {t("settings_title_1")}
               </CustomText>
               <CustomText variant="h3" className="-rotate-3 text-center w-full" shadow>
-                Settings
+                {t("settings_title_2")}
               </CustomText>
             </View>
 
@@ -122,7 +124,7 @@ export default function SettingsScreen() {
                     />
                     <View className="mt-6">
                       <CustomButton
-                        title="Change name"
+                        title={t("change_name")}
                         btnSize="sm"
                         fullWidth
                         buttonClassName="w-full m-auto"
@@ -139,8 +141,8 @@ export default function SettingsScreen() {
                   <CustomButton
                     title={
                       settings.notificationsEnabled
-                        ? "Notifications: ON"
-                        : "Notifications: OFF"
+                        ? t("notifications_on")
+                        : t("notifications_off")
                     }
                     btnSize="sm"
                     fullWidth
@@ -152,7 +154,7 @@ export default function SettingsScreen() {
 
                 <View className="w-[80%]">
                   <CustomButton
-                    title={musicOn ? "Music: ON" : "Music: OFF"}
+                    title={musicOn ? t("music_on") : t("music_off")}
                     btnSize="sm"
                     fullWidth
                     buttonClassName="w-[80%] m-auto"
@@ -163,7 +165,7 @@ export default function SettingsScreen() {
 
                 <View className="w-[80%]">
                   <CustomButton
-                    title={sfxOn ? "SFX: ON" : "SFX: OFF"}
+                    title={sfxOn ? t("sfx_on") : t("sfx_off")}
                     btnSize="sm"
                     fullWidth
                     buttonClassName="w-[80%] m-auto"
@@ -175,7 +177,7 @@ export default function SettingsScreen() {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
-      </ImageBackground>
+      </ImageBackgroundWithLoadGate>
     </SafeAreaView>
   );
 }

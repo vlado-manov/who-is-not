@@ -1,17 +1,34 @@
-// heroPicker.constants.ts
+// heroPicker.constants.ts — референция на всяка стойност
 import { Dimensions } from "react-native";
 
 const { height: H, width: W } = Dimensions.get("window");
 
+// —— Stage (визуал) ——
+/** Височина на контейнера за героя: 60% от екрана, макс. 520px. Ползва се в createHeroPickerStyles() за stage/hero слой. */
 export const HERO_STAGE_HEIGHT = Math.min(Math.round(H * 0.6), 520);
-export const CAROUSEL_OUT_DUR = 420;
-export const CAROUSEL_IN_DUR = 420;
-export const CAROUSEL_DIST = 70;
+
+// —— Carousel (превключване герои) ——
+/** Продължителност (ms) на фазата „излизане”: slide out + fade out на текущия герой. */
+export const CAROUSEL_OUT_DUR = 280;
+/** Продължителност (ms) на фазата „влизане”: slide in + fade in на новия герой. */
+export const CAROUSEL_IN_DUR = 360;
+/** Разстояние (px) на slide при превключване: колко навън отива излизащият герой (и откъде идва входящият). Повече = по-навън преди спиране. */
+export const CAROUSEL_DIST = Math.round(W * 0.9);
+/** Дял (0–1) от CAROUSEL_OUT_DUR, през който opacity остава 1; след това започва fade до 0. 1 = само slide, без fade out. */
+export const CAROUSEL_OPACITY_FADE_START_RATIO = 1;
+/** По-голямо разстояние за slide (1.2× ширина) — за други варианти/overlay анимации, не в текущия HeroPickerScreen. */
 export const SLIDE_DISTANCE = W * 1.2;
 
+// —— Quote bubble (цитат след избор на герой) ——
+/** Продължителност (ms) на появяването на балончето с цитат (translateY + opacity). */
 export const QUOTE_ENTER_DUR = 520;
+/** Интервал (ms) между поява на всяка буква при „печатане” на цитата. */
 export const TYPE_INTERVAL_MS = 28;
+/** Време (ms) да се държи финалния цитат преди да започне излизането (fade out + translateY нагоре). */
 export const READ_HOLD_MS = 1000;
+/** Продължителност (ms) на излизането на балончето (fade out + translateY). */
 export const QUOTE_EXIT_DUR = 560;
 
+// —— Swipe (жест за превключване) ——
+/** Минимално преместване (px) по хоризонтала за да се счита свайп за „напред/назад”. В HeroPickerScreen може да се ползва локално 60. */
 export const SWIPE_THRESHOLD = 40;

@@ -1,10 +1,10 @@
 import { createStackNavigator } from "@react-navigation/stack";
 import { OnboardingStackParamList } from "./types";
 import WelcomeScreen from "../screens/WelcomeScreen";
-import MenuScreen from "../screens/MenuScreen";
 import MenuPlayScreen from "../screens/MenuPlayScreen";
 import StoreScreen from "../screens/StoreScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import ReferralScreen from "../screens/ReferralScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import HowToPlayScreen from "../screens/HowToPlayScreen";
 import { Transitions } from "./transitions";
@@ -16,8 +16,11 @@ export default function OnboardingStackNavigator() {
       screenOptions={{ headerShown: false }}
       initialRouteName="Welcome"
     >
-      <Stack.Screen name="Welcome" component={WelcomeScreen} />
-      <Stack.Screen name="Menu" component={MenuScreen} />
+      <Stack.Screen
+        name="Welcome"
+        component={WelcomeScreen}
+        initialParams={{ skipCurtain: true }}
+      />
       <Stack.Screen
         name="MenuPlay"
         component={MenuPlayScreen}
@@ -32,9 +35,10 @@ export default function OnboardingStackNavigator() {
           cardStyleInterpolator: Transitions.fade,
         }}
       />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen
-        name="Profile"
-        component={ProfileScreen}
+        name="Referral"
+        component={ReferralScreen}
         options={{
           cardStyleInterpolator: Transitions.fade,
         }}

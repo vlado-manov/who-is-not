@@ -1,6 +1,8 @@
 import { backgrounds } from "../../assets/backgrounds";
-import { store_images } from "../../assets/images";
 import { IPack } from "../types/pack";
+
+const EMPTY_IMAGE_URI =
+  "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
 
 export const PACKS: IPack[] = [
   {
@@ -11,8 +13,8 @@ export const PACKS: IPack[] = [
     summary: "+40 NEW festival fun questions",
     description:
       "+40 NEW festival related fun questions. Elevate your festival experience to another level",
-    image: store_images.spookyPack,
-    background: backgrounds.bg002,
+    image: EMPTY_IMAGE_URI,
+    background: backgrounds.bg023,
     questionsNum: 40,
     price: 3.99,
     currency: "USD",
@@ -28,8 +30,8 @@ export const PACKS: IPack[] = [
     summary: "+40 NEW spooky fun questions",
     description:
       "+40 NEW halloween related fun questions. Elevate your halloween experience to another level",
-    image: store_images.spookyPack,
-    background: backgrounds.bg017,
+    image: EMPTY_IMAGE_URI,
+    background: backgrounds.bg023,
     questionsNum: 40,
     price: 3.99,
     currency: "USD",
@@ -45,8 +47,8 @@ export const PACKS: IPack[] = [
     summary: "+40 NEW Christmas fun questions",
     description:
       "+40 NEW christmas related fun questions. Elevate your christmas experience to another level",
-    image: store_images.christmasPack,
-    background: backgrounds.bg012,
+    image: EMPTY_IMAGE_URI,
+    background: backgrounds.bg023,
     questionsNum: 40,
     price: 3.99,
     currency: "USD",

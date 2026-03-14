@@ -82,6 +82,7 @@ module.exports = {
         "messiri-medium": ["ElMessiri-Medium"],
         oi: ["Oi-Regular"],
         opensans: ["OpenSans-Regular"],
+        "opensans-light": ["OpenSans-Light"],
         "opensans-bold": ["OpenSans-Bold"],
         "opensans-extrabold": ["OpenSans-ExtraBold"],
         "opensans-semibold": ["OpenSans-SemiBold"],

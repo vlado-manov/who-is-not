@@ -6,11 +6,11 @@ import {
   ImageBackground,
   NativeSyntheticEvent,
   NativeScrollEvent,
-  Image,
 } from "react-native";
+import AppImage from "../../components/AppImage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StackNavigationProp } from "@react-navigation/stack";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, CommonActions } from "@react-navigation/native";
 
 import { GameStackParamList } from "../../navigation/types";
 import { useGameStore } from "../../store/useGameStore";
@@ -20,6 +20,8 @@ import { backgrounds } from "../../../assets/backgrounds";
 import { useAuthStore } from "../../store/useUserStore";
 import { useHeroesStore } from "../../store/useHeroesStore";
 import { useTrackGameFinishedMutation } from "../../api/hooks/useAnalyticsMutations";
+import { useTranslation } from "react-i18next";
+import { usePreventBack } from "../../hooks/usePreventBack";
 
 type Nav = StackNavigationProp<GameStackParamList, "Standings">;
 const COLOR_CLASSES = [
@@ -37,12 +39,14 @@ const COLOR_CLASSES = [
 
 const StandingsScreen = () => {
   const navigation = useNavigation<Nav>();
+  usePreventBack();
+  const { t } = useTranslation();
 
   const players = useGameStore((s) => s.players);
   const heroes = useHeroesStore((s) => s.heroes);
   const gameId = useGameStore((s) => s.gameId);
   const mode = useGameStore((s) => s.mode);
-  const scores = useGameStore((s) => s.scores);
+  const lives = useGameStore((s) => s.lives);
   const round = useGameStore((s) => s.round);
   const goToNextRound = useGameStore((s) => s.goToNextRound);
   const resetGame = useGameStore((s) => s.reset);
@@ -54,18 +58,17 @@ const StandingsScreen = () => {
   const ranking = useMemo(() => {
     const list = players.map((p) => ({
       ...p,
-      score: scores[p.id] ?? 0,
+      lives: lives[p.id] ?? 0,
       rand: Math.random(),
     }));
 
     list.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      // равни точки -> random order, за да има винаги „истински“ първи
+      if (b.lives !== a.lives) return b.lives - a.lives;
       return a.rand - b.rand;
     });
 
     return list;
-  }, [players, scores]);
+  }, [players, lives]);
 
   // топ играч + standingImage/Background на героя му (ако има)
   const topPlayer = ranking[0];
@@ -75,11 +78,17 @@ const StandingsScreen = () => {
   const topStandingImage = (topCharacter as any)?.standingImage;
   const topStandingBackground =
     // (topCharacter as any)?.standingBackground ||
-    backgrounds.bg009;
+    backgrounds.bg023;
 
   const handleStartNextRound = () => {
     goToNextRound();
-    navigation.navigate("Round");
+    // Reset stack to prevent accumulation – crash on round 4+ was likely from too many screens
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: "Round" }],
+      }),
+    );
   };
 
   const handleEndGame = () => {
@@ -90,13 +99,28 @@ const StandingsScreen = () => {
           onError: (e) => {
             console.warn("track GAME_FINISHED failed", e);
           },
-        }
+        },
       );
     }
 
     resetGame();
-    // смени "Home" ако root stack ти се казва по друг начин
-    navigation.getParent()?.navigate("Home");
+    const rootNav = navigation.getParent();
+    if (rootNav) {
+      rootNav.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [
+            {
+              name: "Onboarding",
+              state: {
+                routes: [{ name: "Welcome", params: { skipCurtain: true } }],
+                index: 0,
+              },
+            },
+          ],
+        }),
+      );
+    }
   };
 
   const displayRound = round; // брой завършени рундове
@@ -114,7 +138,6 @@ const StandingsScreen = () => {
   // ако нямаме – показваме всички в списъка
   const listPlayers =
     topStandingImage && topPlayer ? ranking.slice(1) : ranking;
-  const formatScore = (score: number) => Math.round(score * 2) / 2;
 
   return (
     <SafeAreaView className="flex-1 bg-primary-700" edges={["right", "left"]}>
@@ -189,9 +212,10 @@ const StandingsScreen = () => {
                     <View className="flex-row gap-4 items-center">
                       <CustomText variant="h4">{place}</CustomText>
                       {character?.profileImage && (
-                        <Image
+                        <AppImage
                           source={character.profileImage}
                           style={{ width: 72, height: 72 }}
+                          contentFit="contain"
                         />
                       )}
                       <View>
@@ -200,12 +224,10 @@ const StandingsScreen = () => {
                         </CustomText>
                       </View>
                     </View>
-                    <View className="flex-row justify-between items-center">
-                      <View className="flex-row items-center gap-2">
-                        <CustomText variant="h4" textColor="white">
-                          {formatScore(p.score)}{" "}
-                        </CustomText>
-                      </View>
+                      <View className="flex-row justify-between items-center">
+                      <CustomText variant="h4" textColor="white">
+                        ❤️ {p.lives}
+                      </CustomText>
                     </View>
                   </View>
                 );
@@ -214,7 +236,7 @@ const StandingsScreen = () => {
             {/* End game + Start next round (когато сме стигнали дъното) */}
             <View className="mt-20 px-4">
               <CustomButton
-                title="End game"
+                title={t("end_game")}
                 fullWidth
                 appearance="danger"
                 onPress={handleEndGame}
@@ -225,7 +247,7 @@ const StandingsScreen = () => {
           {/* Фиксиран бутон – показва се само когато НЕ сме в дъното */}
           <View className="absolute bottom-8 left-0 right-0 px-8">
             <CustomButton
-              title="Start next round"
+              title={t("start_next_round")}
               fullWidth
               onPress={handleStartNextRound}
             />

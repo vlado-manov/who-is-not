@@ -1,5 +1,5 @@
 // src/screens/StoreScreen.tsx
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   ImageBackground,
@@ -10,6 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
+import { useQuery } from "@tanstack/react-query";
 
 import { backgrounds } from "../../assets/backgrounds";
 import CustomText from "../components/common/CustomText";
@@ -26,33 +27,134 @@ import { PACKS } from "../data/packs";
 import { Entypo } from "@expo/vector-icons";
 import AudioManager from "../utils/audioManager";
 import { useHeroesStore } from "../store/useHeroesStore";
+import { fetchCatalogCharacterProducts } from "../api/catalog";
+import { queryKeys } from "../api/queryKeys";
+import { useAuthStore } from "../store/useUserStore";
+import { IBundle } from "../types/bundle";
+import { IPack } from "../types/pack";
+import { trackItemPurchased } from "../api/analytics";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Store">;
+
+/** Hero with optional productId for purchase; price from catalog when available (catalog price is cents). */
+export type StoreHeroItem = ICharacter & {
+  productId?: string;
+  currency?: string;
+};
 
 const StoreScreen = () => {
   const navigation = useNavigation<Nav>();
   const { t } = useTranslation();
+  const userId = useAuthStore((s) => s.user.id);
 
   const [loading, setLoading] = useState(false);
   const [successHero, setSuccessHero] = useState<ICharacter | null>(null);
 
   const heroes = useHeroesStore((s) => s.heroes);
-  const paidHeroes = heroes.filter((h) => !h.free && !h.unlocked);
+  const { data: catalogProducts = [] } = useQuery({
+    queryKey: queryKeys.catalogCharacterProducts,
+    queryFn: fetchCatalogCharacterProducts,
+    staleTime: 5 * 60_000,
+  });
 
-  const handleBuy = async (hero: ICharacter) => {
+  const paidHeroes = useMemo((): StoreHeroItem[] => {
+    const byCharId = new Map(
+      catalogProducts
+        .filter((p) => p.itemRefId)
+        .map((p) => [
+          p.itemRefId!,
+          {
+            productId: p.productId,
+            price: p.price / 100,
+            discountPrice: p.discountPrice != null ? p.discountPrice / 100 : 0,
+            currency: p.currency,
+          },
+        ]),
+    );
+    return heroes
+      .filter((h) => !h.free && !h.unlocked)
+      .map((h) => {
+        const cat = byCharId.get(h.id);
+        return {
+          ...h,
+          productId: cat?.productId,
+          ...(cat && {
+            price: cat.price,
+            discountPrice: cat.discountPrice,
+          }),
+        };
+      });
+  }, [heroes, catalogProducts]);
+
+  const handleBuy = async (hero: StoreHeroItem) => {
     try {
       setLoading(true);
       await new Promise<void>((resolve) => setTimeout(() => resolve(), 1200));
       setSuccessHero(hero);
+      void trackItemPurchased({
+        playerId: userId,
+        userId,
+        itemType: "character",
+        itemId: hero.productId ?? hero.id,
+        price: hero.discountPrice > 0 ? hero.discountPrice : hero.price,
+        currency: hero.currency ?? "USD",
+        quantity: 1,
+      }).catch((e) => {
+        console.warn("track ITEM_PURCHASED(character) failed", e);
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  const handlePremiumBuy = () => {
+    void trackItemPurchased({
+      playerId: userId,
+      userId,
+      itemType: "subscription",
+      itemId: "premium_monthly",
+      price: 5.99,
+      currency: "USD",
+      quantity: 1,
+      metadata: { source: "premium_component" },
+    }).catch((e) => {
+      console.warn("track ITEM_PURCHASED(premium) failed", e);
+    });
+  };
+
+  const handleBundleBuy = (bundle: IBundle) => {
+    void trackItemPurchased({
+      playerId: userId,
+      userId,
+      itemType: "bundle",
+      itemId: bundle.productId ?? bundle.id,
+      price: bundle.discountPrice > 0 ? bundle.discountPrice : bundle.price,
+      currency: bundle.currency,
+      quantity: 1,
+    }).catch((e) => {
+      console.warn("track ITEM_PURCHASED(bundle) failed", e);
+    });
+  };
+
+  const handlePackBuy = (pack: IPack) => {
+    void trackItemPurchased({
+      playerId: userId,
+      userId,
+      itemType: "pack",
+      itemId: pack.productId ?? pack.id,
+      price: pack.price,
+      currency: pack.currency,
+      quantity: 1,
+      metadata: { questionsNum: pack.questionsNum },
+    }).catch((e) => {
+      console.warn("track ITEM_PURCHASED(pack) failed", e);
+    });
+  };
+
   return (
     <SafeAreaView className="flex-1" edges={["right", "left"]}>
       <ImageBackground
-        source={backgrounds.bg001}
+        source={backgrounds.bg023}
         style={{ flex: 1, width: "100%", height: "100%", position: "relative" }}
         resizeMode="cover"
       >
@@ -78,7 +180,7 @@ const StoreScreen = () => {
             </CustomText>
           </View>
 
-          <PremiumComponent />
+          <PremiumComponent onSelect={handlePremiumBuy} />
 
           <HeroSliderComponent
             data={paidHeroes}
@@ -88,14 +190,14 @@ const StoreScreen = () => {
             onSelect={handleBuy}
           />
           <BundleSliderComponent
-            title="Special offers"
+            title={t("special_offers")}
             data={BUNDLES}
-            onSelect={() => console.log("da")}
+            onSelect={handleBundleBuy}
           />
           <PackSliderComponent
-            title="Step up your game"
+            title={t("step_up_game")}
             data={PACKS}
-            onSelect={() => console.log("opa")}
+            onSelect={handlePackBuy}
           />
         </ScrollView>
 

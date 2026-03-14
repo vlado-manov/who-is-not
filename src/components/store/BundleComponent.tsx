@@ -1,11 +1,11 @@
 import {
   View,
   Text,
-  Image,
   ImageSourcePropType,
   ImageBackground,
   useWindowDimensions,
 } from "react-native";
+import AppImage from "../AppImage";
 import React from "react";
 import { IBundle } from "../../types/bundle";
 import CustomText from "../common/CustomText";
@@ -13,8 +13,9 @@ import CustomButton from "../common/CustomButton";
 
 type Props = {
   item: IBundle;
+  onSelect?: (item: IBundle) => void;
 };
-const BundleComponent = ({ item }: Props) => {
+const BundleComponent = ({ item, onSelect }: Props) => {
   const width = useWindowDimensions().width - 56;
   let a = item.isFeatured ? 1 : 0.75;
   const cardWidth = width * a;
@@ -38,10 +39,11 @@ const BundleComponent = ({ item }: Props) => {
               {item.summary}
             </CustomText>
           </View>
-          <Image
+          <AppImage
             source={toSrc(item.image)}
-            resizeMode="contain"
+            contentFit="contain"
             className="w-[220px] h-[250px] absolute bottom-0 right-0 z-1"
+            style={{ width: 220, height: 250 }}
           />
           {item.isBestOffer && (
             <View className="absolute top-8 -right-12 bg-primary-900 rotate-45 w-[200px] text-right py-2">
@@ -56,7 +58,10 @@ const BundleComponent = ({ item }: Props) => {
         </ImageBackground>
       </View>
       <View className="absolute bottom-0 left-1/2 -translate-x-1/2">
-        <CustomButton title={`$ ${item.discountPrice}`} textClassName="px-12" />
+        <CustomButton
+          title={`$ ${item.discountPrice}`}
+          onPress={() => onSelect?.(item)}
+        />
         {item.priceNote && (
           <View className="bg-primary-400 py-2 px-4 rounded-full absolute -top-1/2 translate-y-6 z-20 left-1/2 -translate-x-1/2">
             <CustomText variant="p-small">{item.priceNote}</CustomText>

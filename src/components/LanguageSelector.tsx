@@ -1,9 +1,17 @@
 import React from "react";
-import { Pressable, Image, View, Platform } from "react-native";
+import { Pressable, View, Platform } from "react-native";
 import { useTranslation } from "react-i18next";
+import {
+  saveLanguagePreference,
+  type SupportedLanguage,
+} from "../i18n";
+import { trackPlayerSessionStarted } from "../api/analytics";
+import { useAuthStore } from "../store/useUserStore";
+import AppImage from "./AppImage";
 
-type Lang = "bg" | "en" | "fr" | "es";
+type Lang = SupportedLanguage;
 
+/** Flags kept local - add to CDN and use cdn("images/flags/en") when ready */
 const FLAGS: Record<Lang, any> = {
   en: require("../../assets/images/flags/en.png"),
   fr: require("../../assets/images/flags/fr.png"),
@@ -13,10 +21,21 @@ const FLAGS: Record<Lang, any> = {
 
 export default function LanguageSelector() {
   const { i18n } = useTranslation();
+  const userId = useAuthStore((s) => s.user.id);
   const current = (i18n.language as Lang) ?? "en";
 
-  const setLang = (lng: Lang) => {
-    if (lng !== current) i18n.changeLanguage(lng);
+  const setLang = async (lng: Lang) => {
+    if (lng === current) return;
+    await saveLanguagePreference(lng);
+    await i18n.changeLanguage(lng);
+    void trackPlayerSessionStarted({
+      userId,
+      source: "WELCOME",
+      step: "language_selected",
+      language: lng,
+    }).catch((e) => {
+      console.warn("track PLAYER_SESSION_STARTED(language_selected) failed", e);
+    });
   };
 
   return (
@@ -61,12 +80,12 @@ export default function LanguageSelector() {
                   },
               ]}
             >
-              <Image
+              <AppImage
                 source={img}
+                contentFit="contain"
                 style={{
                   width: 32,
                   height: 20,
-                  resizeMode: "contain",
                   borderRadius: 4,
                 }}
               />

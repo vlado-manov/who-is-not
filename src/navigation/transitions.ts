@@ -59,6 +59,18 @@ export const forFade: StackCardStyleInterpolator = ({ current }) => ({
   cardStyle: { opacity: current.progress },
 });
 
+/** Чист cross-fade без scale – за плавни транзиции без прескачане */
+export const forCrossFade: StackCardStyleInterpolator = ({ current, next }) => {
+  const opacityIn = current.progress;
+  const opacityOut = next
+    ? next.progress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] })
+    : 1;
+  return {
+    cardStyle: { opacity: opacityIn, backgroundColor: "transparent" },
+    containerStyle: { opacity: opacityOut as any },
+  };
+};
+
 export const forFadeThrough: StackCardStyleInterpolator = ({
   current,
   next,
@@ -184,6 +196,7 @@ export const Transitions = {
   slideFromRight: forSlideFromRight,
   slideFromLeft: forSlideFromLeft,
   fade: forFade,
+  crossFade: forCrossFade,
   fadeThrough: forFadeThrough,
   scaleFromCenter: forScaleFromCenter,
   depth: forDepth,

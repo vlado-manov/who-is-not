@@ -7,17 +7,19 @@ import VoteNowScreen from "../components/VoteNowScreen";
 import VoteScreen from "../screens/Game/VoteScreen";
 import VoteResultsScreen from "../screens/Game/VoteResultsScreen";
 import RevealScreen from "../screens/Game/RevealScreen";
+import LivesRevealScreen from "../screens/Game/LivesRevealScreen";
 import PassDeviceVoteScreen from "../components/PassDeviceVoteScreen";
 import RoundScreen from "../components/RoundScreen";
 import PreRevealScreen from "../screens/Game/PreRevealScreen";
 import StandingsScreen from "../screens/Game/StandingsScreen";
+import WinnerScreen from "../screens/Game/WinnerScreen";
 
 const Stack = createStackNavigator<GameStackParamList>();
 
 export default function GameStackNavigator() {
   return (
     <Stack.Navigator
-      screenOptions={{ headerShown: false }}
+      screenOptions={{ headerShown: false, gestureEnabled: false }}
       initialRouteName="Question"
     >
       <Stack.Screen name="Question" component={QuestionScreen} />
@@ -33,6 +35,8 @@ export default function GameStackNavigator() {
       <Stack.Screen name="VoteResults" component={VoteResultsScreen} />
       <Stack.Screen name="PreReveal" component={PreRevealScreen} />
       <Stack.Screen name="Reveal" component={RevealScreen} />
+      <Stack.Screen name="LivesReveal" component={LivesRevealScreen} />
+      <Stack.Screen name="Winner" component={WinnerScreen} />
       <Stack.Screen name="Standings" component={StandingsScreen} />
     </Stack.Navigator>
   );

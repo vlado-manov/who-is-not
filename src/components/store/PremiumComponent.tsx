@@ -3,12 +3,18 @@ import React from "react";
 import CustomText from "../common/CustomText";
 import CustomButton from "../common/CustomButton";
 import { backgrounds } from "../../../assets/backgrounds";
+import { useTranslation } from "react-i18next";
 
-const PremiumComponent = () => {
+type PremiumComponentProps = {
+  onSelect?: () => void;
+};
+
+const PremiumComponent = ({ onSelect }: PremiumComponentProps) => {
+  const { t } = useTranslation();
   return (
     <View className="mt-16 mx-8 relative">
       <ImageBackground
-        source={backgrounds.bg009}
+        source={backgrounds.bg023}
         resizeMode="cover"
         style={{ borderRadius: 40, overflow: "hidden" }}
         className="pt-12 pb-[128px]"
@@ -20,14 +26,12 @@ const PremiumComponent = () => {
             className="text-center items-center justify-center flex"
             shadow
           >
-            PREMIUM
+            {t("premium_title")}
           </CustomText>
         </View>
-        <CustomText className="text-center my-4">
-          No more ADS + Add your own questions
-        </CustomText>
+        <CustomText className="text-center my-4">{t("premium_sub")}</CustomText>
         <View className="items-center justify-center flex-row gap-2">
-          <CustomText>only</CustomText>
+          <CustomText>{t("only")}</CustomText>
           <CustomText variant="h3" className="text-center" shadow>
             <CustomText
               variant="h2-headline"
@@ -41,8 +45,9 @@ const PremiumComponent = () => {
         </View>
       </ImageBackground>
       <CustomButton
-        title="Go premium"
+        title={t("go_premium")}
         buttonClassName="mt-8 w-[106%] -ml-[3%] -rotate-1 absolute bottom-8"
+        onPress={onSelect}
       />
     </View>
   );

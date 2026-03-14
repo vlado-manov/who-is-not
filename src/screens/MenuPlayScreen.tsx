@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { View, ImageBackground, Pressable, Animated } from "react-native";
+import { View, Pressable, Animated } from "react-native";
+import ImageBackgroundWithLoadGate from "../components/ImageBackgroundWithLoadGate";
 import {
   CompositeNavigationProp,
   useNavigation,
@@ -17,7 +18,11 @@ import { useAuthStore } from "../store/useUserStore";
 import { game_images } from "../../assets/images";
 import { useMemo, useRef } from "react";
 import AudioManager from "../utils/audioManager";
-import { Image } from "react-native";
+import { Image } from "expo-image";
+import AppImage from "../components/AppImage";
+import { trackPlayerSessionStarted } from "../api/analytics";
+
+const AnimatedImage = Animated.createAnimatedComponent(Image);
 
 type OnbNav = StackNavigationProp<OnboardingStackParamList, "MenuPlay">;
 type RootNav = StackNavigationProp<RootStackParamList>;
@@ -61,7 +66,7 @@ const useIconPressAnim = () => {
 const MenuPlayScreen = () => {
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<Nav>();
-  const { settings, updateSettings } = useAuthStore();
+  const { settings, updateSettings, user } = useAuthStore();
   const settingsAnim = useIconPressAnim();
   const profileAnim = useIconPressAnim();
   const logoSource = useMemo(() => {
@@ -86,7 +91,7 @@ const MenuPlayScreen = () => {
   };
   return (
     <SafeAreaView className="flex-1" edges={["right", "left"]}>
-      <ImageBackground
+      <ImageBackgroundWithLoadGate
         source={backgrounds.bg023}
         style={{ flex: 1, width: "100%", height: "100%" }}
         resizeMode="cover"
@@ -102,12 +107,13 @@ const MenuPlayScreen = () => {
               navigation.navigate("Settings");
             }}
           >
-            <Animated.Image
+            <AnimatedImage
               source={game_images.settingsIcon}
               style={[
-                { width: 56, height: 56, resizeMode: "contain" },
+                { width: 56, height: 56 },
                 settingsAnim.style,
               ]}
+              contentFit="contain"
             />
           </Pressable>
         </View>
@@ -122,22 +128,23 @@ const MenuPlayScreen = () => {
               navigation.navigate("Profile");
             }}
           >
-            <Animated.Image
+            <AnimatedImage
               source={game_images.userIcon}
               style={[
-                { width: 56, height: 56, resizeMode: "contain" },
+                { width: 56, height: 56 },
                 profileAnim.style,
               ]}
+              contentFit="contain"
             />
           </Pressable>
         </View>
         <View className="flex-1 items-center w-full px-4">
           <View className="flex-1 items-center w-full justify-between px-4 gap-3 relative pt-40">
             <Pressable className="" onPress={toggleSound}>
-              <Image
+              <AppImage
                 source={logoSource}
                 style={{ width: 360, height: 280 }}
-                resizeMode="contain"
+                contentFit="contain"
               />
             </Pressable>
           </View>
@@ -147,30 +154,65 @@ const MenuPlayScreen = () => {
               title={t("menuPlay_device_btn")}
               fullWidth
               buttonClassName="-rotate-1 mt-2"
-              onPress={() => navigation.navigate("CreateGame")}
-              label="Play from one device"
+              onPress={() => {
+                void trackPlayerSessionStarted({
+                  userId: user.id,
+                  source: "MENU_PLAY",
+                  step: "local_create_game_tapped",
+                  language: i18n.language,
+                }).catch((e) => {
+                  console.warn(
+                    "track PLAYER_SESSION_STARTED(local_create_game_tapped) failed",
+                    e
+                  );
+                });
+                navigation.navigate("CreateGame");
+              }}
+              label={t("play_one_device")}
               backgroundImage={backgrounds.bg026}
               shadowColor="#005f07"
             />
             <CustomButton
               title={t("menuPlay_host_btn")}
               fullWidth
-              label="Invite your friends"
+              label={t("invite_friends_label")}
               buttonClassName="-rotate-1 mt-2"
               backgroundImage={backgrounds.bg022}
               shadowColor="#410047"
+              onPress={() => {
+                void trackPlayerSessionStarted({
+                  userId: user.id,
+                  source: "MENU_PLAY",
+                  step: "host_tapped",
+                  language: i18n.language,
+                  mode: "ONLINE",
+                }).catch((e) => {
+                  console.warn("track PLAYER_SESSION_STARTED(host_tapped) failed", e);
+                });
+              }}
             />
             <CustomButton
               title={t("menuPlay_join_btn")}
               fullWidth
               buttonClassName="-rotate-1 mt-2"
               backgroundImage={backgrounds.bg015}
-              label="Scan QR or enter code"
+              label={t("scan_qr_code")}
               shadowColor="#540d0d"
+              onPress={() => {
+                void trackPlayerSessionStarted({
+                  userId: user.id,
+                  source: "MENU_PLAY",
+                  step: "join_tapped",
+                  language: i18n.language,
+                  mode: "ONLINE",
+                }).catch((e) => {
+                  console.warn("track PLAYER_SESSION_STARTED(join_tapped) failed", e);
+                });
+              }}
             />
           </View>
         </View>
-      </ImageBackground>
+      </ImageBackgroundWithLoadGate>
     </SafeAreaView>
   );
 };

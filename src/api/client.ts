@@ -75,6 +75,11 @@ function getBaseUrl() {
 
 const API_BASE_URL = getBaseUrl();
 
+/** Base URL for API. Use when resolving relative media URLs (e.g. /storage/...) */
+export function getApiBaseUrl(): string {
+  return API_BASE_URL;
+}
+
 function makeTraceId() {
   return `m_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -241,10 +246,6 @@ export async function apiDelete<T>(
   options: Omit<RequestOptions, "method" | "body"> = {}
 ) {
   return apiRequest<T>(path, { ...options, method: "DELETE" });
-}
-
-export function getApiBaseUrl() {
-  return API_BASE_URL;
 }
 
 export function getApiContractConfig() {

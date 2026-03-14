@@ -1,7 +1,6 @@
 // src/utils/audioManager.ts
 
 import { Audio, AVPlaybackSource } from "expo-av";
-import { character_sounds } from "../../assets/audio";
 
 type OneShotOptions = {
   volume?: number;
@@ -17,12 +16,27 @@ class AudioManager {
   private static sfxLevel = 0.8;
   private static keyboardSound: Audio.Sound | null = null;
 
-  static setSoundEnabled(enabled: boolean) {
+  /** Sync enabled/music from store without starting or stopping playback (e.g. on app init). */
+  static applySettingsFromStore(enabled: boolean, musicEnabled = true) {
+    this.enabled = enabled;
+    this.musicEnabled = musicEnabled;
+    if (!enabled) this.stopBackground();
+  }
+
+  /**
+   * @param useGameMusic - при true (gameplay екрани) пуска playBackgroundGame вместо playBackground
+   */
+  static setSoundEnabled(enabled: boolean, useGameMusic = false) {
     this.enabled = enabled;
     if (!enabled) {
       this.stopBackground();
+      this.stopTensionLoop();
     } else {
-      this.playBackgroundFromStart();
+      if (useGameMusic) {
+        this.playBackgroundGameFromStart();
+      } else {
+        this.playBackgroundFromStart();
+      }
     }
   }
 
@@ -153,18 +167,14 @@ class AudioManager {
   static async playBackgroundFromStart() {
     if (!this.enabled || !this.musicEnabled) return;
     try {
-      if (this.bgSound) {
-        try {
-          await this.bgSound.stopAsync();
-          await this.bgSound.unloadAsync();
-        } catch {}
-        this.bgSound = null;
-      }
-      this.bgSound = new Audio.Sound();
-      await this.bgSound.loadAsync(require("../../assets/audio/audio01.wav"));
-      await this.bgSound.setIsLoopingAsync(true);
-      await this.bgSound.setVolumeAsync(0.35 * this.musicLevel);
-      await this.bgSound.playAsync();
+      await this.stopBackground();
+      await this.stopTensionLoop();
+      const sound = new Audio.Sound();
+      await sound.loadAsync(require("../../assets/audio/audio01.wav"));
+      await sound.setIsLoopingAsync(true);
+      await sound.setVolumeAsync(0.35 * this.musicLevel);
+      await sound.playAsync();
+      this.bgSound = sound;
     } catch (error) {
       console.warn("Error playBackgroundFromStart", error);
     }
@@ -200,24 +210,38 @@ class AudioManager {
     }
   }
 
-  static async stopBackground() {
-    if (!this.bgSound) return;
+  /** Спира текущата музика и пуска gameplay музиката от начало. */
+  static async playBackgroundGameFromStart() {
+    if (!this.enabled || !this.musicEnabled) return;
     try {
-      await this.bgSound.stopAsync();
-      await this.bgSound.unloadAsync();
-    } catch (e) {
-      console.warn("Error stopping bg music", e);
-    } finally {
-      this.bgSound = null;
+      await this.stopBackground();
+      await this.stopTensionLoop();
+      const sound = new Audio.Sound();
+      await sound.loadAsync(
+        require("../../assets/audio/gameplayMusic.wav")
+      );
+      await sound.setIsLoopingAsync(true);
+      await sound.setVolumeAsync(0.75 * this.musicLevel);
+      await sound.playAsync();
+      this.bgSound = sound;
+    } catch (error) {
+      console.warn("Error playBackgroundGameFromStart", error);
     }
   }
 
-  // -----------------------
-  // Character sound
-  // -----------------------
-  static async playCharacterSound(source?: AVPlaybackSource) {
-    if (!this.enabled || !this.sfxEnabled) return;
-    return this.playOneShot(source ?? character_sounds.screena, { volume: 1 });
+  static async stopBackground() {
+    if (!this.bgSound) return;
+    const sound = this.bgSound;
+    this.bgSound = null;
+    try {
+      await sound.stopAsync();
+      await sound.unloadAsync();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.includes("not loaded")) {
+        console.warn("Error stopping bg music", e);
+      }
+    }
   }
 
   // -----------------------
@@ -226,6 +250,7 @@ class AudioManager {
   static async playCurtainSound() {
     if (!this.enabled) return;
     try {
+      await this.stopCurtainSound();
       this.curtainSound = new Audio.Sound();
       await this.curtainSound.loadAsync(
         require("../../assets/audio/audioCurtains.wav")
@@ -251,9 +276,19 @@ class AudioManager {
     }
   }
 
+  private static async stopCurtainSound() {
+    if (!this.curtainSound) return;
+    try {
+      await this.curtainSound.stopAsync();
+      await this.curtainSound.unloadAsync();
+    } catch {}
+    this.curtainSound = null;
+  }
+
   static async playCurtainSoundClose() {
     if (!this.enabled || !this.sfxEnabled) return;
     try {
+      await this.stopCurtainSound();
       this.curtainSound = new Audio.Sound();
       await this.curtainSound.loadAsync(
         require("../../assets/audio/closeCurtain.wav")
@@ -268,6 +303,7 @@ class AudioManager {
   static async playCount() {
     if (!this.enabled || !this.sfxEnabled) return;
     try {
+      await this.stopCurtainSound();
       this.curtainSound = new Audio.Sound();
       await this.curtainSound.loadAsync(
         require("../../assets/audio/count.wav")

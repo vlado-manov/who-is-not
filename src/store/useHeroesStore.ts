@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { fetchCharacters } from "../api/heroes";
 import { ICharacter } from "../types/character";
+import i18n from "../i18n";
 
 type HeroesState = {
   heroes: ICharacter[];
@@ -25,7 +26,8 @@ export const useHeroesStore = create<HeroesState>((set, get) => ({
     if (get().loading) return;
     set({ loading: true, error: null });
     try {
-      const rows = await fetchCharacters();
+      const lang = i18n.language?.slice(0, 2) || "en";
+      const rows = await fetchCharacters(lang);
       if (rows.length > 0) {
         set({ heroes: rows, loaded: true, loading: false, error: null });
       } else {

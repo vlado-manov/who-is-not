@@ -2,12 +2,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
-  Image,
   ImageBackground,
   StyleSheet,
   Animated,
   Easing,
+  ImageSourcePropType,
+  Dimensions,
 } from "react-native";
+import AppImage from "../../components/AppImage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { useNavigation } from "@react-navigation/native";
@@ -18,28 +20,99 @@ import CustomText from "../../components/common/CustomText";
 import CustomButton from "../../components/common/CustomButton";
 
 import { backgrounds } from "../../../assets/backgrounds";
-import { QUESTIONS } from "../../data/questions";
-import { game_images } from "../../../assets/images";
 import QuestionPlate from "../../components/game/QuestionPlate";
 import { useAuthStore } from "../../store/useUserStore";
 import { useHeroesStore } from "../../store/useHeroesStore";
 import { useTrackRoundEndedMutation } from "../../api/hooks/useAnalyticsMutations";
+import { usePreventBack } from "../../hooks/usePreventBack";
+import { useTranslation } from "react-i18next";
+import { formatQuestionWithName } from "../../utils/formatQuestionText";
+import {
+  getRevealVariant,
+  LoseVariant,
+  WinVariant,
+} from "../../utils/revealQuotes";
+import AudioManager from "../../utils/audioManager";
 
 type Nav = StackNavigationProp<GameStackParamList, "Reveal">;
+const SCREEN_HEIGHT = Dimensions.get("window").height;
+const TOP_TITLE_MARGIN_TOP = 40;
+const TOP_TITLE_HEIGHT = 240;
+const TITLE_TARGET_OFFSET_Y =
+  TOP_TITLE_MARGIN_TOP + TOP_TITLE_HEIGHT / 2 - SCREEN_HEIGHT / 2;
 
 const RevealScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
-  const scaleAnim = useRef(new Animated.Value(15)).current;
-  // const marginTopAnim = useRef(new Animated.Value(0)).current;
-  const topTitleOpacity = useRef(new Animated.Value(0)).current;
+  usePreventBack();
+  const animatedTitleScale = useRef(new Animated.Value(50)).current;
+  const animatedTitleTranslateY = useRef(new Animated.Value(0)).current;
+  const animatedTitleRotate = useRef(new Animated.Value(0)).current;
   const [characterLoaded, setCharacterLoaded] = useState(false);
   const [showCTA, setShowCTA] = useState(false);
+  const [showQuoteBubble, setShowQuoteBubble] = useState(false);
+  const [quoteTyped, setQuoteTyped] = useState("");
 
   const [hideAnimatedTitle, setHideAnimatedTitle] = useState(false);
   const plateTranslateY = useRef(new Animated.Value(0)).current;
   const buttonTranslateY = useRef(new Animated.Value(80)).current;
   const buttonOpacity = useRef(new Animated.Value(0)).current;
+  const titleOpacity = useRef(new Animated.Value(1)).current;
+  const quoteOpacity = useRef(new Animated.Value(0)).current;
+  const quoteTranslateY = useRef(new Animated.Value(-28)).current;
+  const quoteScale = useRef(new Animated.Value(1)).current;
   const hasRevealedCTA = useRef(false);
+  const isContinuingRef = useRef(false);
+  const typeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hideTitleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const revealCtaTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const entryAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+  const ctaAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+  const titleFadeAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+  const quoteIntroAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  const stopRevealAnimations = () => {
+    entryAnimRef.current?.stop();
+    entryAnimRef.current = null;
+    ctaAnimRef.current?.stop();
+    ctaAnimRef.current = null;
+    titleFadeAnimRef.current?.stop();
+    titleFadeAnimRef.current = null;
+    quoteIntroAnimRef.current?.stop();
+    quoteIntroAnimRef.current = null;
+
+    cleanupQuoteTyping();
+
+    if (revealCtaTimeoutRef.current) {
+      clearTimeout(revealCtaTimeoutRef.current);
+      revealCtaTimeoutRef.current = null;
+    }
+    if (hideTitleTimeoutRef.current) {
+      clearTimeout(hideTitleTimeoutRef.current);
+      hideTitleTimeoutRef.current = null;
+    }
+
+    animatedTitleScale.stopAnimation();
+    animatedTitleTranslateY.stopAnimation();
+    animatedTitleRotate.stopAnimation();
+    plateTranslateY.stopAnimation();
+    buttonTranslateY.stopAnimation();
+    buttonOpacity.stopAnimation();
+    titleOpacity.stopAnimation();
+    quoteOpacity.stopAnimation();
+    quoteTranslateY.stopAnimation();
+    quoteScale.stopAnimation();
+
+    setShowQuoteBubble(false);
+    setQuoteTyped("");
+
+    void AudioManager.stopKeyboardLoop();
+    void AudioManager.restoreBackground(0.2);
+  };
 
   const players = useGameStore((s) => s.players);
   const heroes = useHeroesStore((s) => s.heroes);
@@ -49,35 +122,44 @@ const RevealScreen = () => {
   const votes = useGameStore((s) => s.votes);
   const oddOneId = useGameStore((s) => s.oddOneId);
   const currentOddQuestionId = useGameStore((s) => s.currentOddQuestionId);
-  const applyRoundScores = useGameStore((s) => s.applyRoundScores);
+  const questionNameTarget = useGameStore((s) => s.questionNameTarget);
+  const impostorNameSubstitute = useGameStore((s) => s.impostorNameSubstitute);
+  const gameQuestions = useGameStore((s) => s.gameQuestions);
   const round = useGameStore((s) => s.round);
   const userId = useAuthStore((s) => s.user.id);
   const trackRoundEndedMutation = useTrackRoundEndedMutation();
   useEffect(() => {
     if (!characterLoaded) return;
     if (hasRevealedCTA.current) return;
-    Animated.parallel([
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 700,
-        useNativeDriver: true,
-      }),
-      // Animated.timing(marginTopAnim, {
-      //   toValue: 40,
-      //   duration: 700,
-      //   useNativeDriver: false,
-      // }),
-    ]).start(() => {
-      Animated.timing(topTitleOpacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start(() => {
-        setHideAnimatedTitle(true);
-        setTimeout(() => {
-          revealCTA();
-        }, 2000);
-      });
+    entryAnimRef.current = Animated.sequence([
+      Animated.parallel([
+        Animated.timing(animatedTitleScale, {
+          toValue: 1,
+          duration: 850,
+          easing: Easing.out(Easing.exp),
+          useNativeDriver: true,
+        }),
+        Animated.timing(animatedTitleRotate, {
+          toValue: 1,
+          duration: 850,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(animatedTitleTranslateY, {
+          toValue: TITLE_TARGET_OFFSET_Y,
+          speed: 14,
+          bounciness: 8,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]);
+    entryAnimRef.current.start(() => {
+      if (isContinuingRef.current) return;
+      setHideAnimatedTitle(true);
+      revealCtaTimeoutRef.current = setTimeout(() => {
+        if (isContinuingRef.current) return;
+        revealCTA();
+      }, 2000);
     });
   }, [characterLoaded]);
 
@@ -87,7 +169,7 @@ const RevealScreen = () => {
     setShowCTA(true);
 
     // Бутонът – остава както е (той ти харесва)
-    Animated.parallel([
+    ctaAnimRef.current = Animated.parallel([
       Animated.timing(buttonTranslateY, {
         toValue: 0,
         duration: 280,
@@ -151,8 +233,91 @@ const RevealScreen = () => {
           useNativeDriver: true,
         }),
       ]),
-    ]).start();
+    ]);
+    ctaAnimRef.current.start(() => {
+      if (isContinuingRef.current) return;
+      if (hideTitleTimeoutRef.current) {
+        clearTimeout(hideTitleTimeoutRef.current);
+      }
+      hideTitleTimeoutRef.current = setTimeout(() => {
+        if (isContinuingRef.current) return;
+        titleFadeAnimRef.current = Animated.timing(titleOpacity, {
+          toValue: 0,
+          duration: 280,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        });
+        titleFadeAnimRef.current.start();
+        runRevealQuoteSequence();
+      }, 300);
+    });
   };
+
+  const cleanupQuoteTyping = () => {
+    if (typeIntervalRef.current) {
+      clearInterval(typeIntervalRef.current);
+      typeIntervalRef.current = null;
+    }
+  };
+
+  const typeQuote = (text: string, onDone?: () => void) => {
+    cleanupQuoteTyping();
+
+    void AudioManager.duckBackground(0.12);
+    void AudioManager.startKeyboardLoop();
+
+    setQuoteTyped("");
+    let i = 0;
+
+    typeIntervalRef.current = setInterval(() => {
+      i += 1;
+      setQuoteTyped(text.slice(0, i));
+
+      if (i >= text.length) {
+        cleanupQuoteTyping();
+        void AudioManager.stopKeyboardLoop();
+        void AudioManager.restoreBackground(0.35);
+        onDone?.();
+      }
+    }, 26);
+  };
+
+  const runRevealQuoteSequence = () => {
+    setShowQuoteBubble(true);
+    quoteOpacity.setValue(0);
+    quoteTranslateY.setValue(-28);
+    quoteScale.setValue(1);
+
+    quoteIntroAnimRef.current = Animated.parallel([
+      Animated.timing(quoteOpacity, {
+        toValue: 1,
+        duration: 160,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(quoteTranslateY, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]);
+    quoteIntroAnimRef.current.start(() => {
+      if (isContinuingRef.current) return;
+      const text = impostorLost
+        ? "Oh man, i really hoped i might win this one"
+        : "Hell yeah i completely obliterated you guys, you guys suck!";
+      typeQuote(text, () => {
+        // void AudioManager.playHeroPickerEnd();
+      });
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      stopRevealAnimations();
+    };
+  }, []);
 
   /* -------------------------------------------------------------------------- */
   /* DATA */
@@ -168,9 +333,18 @@ const RevealScreen = () => {
     : undefined;
 
   const imposterQuestion = useMemo(
-    () => QUESTIONS.find((q) => q.id === currentOddQuestionId),
-    [currentOddQuestionId]
+    () => gameQuestions.find((q) => q.id === currentOddQuestionId),
+    [currentOddQuestionId, gameQuestions]
   );
+
+  const imposterQuestionDisplayText = useMemo(() => {
+    if (!imposterQuestion?.text) return "";
+    return formatQuestionWithName(imposterQuestion.text, {
+      isImpostor: true,
+      substituteName: impostorNameSubstitute,
+      yourLabel: questionNameTarget ?? t("question_name_your"),
+    });
+  }, [imposterQuestion?.text, impostorNameSubstitute, questionNameTarget, t]);
 
   const { topTargets, maxVotes } = useMemo(() => {
     const tally: Record<string, number> = {};
@@ -193,15 +367,85 @@ const RevealScreen = () => {
   const impostorLost =
     votedWinner && imposter && votedWinner.id === imposter.id;
 
+  // Total *eligible* voters = all players except the impostor.
+  // This makes "COOKED" mean everyone (all non-impostors) voted for the impostor.
+  const totalEligibleVoters = players.length > 0 ? players.length - 1 : 0;
+  const votesForImpostor = Object.values(votes).filter(
+    (targetId) => targetId === oddOneId
+  ).length;
+  const impostorWon = !impostorLost;
+
+  const revealVariant: WinVariant | LoseVariant = getRevealVariant(
+    votesForImpostor,
+    totalEligibleVoters,
+    impostorWon
+  );
+
   /* -------------------------------------------------------------------------- */
   /* ASSETS */
   /* -------------------------------------------------------------------------- */
 
   const backgroundImage = impostorLost ? backgrounds.bg030 : backgrounds.bg029;
 
-  const titleImage = impostorLost
-    ? game_images.lostRound
-    : game_images.wonRound;
+  const titleImage: ImageSourcePropType = useMemo(() => {
+    if (impostorWon) {
+      const winVariant = revealVariant as WinVariant;
+      switch (winVariant) {
+        case "PERFECT_BLUFF":
+          // wonroundgood – won without being suspected
+          return {
+            uri: [
+              "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/698b6249-2c84-4de1-80a7-1d040a7cab15-captain.webp",
+              "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/3098328b-e20e-48bd-8fdb-90818f71290e-knocks.webp",
+              "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/15a91088-0b9d-414c-ac73-c7ef77c60d13-flawless.webp",
+            ][Math.floor(Math.random() * 3)],
+          };
+        case "BARELY_SOLD_IT":
+          // wonroundbad – won but one vote from losing
+          return {
+            uri: [
+              "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/0e944d74-3c4d-4145-be57-852da2d8f6e7-lucky.webp",
+              "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/ecfaa1ec-2d85-4d22-a835-98382a6bb39a-minute.webp",
+            ][Math.floor(Math.random() * 2)],
+          };
+        case "NORMAL":
+        default:
+          // wonroundnormal – won with at least one vote
+          return {
+            uri: [
+              "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/0896451f-3ad4-403f-943d-ae9e973f5b3f-gg.webp",
+              "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/8a423802-d7a2-45b1-8f83-d32e1603274a-winner.webp",
+            ][Math.floor(Math.random() * 2)],
+          };
+      }
+    }
+
+    const loseVariant = revealVariant as LoseVariant;
+    switch (loseVariant) {
+      case "COOKED":
+        // lostroundgood – lost, everyone identified the impostor
+        return {
+          uri: [
+            "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/67314e35-f3f5-422f-b722-74ee78dfc829-soweak.webp",
+            "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/8da5ee85-aaa0-4db9-ae2f-a9fb975beb4c-smallpp.webp",
+          ][Math.floor(Math.random() * 2)],
+        };
+      case "NEARLY_THERE":
+        // lostroundbad – lost by a narrow margin
+        return {
+          uri: "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/4e14f65c-3931-4b6a-a5a8-ca45e1783cef-tough.webp",
+        };
+      case "NORMAL":
+      default:
+        // lostroundnormal – lost, but managed to fool some players
+        return {
+          uri: [
+            "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/28db9184-2ddf-4784-95d7-c60dbd049cf9-inevitable.webp",
+            "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/3d363964-d229-4eb9-bc84-a1e926192071-defeat.webp",
+          ][Math.floor(Math.random() * 2)],
+        };
+    }
+  }, [impostorWon, revealVariant]);
 
   const questionFrameImage = impostorLost
     ? backgrounds.bg016
@@ -214,21 +458,40 @@ const RevealScreen = () => {
   const characterImageSource = useMemo(() => {
     if (!imposterCharacter) return null;
 
-    const images = impostorLost
-      ? imposterCharacter.loseImages
-      : imposterCharacter.winImages;
+    const byVariant = impostorWon
+      ? imposterCharacter.winImagesByVariant
+      : imposterCharacter.loseImagesByVariant;
+    const flatImages = impostorWon
+      ? imposterCharacter.winImages
+      : imposterCharacter.loseImages;
 
-    if (!images || images.length === 0) return null;
+    const variantKey = revealVariant as string;
 
-    // ако някой ден имаш повече от 1 – ще е готово 🎲
-    return images[Math.floor(Math.random() * images.length)];
-  }, [imposterCharacter, impostorLost]);
+    const variantList =
+      (byVariant && (byVariant[variantKey] || byVariant.NORMAL)) || undefined;
+
+    const pool: ImageSourcePropType[] =
+      (variantList && variantList.length > 0 && variantList) ||
+      (flatImages && flatImages.length > 0 && flatImages) ||
+      (imposterCharacter.main_image
+        ? [imposterCharacter.main_image]
+        : heroes
+            .map((h) => h.main_image)
+            .filter((img): img is ImageSourcePropType => Boolean(img)));
+
+    if (!pool || pool.length === 0) return null;
+
+    return pool[Math.floor(Math.random() * pool.length)];
+  }, [heroes, imposterCharacter, impostorWon, revealVariant]);
 
   /* -------------------------------------------------------------------------- */
   /* ACTION */
   /* -------------------------------------------------------------------------- */
 
   const handleContinue = async () => {
+    isContinuingRef.current = true;
+    stopRevealAnimations();
+
     if (gameId && currentRoundId) {
       try {
         await trackRoundEndedMutation.mutateAsync({
@@ -243,8 +506,7 @@ const RevealScreen = () => {
       }
     }
 
-    applyRoundScores();
-    navigation.navigate("Standings");
+    navigation.navigate("LivesReveal");
   };
 
   if (!imposter || !imposterCharacter) return null;
@@ -265,39 +527,47 @@ const RevealScreen = () => {
           />
         </View> */}
 
-        <View
-          style={[
-            styles.quoteBubble,
-            styles.quoteBubbleShadow,
-            {
-              display: "none",
-            },
-          ]}
-        >
-          <CustomText
-            variant="quote"
-            className="text-center"
-            textColor="text-customBlack-500"
+        {showQuoteBubble && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.quoteOverlay,
+              {
+                opacity: quoteOpacity,
+                transform: [
+                  { translateY: quoteTranslateY },
+                  { scale: quoteScale },
+                ],
+              },
+            ]}
           >
-            Ugh, brb, gotta see you in a minute, check the tv.
-          </CustomText>
+            <View style={[styles.quoteBubble, styles.quoteBubbleShadow]}>
+              <CustomText
+                variant="quote"
+                className="text-center"
+                textColor="text-customBlack-500"
+              >
+                {quoteTyped}
+              </CustomText>
 
-          <View style={styles.quoteBubbleTailWrap}>
-            <View style={styles.quoteBubbleTail} />
-          </View>
-        </View>
+              <View style={styles.quoteBubbleTailWrap}>
+                <View style={styles.quoteBubbleTail} />
+              </View>
+            </View>
+          </Animated.View>
+        )}
         <Animated.View
           style={[
             styles.topTitleWrap,
             {
-              opacity: topTitleOpacity,
-              // display: "none",
+              zIndex: 10,
+              opacity: titleOpacity,
             },
           ]}
         >
-          <Image
+          <AppImage
             source={titleImage}
-            resizeMode="contain"
+            contentFit="contain"
             style={styles.topTitleImage}
           />
         </Animated.View>
@@ -307,21 +577,23 @@ const RevealScreen = () => {
             style={[
               styles.topTitleWrap2,
               {
-                // justifyContent: "center",
-                // marginTop: marginTopAnim,
-                // display: "none",
+                transform: [
+                  { translateY: animatedTitleTranslateY },
+                  { scale: animatedTitleScale },
+                  {
+                    rotate: animatedTitleRotate.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ["-900deg", "0deg"],
+                    }),
+                  },
+                ],
               },
             ]}
           >
-            <Animated.Image
+            <AppImage
               source={titleImage}
-              resizeMode="contain"
-              style={[
-                styles.topTitleImage2,
-                {
-                  transform: [{ scale: scaleAnim }],
-                },
-              ]}
+              contentFit="contain"
+              style={styles.topTitleImage2}
             />
           </Animated.View>
         )}
@@ -337,9 +609,9 @@ const RevealScreen = () => {
         {/* CHARACTER IMAGE */}
         <View style={styles.characterWrap}>
           {characterImageSource && (
-            <Image
+            <AppImage
               source={characterImageSource}
-              resizeMode="contain"
+              contentFit="contain"
               style={styles.characterImage}
               onLoadEnd={() => setCharacterLoaded(true)}
             />
@@ -370,8 +642,8 @@ const RevealScreen = () => {
               }}
             >
               <QuestionPlate
-                title={`This is what ${imposter.name} was answering 👀`}
-                text={imposterQuestion?.text ?? ""}
+                title={t("reveal_plate_title", { name: imposter.name })}
+                text={imposterQuestionDisplayText}
                 background={questionFrameImage}
                 mode={impostorLost ? "dark" : "light"}
               />
@@ -386,7 +658,7 @@ const RevealScreen = () => {
                 }}
               >
                 <CustomButton
-                  title="Continue"
+                  title={t("continue_btn")}
                   fullWidth
                   backgroundImage={
                     impostorLost ? backgrounds.bg003 : backgrounds.bg026
@@ -432,17 +704,16 @@ const styles = StyleSheet.create({
   topTitleWrap2: {
     position: "absolute",
     top: "0%",
+    left: "0%",
     width: "100%",
     height: "100%",
     alignItems: "center",
-    justifyContent: "flex-start",
-    zIndex: 1,
+    justifyContent: "center",
+    zIndex: 999,
   },
   topTitleImage2: {
-    marginTop: 40,
     width: "100%",
     height: 240,
-    // transform: [{ scale: 1 }],
   },
 
   characterWrap: {
@@ -493,8 +764,15 @@ const styles = StyleSheet.create({
     minWidth: "92%",
     maxWidth: "92%",
     alignSelf: "center",
-    marginTop: 80,
+    marginTop: 48,
     zIndex: 1,
+  },
+  quoteOverlay: {
+    position: "absolute",
+    top: 24,
+    left: 0,
+    right: 0,
+    zIndex: 11,
   },
   quoteBubbleShadow: {
     shadowColor: "#000",

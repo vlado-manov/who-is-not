@@ -2,7 +2,7 @@ import { Animated, View } from "react-native";
 import { createHeroPickerStyles } from "../styles/heroPicker.styles";
 import { ImageBackground } from "react-native";
 import { backgrounds } from "../../../assets/backgrounds";
-import { Image } from "react-native";
+import AppImage from "../../components/AppImage";
 import { game_images } from "../../../assets/images";
 
 type Props = {
@@ -51,9 +51,9 @@ export function HeroPickerBackground({
             height: "100%",
           }}
         >
-          <Image
+          <AppImage
             source={game_images.heroPickerBottom}
-            resizeMode="contain"
+            contentFit="contain"
             style={{
               width: "100%",
               height: "100%",
