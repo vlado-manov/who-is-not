@@ -6,10 +6,12 @@ import {
 import AppImage from "../AppImage";
 import React from "react";
 import { useAuthStore } from "../../store/useUserStore";
-import { character_avatars } from "../../../assets/characters";
 import { FontAwesome5 } from "@expo/vector-icons";
 import AudioManager from "../../utils/audioManager";
 import { useHeroesStore } from "../../store/useHeroesStore";
+
+const SILENT_VANESSA_ID = "cmlt8yz96000etbesm149mii8";
+
 type Props = {
   setImagePickerVisible: React.Dispatch<React.SetStateAction<boolean>>;
 };
@@ -20,16 +22,21 @@ const ProfileImageComponent = ({ setImagePickerVisible }: Props) => {
   const toSrc = (img: string | ImageSourcePropType): ImageSourcePropType =>
     typeof img === "string" ? { uri: img } : (img as ImageSourcePropType);
   const selectedHeroAvatar = heroes.find((h) => h.slug === avatarId)?.profileImage;
-  const avatarSource = selectedHeroAvatar ?? character_avatars[avatarId];
+  const silentVanessaAvatar =
+    heroes.find((h) => h.id === SILENT_VANESSA_ID)?.profileImage ??
+    heroes.find((h) => h.name === "Silent Vanessa")?.profileImage;
+  const avatarSource = selectedHeroAvatar ?? silentVanessaAvatar;
   return (
     <View className="items-center pt-8 relative">
       <View className="relative">
-        <AppImage
-          source={toSrc(avatarSource)}
-          contentFit="contain"
-          className="w-[190px] h-[195px]"
-          style={{ width: 190, height: 195 }}
-        />
+        {avatarSource && (
+          <AppImage
+            source={toSrc(avatarSource)}
+            contentFit="contain"
+            className="w-[190px] h-[195px]"
+            style={{ width: 190, height: 195 }}
+          />
+        )}
 
         {authStatus != "guest" && (
           <TouchableOpacity

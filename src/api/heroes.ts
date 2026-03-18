@@ -3,7 +3,6 @@ import { apiGet, getApiBaseUrl } from "./client";
 import { ApiError } from "./types";
 import { ICharacter } from "../types/character";
 import { backgrounds } from "../../assets/backgrounds";
-import { characters, character_avatars } from "../../assets/characters";
 import type { ImageSourcePropType } from "react-native";
 
 type MediaDto = { type: string; url: string; variant?: string | null };
@@ -50,6 +49,7 @@ function asImage(url?: string | null, fallback?: any) {
 }
 
 const VANESSA_SLUGS = ["silent_vanessa", "silent-vanessa", "vanessa"];
+const SILENT_VANESSA_ID = "cmlt8yz96000etbesm149mii8";
 
 function isVanessa(slug?: string | null): boolean {
   const s = slug?.toLowerCase().replace(/-/g, "_") ?? "";
@@ -58,9 +58,7 @@ function isVanessa(slug?: string | null): boolean {
 
 function getRateUrlFromRow(row: CharacterDto): string | null {
   return (
-    row.rateImageUrl ??
-    row.medias?.find((m) => m.type === "RATE")?.url ??
-    null
+    row.rateImageUrl ?? row.medias?.find((m) => m.type === "RATE")?.url ?? null
   );
 }
 
@@ -84,11 +82,19 @@ export async function fetchCharacters(lang?: string): Promise<ICharacter[]> {
   });
 
   const vanessaRow = rows.find((r) => isVanessa(r.slug));
+  const silentVanessaFallbackRow =
+    rows.find((r) => r.id === SILENT_VANESSA_ID) ??
+    rows.find((r) => r.name === "Silent Vanessa") ??
+    vanessaRow;
   const vanessaRateUrl = vanessaRow ? getRateUrlFromRow(vanessaRow) : null;
+  const fallbackAvatarFromDb = asImage(
+    silentVanessaFallbackRow?.profileImageUrl
+  );
+  const fallbackMainFromDb = asImage(silentVanessaFallbackRow?.mainImageUrl);
 
   return rows.map((row) => {
-    const fallbackAvatar = character_avatars.screena;
-    const fallbackMain = characters.screena;
+    const fallbackAvatar = fallbackAvatarFromDb;
+    const fallbackMain = fallbackMainFromDb;
 
     return {
       id: row.id,
@@ -157,10 +163,14 @@ export async function fetchCharacters(lang?: string): Promise<ICharacter[]> {
       quotes_selected: row.quotes.selected?.length ? row.quotes.selected : [],
       winQuotes: Array.isArray(row.quotes.win)
         ? row.quotes.win
-        : Object.values(row.quotes.win as Record<string, string[]>).flat(),
+        : Object.values(row.quotes.win as Record<string, string[]>).reduce<
+            string[]
+          >((acc, list) => acc.concat(list), []),
       loseQuotes: Array.isArray(row.quotes.lose)
         ? row.quotes.lose
-        : Object.values(row.quotes.lose as Record<string, string[]>).flat(),
+        : Object.values(row.quotes.lose as Record<string, string[]>).reduce<
+            string[]
+          >((acc, list) => acc.concat(list), []),
       winQuotesByVariant:
         typeof row.quotes.win === "object" && !Array.isArray(row.quotes.win)
           ? (row.quotes.win as Record<string, string[]>)
@@ -174,7 +184,7 @@ export async function fetchCharacters(lang?: string): Promise<ICharacter[]> {
 }
 
 function getImageUri(
-  source: ImageSourcePropType | null | undefined,
+  source: ImageSourcePropType | null | undefined
 ): string | null {
   if (!source || typeof source === "number") return null;
   if (Array.isArray(source)) return source[0]?.uri ?? null;
@@ -182,7 +192,7 @@ function getImageUri(
 }
 
 function collectUrisFromImages(
-  images: ImageSourcePropType[] | undefined,
+  images: ImageSourcePropType[] | undefined
 ): string[] {
   if (!images?.length) return [];
   return images
@@ -217,10 +227,10 @@ export function collectCharacterImageUris(list: ICharacter[]): string[] {
 
 /** Prefetch all character media: profile, main, rate, win, lose. Call during app bootstrap. */
 export async function prefetchCharacterImages(
-  list: ICharacter[],
+  list: ICharacter[]
 ): Promise<void> {
   const unique = collectCharacterImageUris(list);
   await Promise.all(
-    unique.map((uri) => Image.prefetch(uri).catch(() => false)),
+    unique.map((uri) => Image.prefetch(uri).catch(() => false))
   );
 }

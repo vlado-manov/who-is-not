@@ -91,6 +91,7 @@ export default function CurtainOverlay({
   const [imagesReady, setImagesReady] = useState(false);
   const [preloadDone, setPreloadDone] = useState(!preloadBeforeAnimate);
   const [welcomeCanStart, setWelcomeCanStart] = useState(false);
+  const [welcomeLoaderVisualReady, setWelcomeLoaderVisualReady] = useState(false);
   const [welcomePhase, setWelcomePhase] = useState<
     "boot" | "intro" | "loading"
   >(isWelcomeInitial ? "boot" : "loading");
@@ -169,6 +170,24 @@ export default function CurtainOverlay({
 
   useEffect(() => {
     if (!isWelcomeInitial) return;
+
+    let active = true;
+    setWelcomeLoaderVisualReady(false);
+    Promise.all([
+      ExpoImage.prefetch(selectedBackgroundUri).catch(() => false),
+      ExpoImage.prefetch(WELCOME_LOADER_FILL_URI).catch(() => false),
+    ]).then(() => {
+      if (!active) return;
+      setWelcomeLoaderVisualReady(true);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [isWelcomeInitial, selectedBackgroundUri]);
+
+  useEffect(() => {
+    if (!isWelcomeInitial) return;
     if (welcomePhase !== "loading") return;
 
     welcomeLoadingOpacity.setValue(1);
@@ -197,11 +216,6 @@ export default function CurtainOverlay({
 
     const run = async () => {
       try {
-        await Promise.all([
-          ExpoImage.prefetch(selectedBackgroundUri).catch(() => false),
-          ExpoImage.prefetch(WELCOME_LOADER_FILL_URI).catch(() => false),
-        ]);
-
         if (preloadWithProgress) {
           await preloadWithProgress((p) => {
             if (!active) return;
@@ -557,6 +571,15 @@ export default function CurtainOverlay({
       );
     }
 
+    if (!welcomeLoaderVisualReady) {
+      return (
+        <View
+          pointerEvents="auto"
+          style={[styles.container, { backgroundColor: "#000" }]}
+        />
+      );
+    }
+
     const loaderFillWidth = welcomeProgress.interpolate({
       inputRange: [0, 1],
       outputRange: [0, W - 64],
@@ -568,6 +591,7 @@ export default function CurtainOverlay({
         style={[
           styles.container,
           {
+            backgroundColor: "#000",
             opacity: welcomeLoadingOpacity,
             transform: [{ scale: welcomeIrisScale }],
             borderRadius: welcomeIrisRadius,

@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { IUser } from "../types/user";
-import { AvatarId, character_avatars } from "../../assets/characters";
+import { AvatarId } from "../../assets/characters";
 import { useHeroesStore } from "./useHeroesStore";
 
 export type AuthStatus = "guest" | "loggedIn";
@@ -16,7 +16,7 @@ export type Settings = {
   sfxLevel: number;
 };
 
-const AVATAR_IDS = Object.keys(character_avatars) as AvatarId[];
+const DEFAULT_AVATAR_ID = "silent_vanessa" as AvatarId;
 
 const rndFrom = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 const rndGuestName = () => `Guest${Math.floor(10000 + Math.random() * 900000)}`;
@@ -24,15 +24,19 @@ const rndGuestName = () => `Guest${Math.floor(10000 + Math.random() * 900000)}`;
 const WORDS_A = ["Sunny", "Brave", "Clever", "Happy", "Mighty", "Lucky"];
 const WORDS_B = ["Panda", "Fox", "Koala", "Eagle", "Otter", "Tiger"];
 const rndUserName = () => `${rndFrom(WORDS_A)}${rndFrom(WORDS_B)}`;
-const rndUnlockedAvatarId = (): AvatarId => {
-  const unlockedHeroes = useHeroesStore
+const getPremiumAvatarIdsFromDb = (): AvatarId[] => {
+  const premiumHeroes = useHeroesStore
     .getState()
-    .heroes.filter((h) => h.unlocked);
-  if (unlockedHeroes.length === 0) {
-    return AVATAR_IDS[0];
+    .heroes.filter((h) => h.premium && !!h.profileImage);
+  return premiumHeroes.map((h) => h.slug as AvatarId);
+};
+
+const rndUnlockedAvatarId = (): AvatarId => {
+  const premiumAvatarIds = getPremiumAvatarIdsFromDb();
+  if (premiumAvatarIds.length === 0) {
+    return DEFAULT_AVATAR_ID;
   }
-  const hero = rndFrom(unlockedHeroes);
-  return hero.slug as AvatarId;
+  return rndFrom(premiumAvatarIds);
 };
 
 function nowTs() {
