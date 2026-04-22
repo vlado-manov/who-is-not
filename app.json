@@ -23,11 +23,12 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.vladimirmanov.whoisnot"
+      "package": "com.vladimirmanov.whoisnot",
+      "softwareKeyboardLayoutMode": "resize"
     },
     "web": {
       "bundler": "metro",
-      "favicon": "./assets/images/favicon/favicon.ico"
+      "favicon": "./assets/images/icon.png"
     },
     "plugins": ["expo-asset"]
   }

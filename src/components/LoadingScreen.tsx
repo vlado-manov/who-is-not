@@ -5,13 +5,18 @@ import {
   Pressable,
   Animated,
   Easing,
+  ScrollView,
+  useWindowDimensions,
 } from "react-native";
 import { Image } from "expo-image";
 import AppImage from "./AppImage";
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 import ImageBackgroundWithLoadGate from "./ImageBackgroundWithLoadGate";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import CustomText from "./common/CustomText";
 import { game_images, loaderFrames } from "../../assets/images";
 import { backgrounds } from "../../assets/backgrounds";
@@ -20,6 +25,12 @@ import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../store/useUserStore";
 import { usePreventBack } from "../hooks/usePreventBack";
 import { getTimeToVoteImageUrlForLang } from "../api/publicImages";
+import {
+  getHorizontalPadding,
+  getHtpOverlay,
+  getLogoBox,
+} from "../utils/responsive";
+import { ImageSourcePropType } from "react-native";
 
 type LoadingScreenProps = {
   /** Пропусни scale-от-40 анимацията – за краткотрайни loading states (напр. HeroPicker) */
@@ -34,6 +45,13 @@ type LoadingScreenProps = {
   hint2Key?: string;
   /** При true, toggle на звука пуска playBackgroundGame (за gameplay екрани) */
   useGameMusic?: boolean;
+  /**
+   * HeroPicker: фонът покрива целия екран; съдържанието е отместено под статус лентата
+   * и над home indicator (видима статус лента, без да „яде“ layout от навигацията).
+   */
+  fullScreenWithStatusBar?: boolean;
+  /** Optional custom background image per screen flow. */
+  backgroundSource?: ImageSourcePropType;
 };
 
 const LoadingScreen = ({
@@ -43,8 +61,11 @@ const LoadingScreen = ({
   hint1Key = "loading_hint",
   hint2Key = "loading_hint_2",
   useGameMusic = false,
+  fullScreenWithStatusBar = false,
+  backgroundSource = backgrounds.bg023,
 }: LoadingScreenProps) => {
   const { t, i18n } = useTranslation();
+  const insets = useSafeAreaInsets();
   const { settings, updateSettings } = useAuthStore();
   usePreventBack(!overlay);
   const logoScale = useRef(
@@ -155,105 +176,148 @@ const LoadingScreen = ({
     ]).start();
   }, [skipIntroAnimation]);
 
+  const { width: windowWidth } = useWindowDimensions();
+  const pad = getHorizontalPadding(windowWidth);
+  const logo = getLogoBox(windowWidth, pad);
+  const htp = getHtpOverlay(logo.width);
+
   const content = (
     <ImageBackgroundWithLoadGate
-        source={backgrounds.bg023}
+        source={backgroundSource}
         style={{ flex: 1 }}
         resizeMode="cover"
       >
-        <Animated.View
-          style={[
-            styles.content,
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[
+            styles.scrollContent,
             {
-              transform: [
-                {
-                  translateX: screenShake.interpolate({
-                    inputRange: [-1, 1],
-                    outputRange: [-8, 8],
-                  }),
-                },
-              ],
+              paddingHorizontal: pad,
+            },
+            fullScreenWithStatusBar && {
+              paddingTop: Math.max(insets.top, 8) + 8,
+              paddingBottom: Math.max(insets.bottom, 16),
             },
           ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <View className="mt-[80px]" style={{ zIndex: 200, elevation: 200 }}>
-            <Pressable className="mt-[80px]" onPress={toggleSound}>
-              <AppImage
-                key={frameIndex}
-                source={frames[frameIndex]}
-                style={{
-                  width: 350,
-                  height: 260,
-                  position: "absolute",
-                  top: -88,
-                  left: 12,
-                  opacity: 0.95,
-                }}
-                contentFit="contain"
-              />
-              <View
-                style={{
-                  width: 350,
-                  height: 260,
-                  position: "absolute",
-                  top: -88,
-                  left: 12,
-                }}
-              >
-                {frames.map((frame, index) => (
+          <Animated.View
+            style={[
+              styles.contentInner,
+              {
+                transform: [
+                  {
+                    translateX: screenShake.interpolate({
+                      inputRange: [-1, 1],
+                      outputRange: [-8, 8],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <View style={styles.brandBlock}>
+              <Pressable onPress={toggleSound}>
+                <View
+                  style={{
+                    width: logo.width,
+                    height: logo.height,
+                    position: "relative",
+                  }}
+                >
                   <AppImage
-                    key={index}
-                    source={frame}
+                    key={frameIndex}
+                    source={frames[frameIndex]}
                     style={{
+                      width: htp.width,
+                      height: htp.height,
                       position: "absolute",
-                      width: "100%",
-                      height: "100%",
-                      opacity: frameIndex === index ? 1 : 0,
+                      top: htp.top,
+                      left: htp.left,
+                      opacity: 0.95,
                     }}
                     contentFit="contain"
                   />
-                ))}
-              </View>
+                  <View
+                    style={{
+                      width: htp.width,
+                      height: htp.height,
+                      position: "absolute",
+                      top: htp.top,
+                      left: htp.left,
+                    }}
+                  >
+                    {frames.map((frame, index) => (
+                      <AppImage
+                        key={index}
+                        source={frame}
+                        style={{
+                          position: "absolute",
+                          width: "100%",
+                          height: "100%",
+                          opacity: frameIndex === index ? 1 : 0,
+                        }}
+                        contentFit="contain"
+                      />
+                    ))}
+                  </View>
 
-              <AppImage
-                source={logoSource}
-                style={{ width: 360, height: 280, opacity: 0, zIndex: 199 }}
-                contentFit="contain"
-              />
-              <AnimatedImage
-                source={logoSource}
-                style={{
-                  width: 360,
-                  height: 280,
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  zIndex: 199,
-                  opacity: logoOpacity,
-                  transform: [{ scale: logoScale }],
-                }}
-                contentFit="contain"
-              />
-            </Pressable>
-          </View>
-          <CustomText variant="h5-headline">{t(titleKey)}</CustomText>
+                  <AppImage
+                    source={logoSource}
+                    style={{
+                      width: logo.width,
+                      height: logo.height,
+                      opacity: 0,
+                      zIndex: 199,
+                    }}
+                    contentFit="contain"
+                  />
+                  <AnimatedImage
+                    source={logoSource}
+                    style={{
+                      width: logo.width,
+                      height: logo.height,
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      zIndex: 199,
+                      opacity: logoOpacity,
+                      transform: [{ scale: logoScale }],
+                    }}
+                    contentFit="contain"
+                  />
+                </View>
+              </Pressable>
+            </View>
+            <View style={styles.textBlock}>
+              <CustomText variant="h5-headline" className="text-center">
+                {t(titleKey)}
+              </CustomText>
 
-          <CustomText variant="p-small" className="mt-2 px-8 text-center">
-            {t(hint1Key)}
-          </CustomText>
-          <CustomText variant="p-small" className="mt-2 px-8 text-center">
-            {t(hint2Key)}
-          </CustomText>
-        </Animated.View>
+              <CustomText variant="p-small" className="mt-2 px-2 text-center">
+                {t(hint1Key)}
+              </CustomText>
+              <CustomText variant="p-small" className="mt-2 px-2 text-center">
+                {t(hint2Key)}
+              </CustomText>
+            </View>
+          </Animated.View>
+        </ScrollView>
       </ImageBackgroundWithLoadGate>
   );
 
   if (overlay) {
     return (
-      <View
-        style={styles.overlay}
-        pointerEvents="auto"
-      >
+      <View style={styles.overlay} pointerEvents="auto">
+        {content}
+      </View>
+    );
+  }
+
+  if (fullScreenWithStatusBar) {
+    return (
+      <View style={styles.container} className="flex-1">
         {content}
       </View>
     );
@@ -278,6 +342,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#0f0f0f",
   },
   overlay: {
+    flex: 1,
     position: "absolute",
     top: 0,
     left: 0,
@@ -286,10 +351,27 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.85)",
     zIndex: 50,
   },
-  content: {
-    flex: 1,
-    alignItems: "center",
+  /** Centers the loader + logo + copy vertically and horizontally on all screen sizes. */
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: "center",
-    paddingHorizontal: 32,
+    alignItems: "center",
+    paddingVertical: 24,
+  },
+  contentInner: {
+    alignItems: "center",
+    width: "100%",
+  },
+  brandBlock: {
+    zIndex: 200,
+    elevation: 200,
+    alignItems: "center",
+    alignSelf: "center",
+  },
+  textBlock: {
+    width: "100%",
+    alignItems: "center",
+    marginTop: 16,
+    paddingHorizontal: 4,
   },
 });

@@ -179,7 +179,7 @@ export function HeroStage({
         >
           <AnimatedImage
             source={game_images.leftArrow}
-            style={[{ width: 58, height: 56 }, leftArrowAnim.style]}
+            style={[styles.arrowIcon, leftArrowAnim.style]}
             contentFit="contain"
           />
         </Pressable>
@@ -269,7 +269,7 @@ export function HeroStage({
         >
           <AnimatedImage
             source={game_images.rightArrow}
-            style={[{ width: 58, height: 56 }, rightArrowAnim.style]}
+            style={[styles.arrowIcon, rightArrowAnim.style]}
             contentFit="contain"
           />
         </Pressable>

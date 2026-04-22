@@ -6,8 +6,9 @@ import { AvatarId } from "../../../assets/characters";
 import { useAuthStore } from "../../store/useUserStore";
 import { FontAwesome } from "@expo/vector-icons";
 import AudioManager from "../../utils/audioManager";
+import PlayerDeathGrayscaleImage from "../game/PlayerDeathGrayscaleImage";
 
-const AVATAR_SIZE = 132;
+const AVATAR_SIZE = 148;
 
 type Props = {
   item: ICharacter;
@@ -24,13 +25,19 @@ const SingleProfileImagePickerComponent = ({ item, selected }: Props) => {
       }}
       style={[styles.wrapper, selected && styles.wrapperSelected]}
     >
-      <AppImage
-        key={`profile-picker-${item.id}`}
-        source={item.profileImage}
-        contentFit="contain"
-        style={styles.avatar}
-        blurRadius={item.unlocked ? 0 : 4}
-      />
+      {item.unlocked ? (
+        <AppImage
+          key={`profile-picker-${item.id}`}
+          source={item.profileImage}
+          contentFit="contain"
+          style={styles.avatar}
+        />
+      ) : (
+        <PlayerDeathGrayscaleImage
+          source={item.profileImage}
+          size={AVATAR_SIZE}
+        />
+      )}
       {!item.unlocked && (
         <View style={styles.lockWrap}>
           <FontAwesome name="lock" size={64} color="white" />
@@ -65,7 +72,6 @@ const styles = StyleSheet.create({
     width: AVATAR_SIZE,
     height: AVATAR_SIZE,
   },
-  avatarLocked: {},
   lockWrap: {
     position: "absolute",
     alignSelf: "center",

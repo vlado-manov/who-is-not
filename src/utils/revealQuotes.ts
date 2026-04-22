@@ -52,3 +52,34 @@ export function pickRevealQuote(
   const fromFlat = getRandom(flatQuotes ?? []);
   return fromFlat?.trim() || defaultText;
 }
+
+/** Same seed → same index (multiplayer: everyone sees the same title / character art). */
+export function deterministicPickIndex(seed: string, length: number): number {
+  if (length <= 1) return 0;
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return Math.abs(h) % length;
+}
+
+export function getRevealQuoteI18nKey(
+  impostorWon: boolean,
+  v: WinVariant | LoseVariant
+): string {
+  if (impostorWon) {
+    const m: Record<WinVariant, string> = {
+      PERFECT_BLUFF: "reveal_quote_win_perfect_bluff",
+      BARELY_SOLD_IT: "reveal_quote_win_barely_sold_it",
+      NORMAL: "reveal_quote_win_normal",
+    };
+    return m[v as WinVariant] ?? "reveal_quote_win_normal";
+  }
+  const m: Record<LoseVariant, string> = {
+    COOKED: "reveal_quote_lose_cooked",
+    NEARLY_THERE: "reveal_quote_lose_nearly_there",
+    NORMAL: "reveal_quote_lose_normal",
+  };
+  return m[v as LoseVariant] ?? "reveal_quote_lose_normal";
+}

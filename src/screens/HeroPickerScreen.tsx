@@ -1,5 +1,11 @@
 // src/screens/HeroPickerScreen.tsx
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   View,
   Animated,
@@ -7,10 +13,14 @@ import {
   Pressable,
   PanResponder,
   KeyboardAvoidingView,
-  Platform,
   Keyboard,
+  useWindowDimensions,
+  Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import CustomText from "../components/common/CustomText";
 import CustomButton from "../components/common/CustomButton";
 import { useTranslation } from "react-i18next";
@@ -38,7 +48,9 @@ import { HeroStage } from "./HeroPicker/HeroStage";
 import { HeroPickerFooter } from "./HeroPicker/HeroPickerFooter";
 import HeroPickerBackground from "./HeroPicker/HeroPickerBackground";
 import Round1TransitionOverlay from "../components/Round1TransitionOverlay";
-import TutorialOverlay, { getTutorialSteps } from "../components/TutorialOverlay";
+import TutorialOverlay, {
+  getTutorialSteps,
+} from "../components/TutorialOverlay";
 import { useHeroAssets } from "./HeroPicker/hooks/useHeroAssets";
 import { usePassDeviceAssetsReady } from "./HeroPicker/hooks/usePassDeviceAssetsReady";
 import {
@@ -46,7 +58,13 @@ import {
   CAROUSEL_IN_DUR,
   CAROUSEL_OPACITY_FADE_START_RATIO,
   CAROUSEL_OUT_DUR,
-  HERO_STAGE_HEIGHT,
+  HERO_PICKER_BOTTOM_ART_BOTTOM,
+  HERO_PICKER_BOTTOM_ART_HEIGHT_RATIO,
+  HERO_PICKER_HERO_TO_FOOTER_GAP,
+  HERO_PICKER_LARGE_SCREEN_HERO_TO_FOOTER_GAP_RATIO,
+  HERO_PICKER_LARGE_SCREEN_HEIGHT,
+  HERO_PICKER_LARGE_SCREEN_TITLE_TO_HERO_GAP_RATIO,
+  HERO_PICKER_TITLE_TO_HERO_GAP,
   QUOTE_ENTER_DUR,
   QUOTE_EXIT_DUR,
   READ_HOLD_MS,
@@ -70,9 +88,29 @@ import {
   useTrackRoundStartedMutation,
 } from "../api/hooks/useAnalyticsMutations";
 import { fetchQuestions } from "../api/questions";
-import i18n from "../i18n";
-import { Alert, ImageBackground } from "react-native";
+import i18n, { normalizeLanguage } from "../i18n";
+import {
+  connectMultiplayerRelay,
+  sendMultiplayerRelay,
+  subscribeMultiplayerRelay,
+} from "../api/multiplayerRelay";
+import {
+  HERO_CLAIM_DENIED_MESSAGE_TYPE,
+  HERO_CLAIM_MESSAGE_TYPE,
+  HERO_CLAIM_OK_MESSAGE_TYPE,
+  mpPhaseHeroIntroComplete,
+  mpPhaseRound1Start,
+} from "../constants/onlineLobby";
+import {
+  sendPlayerReady,
+  subscribeMpPhaseAllReady,
+} from "../api/multiplayerSync";
+import { useMultiplayerPhaseGate } from "../hooks/useMultiplayerPhaseGate";
+import { getOnlinePlayerIndex } from "../utils/onlinePlayerIndex";
+import OnlineWaitPlayersOverlay from "../components/online/OnlineWaitPlayersOverlay";
+import { ActivityIndicator, Alert, ImageBackground } from "react-native";
 import { Image } from "expo-image";
+import AppImage from "../components/AppImage";
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
@@ -85,19 +123,39 @@ function randomOf<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 export default function HeroPickerScreen() {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const route = useRoute<HeroRoute>();
   const navigation = useNavigation<HeroNav>();
   const { index } = route.params;
   usePreventBack(index >= 1);
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const settingsAnim = useIconPressAnim();
   const leftArrowAnim = useIconPressAnim();
   const rightArrowAnim = useIconPressAnim();
   const [lockedHero, setLockedHero] = useState<ICharacter | null>(null);
+  const [claimSubmitting, setClaimSubmitting] = useState(false);
+  /** ONLINE: server is validating hero reservation after "This is me" (before name). */
+  const [onlineHeroClaimLoading, setOnlineHeroClaimLoading] = useState(false);
+  const onlineHeroClaimLoadingRef = useRef(false);
+  useEffect(() => {
+    onlineHeroClaimLoadingRef.current = onlineHeroClaimLoading;
+  }, [onlineHeroClaimLoading]);
+  const heroReservePendingRef = useRef(false);
+  const nameConfirmPendingRef = useRef(false);
+  const lockedHeroForClaimRef = useRef<ICharacter | null>(null);
+  const pendingNameRef = useRef("");
+  const beginOnlineNamePromptAfterReserveRef = useRef((hero: ICharacter) => {});
+  const beginOnlineFinalQuoteAfterNameRef = useRef((hero: ICharacter) => {});
 
   const [showConfetti, setShowConfetti] = useState(false);
   const [showRound1Transition, setShowRound1Transition] = useState(false);
   const [showRound1Content, setShowRound1Content] = useState(false);
+  const [waitingRound1Players, setWaitingRound1Players] = useState(false);
+  /** ONLINE: local player finished name + final quote; waiting for everyone before 3-2-1. */
+  const [waitingForHeroIntroOthers, setWaitingForHeroIntroOthers] =
+    useState(false);
+  const heroIntroReadySentRef = useRef(false);
   const [showRound1Tutorial, setShowRound1Tutorial] = useState(true);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const footerTranslateY = useRef(new Animated.Value(0)).current;
@@ -119,6 +177,16 @@ export default function HeroPickerScreen() {
     };
   }, []);
   const nameInputRef = useRef<CustomInputHandle | null>(null);
+  const focusNameInput = useCallback(() => {
+    requestAnimationFrame(() => {
+      nameInputRef.current?.focus();
+    });
+    // Android occasionally misses first focus right after animation/state switch.
+    if (Platform.OS === "android") {
+      setTimeout(() => nameInputRef.current?.focus(), 120);
+      setTimeout(() => nameInputRef.current?.focus(), 320);
+    }
+  }, []);
 
   const quoteModeRef = useRef<QuoteMode>("final");
   type QuoteMode = "prompt" | "final";
@@ -151,6 +219,8 @@ export default function HeroPickerScreen() {
   const setCurrentRoundId = useGameStore((s) => s.setCurrentRoundId);
   const startRound = useGameStore((s) => s.startRound);
   const players = useGameStore((s) => s.players);
+  const onlinePlayerId = useGameStore((s) => s.onlinePlayerId);
+  const onlineWsToken = useGameStore((s) => s.onlineWsToken);
   const orderedHeroIdsRef = useRef<string[] | null>(null);
   useEffect(() => {
     return () => {
@@ -164,6 +234,12 @@ export default function HeroPickerScreen() {
         ...h,
         unlocked: unlockedIds.has(h.id),
       }));
+
+    if (orderedHeroIdsRef.current) {
+      const allowed = new Set(filtered.map((h) => h.id));
+      const pruned = orderedHeroIdsRef.current.filter((id) => allowed.has(id));
+      orderedHeroIdsRef.current = pruned.length > 0 ? pruned : null;
+    }
 
     if (filtered.length > 0 && orderedHeroIdsRef.current === null) {
       const unlocked = filtered.filter((h) => unlockedIds.has(h.id));
@@ -208,33 +284,83 @@ export default function HeroPickerScreen() {
     });
   }, [heroes]);
 
+  const viewingHeroIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const h = availableHeroes[idx];
+    if (h) viewingHeroIdRef.current = h.id;
+  }, [availableHeroes, idx]);
+
   useEffect(() => {
     if (availableHeroes.length === 0) return;
-    if (idx >= availableHeroes.length) setIdx(0);
-  }, [availableHeroes.length, idx]);
-  const hero = availableHeroes[idx];
-  const styles = useMemo(() => createHeroPickerStyles(HERO_STAGE_HEIGHT), []);
+    const vid = viewingHeroIdRef.current;
+    if (vid) {
+      const ni = availableHeroes.findIndex((x) => x.id === vid);
+      if (ni >= 0) {
+        setIdx(ni);
+        return;
+      }
+    }
+    setIdx((prev) => Math.min(prev, availableHeroes.length - 1));
+  }, [availableHeroes, taken]);
+
+  const hero =
+    availableHeroes.length === 0
+      ? undefined
+      : (availableHeroes[idx] ?? availableHeroes[0]);
+  const quoteOverlayTop = useMemo(() => insets.top + 8, [insets.top]);
+  const footerBottomPad = 40;
+  const styles = useMemo(
+    () => createHeroPickerStyles(quoteOverlayTop, windowWidth),
+    [quoteOverlayTop, windowWidth],
+  );
+  const titleToHeroGapPx = useMemo(
+    () =>
+      Math.round(
+        windowHeight *
+          (windowHeight >= HERO_PICKER_LARGE_SCREEN_HEIGHT
+            ? HERO_PICKER_LARGE_SCREEN_TITLE_TO_HERO_GAP_RATIO
+            : HERO_PICKER_TITLE_TO_HERO_GAP),
+      ),
+    [windowHeight],
+  );
+  const heroToFooterGapPx = useMemo(
+    () =>
+      Math.round(
+        windowHeight *
+          (windowHeight >= HERO_PICKER_LARGE_SCREEN_HEIGHT
+            ? HERO_PICKER_LARGE_SCREEN_HERO_TO_FOOTER_GAP_RATIO
+            : HERO_PICKER_HERO_TO_FOOTER_GAP),
+      ),
+    [windowHeight],
+  );
+  const bottomArtBottomPx = useMemo(
+    () => Math.round(windowHeight * HERO_PICKER_BOTTOM_ART_BOTTOM),
+    [windowHeight],
+  );
   const assetsReady = useHeroAssets(availableHeroes);
   const passDeviceAssetsReady = usePassDeviceAssetsReady();
   const [isNaming, setIsNaming] = useState(false);
   const [isNameInputFocused, setIsNameInputFocused] = useState(false);
+  const [heroSnipedNotice, setHeroSnipedNotice] = useState(false);
+  const prevTakenInitForSnipeRef = useRef(false);
+  const prevTakenForSnipeRef = useRef<string[]>([]);
+  const availableHeroesRef = useRef(availableHeroes);
   useEffect(() => {
-    if (isNameInputFocused) {
-      Animated.timing(footerTranslateY, {
-        toValue: keyboardHeight > 0 ? -(keyboardHeight - 16) : -16,
-        duration: 320,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.timing(footerTranslateY, {
-        toValue: 0,
-        duration: 320,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [isNameInputFocused, keyboardHeight]);
+    availableHeroesRef.current = availableHeroes;
+  }, [availableHeroes]);
+  /** Само при име: вдига целия футър (поле + бутон) над клавиатурата. Без KeyboardAvoidingView — иначе flex-зоната на героя се свива. */
+  useEffect(() => {
+    const lift =
+      isNaming && isNameInputFocused && keyboardHeight > 0
+        ? -(keyboardHeight - insets.bottom) + 12
+        : 0;
+    Animated.timing(footerTranslateY, {
+      toValue: lift,
+      duration: 260,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [isNaming, isNameInputFocused, keyboardHeight, insets.bottom]);
 
   // Carousel animation: two-phase like HeroPickerScreen3 — fade out + slide out, then swap hero, then fade in + slide in
   const opacity = useRef(new Animated.Value(1)).current;
@@ -244,8 +370,9 @@ export default function HeroPickerScreen() {
   const [isAnimating, setIsAnimating] = useState(false);
 
   const animateTo = (nextIdx: number, direction: 1 | -1) => {
-    if (selected || isAnimating) return;
-    if (availableHeroes.length <= 1) return;
+    if (selected || isAnimating || onlineHeroClaimLoadingRef.current) return;
+    const listLen = availableHeroesRef.current.length;
+    if (listLen <= 1) return;
 
     setIsAnimating(true);
     AudioManager.heroPickerSwipe();
@@ -292,13 +419,67 @@ export default function HeroPickerScreen() {
       });
     });
   };
+  const animateToRef = useRef(animateTo);
+  animateToRef.current = animateTo;
+
+  useEffect(() => {
+    if (mode !== "ONLINE") return;
+    if (!prevTakenInitForSnipeRef.current) {
+      prevTakenInitForSnipeRef.current = true;
+      prevTakenForSnipeRef.current = [...taken];
+      return;
+    }
+    if (selected || isNaming) {
+      prevTakenForSnipeRef.current = [...taken];
+      return;
+    }
+    const prev = prevTakenForSnipeRef.current;
+    const newlyTaken = taken.filter((id) => !prev.includes(id));
+    prevTakenForSnipeRef.current = [...taken];
+    const vid = viewingHeroIdRef.current;
+    if (!vid || !newlyTaken.includes(vid)) return;
+    if (
+      heroReservePendingRef.current &&
+      lockedHeroForClaimRef.current?.id === vid
+    ) {
+      return;
+    }
+    if (
+      onlineHeroClaimLoadingRef.current &&
+      lockedHeroForClaimRef.current?.id === vid
+    ) {
+      return;
+    }
+    const myChar = useGameStore
+      .getState()
+      .players.find((p) => p.id === onlinePlayerId)?.characterId;
+    if (vid === myChar) return;
+
+    setHeroSnipedNotice(true);
+    setTimeout(() => setHeroSnipedNotice(false), 2200);
+    orderedHeroIdsRef.current = orderedHeroIdsRef.current
+      ? orderedHeroIdsRef.current.filter((id) => id !== vid)
+      : null;
+
+    setTimeout(() => {
+      const list = availableHeroesRef.current;
+      if (list.length <= 1) return;
+      const cur = Math.min(idxRef.current, list.length - 1);
+      const next = (cur + 1) % list.length;
+      animateToRef.current(next, 1);
+    }, 0);
+  }, [taken, mode, selected, isNaming, heroes, onlinePlayerId]);
+
   const onPrev = () => {
-    const next =
-      (idxRef.current - 1 + availableHeroes.length) % availableHeroes.length;
+    const len = availableHeroesRef.current.length;
+    if (len <= 1) return;
+    const next = (idxRef.current - 1 + len) % len;
     animateTo(next, -1);
   };
   const onNext = () => {
-    const next = (idxRef.current + 1) % availableHeroes.length;
+    const len = availableHeroesRef.current.length;
+    if (len <= 1) return;
+    const next = (idxRef.current + 1) % len;
     animateTo(next, 1);
   };
   const SWIPE_THRESHOLD = 60;
@@ -310,15 +491,17 @@ export default function HeroPickerScreen() {
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gesture) =>
+        !onlineHeroClaimLoadingRef.current &&
         !isNaming &&
         !selected &&
         Math.abs(gesture.dx) > Math.abs(gesture.dy) &&
         Math.abs(gesture.dx) > 6,
       onPanResponderRelease: (_, gesture) => {
-        if (selected || isAnimating) return;
-        if (availableHeroes.length <= 1) return;
+        if (selected || isAnimating || onlineHeroClaimLoadingRef.current)
+          return;
+        const total = availableHeroesRef.current.length;
+        if (total <= 1) return;
         const currentIdx = idxRef.current;
-        const total = availableHeroes.length;
         if (gesture.dx > SWIPE_THRESHOLD) {
           animateTo((currentIdx - 1 + total) % total, -1);
         } else if (gesture.dx < -SWIPE_THRESHOLD) {
@@ -386,6 +569,15 @@ export default function HeroPickerScreen() {
   }, [selected, quoteMode, skipTranslateY, skipScale, skipOpacity]);
 
   const navigateNext = () => {
+    if (mode === "ONLINE") {
+      // Only after final quote finished (not name prompt). Avoid duplicate ready signals.
+      if (quoteModeRef.current !== "final") return;
+      if (heroIntroReadySentRef.current) return;
+      heroIntroReadySentRef.current = true;
+      sendPlayerReady(mpPhaseHeroIntroComplete());
+      setWaitingForHeroIntroOthers(true);
+      return;
+    }
     if (target && index < target) {
       navigation.navigate("PassDevice", { index: index + 1 });
     } else {
@@ -393,10 +585,23 @@ export default function HeroPickerScreen() {
     }
   };
 
+  useEffect(() => {
+    if (mode !== "ONLINE") return;
+    const unsub = subscribeMpPhaseAllReady((p) => {
+      if (p !== mpPhaseHeroIntroComplete()) return;
+      setWaitingForHeroIntroOthers(false);
+      setShowRound1Transition(true);
+    });
+    return unsub;
+  }, [mode]);
+
   const onRound1TransitionCountdownStart = useCallback(() => {
     setShowRound1Content(true);
     const packSlugs = (gameSettings?.selectedPacks ?? ["main"]).slice(0, 5);
-    const lang = (i18n.language ?? "en").slice(0, 2).toLowerCase();
+    const lang =
+      normalizeLanguage(
+        useGameStore.getState().onlineSessionLanguage ?? i18n.language,
+      ) ?? "en";
     (async () => {
       try {
         const result = await fetchQuestions({ packs: packSlugs, lang }).then(
@@ -440,9 +645,8 @@ export default function HeroPickerScreen() {
     trackGameStartedMutation,
   ]);
 
-  const onRound1Start = async () => {
+  const enterRound1GameLocal = useCallback(async () => {
     if (!players?.length) return;
-    AudioManager.playButtonClick();
     const roundId = `${gameId ?? "game_local"}_round_1`;
     setCurrentRoundId(roundId);
     if (gameId) {
@@ -463,6 +667,70 @@ export default function HeroPickerScreen() {
       screen: "PassDeviceGameplay",
       params: { playerIndex: 0 },
     } as never);
+  }, [
+    players?.length,
+    gameId,
+    mode,
+    userId,
+    setCurrentRoundId,
+    startRound,
+    navigation,
+    trackRoundStartedMutation,
+  ]);
+
+  const enterRound1GameOnline = useCallback(async () => {
+    if (!players?.length) return;
+    const roundId = `${gameId ?? "game_local"}_round_1`;
+    setCurrentRoundId(roundId);
+    if (gameId) {
+      try {
+        await trackRoundStartedMutation.mutateAsync({
+          gameId,
+          roundId,
+          mode,
+          roundIndex: 1,
+          userId,
+        });
+      } catch (e) {
+        console.warn("track ROUND_STARTED failed", e);
+      }
+    }
+    startRound();
+    const idx = getOnlinePlayerIndex(players, onlinePlayerId);
+    navigation.navigate("Game", {
+      screen: "Question",
+      params: { playerIndex: idx },
+    } as never);
+  }, [
+    players,
+    onlinePlayerId,
+    gameId,
+    mode,
+    userId,
+    setCurrentRoundId,
+    startRound,
+    navigation,
+    trackRoundStartedMutation,
+  ]);
+
+  useMultiplayerPhaseGate({
+    enabled: mode === "ONLINE" && waitingRound1Players,
+    phase: mpPhaseRound1Start(),
+    onReady: () => {
+      setWaitingRound1Players(false);
+      void enterRound1GameOnline();
+    },
+  });
+
+  const onRound1Start = async () => {
+    if (!players?.length) return;
+    AudioManager.playButtonClick();
+    if (mode === "ONLINE") {
+      setWaitingRound1Players(true);
+      sendPlayerReady(mpPhaseRound1Start());
+      return;
+    }
+    await enterRound1GameLocal();
   };
 
   const round1TutorialSteps = useMemo(() => getTutorialSteps(t), [t]);
@@ -591,16 +859,162 @@ export default function HeroPickerScreen() {
     });
   };
 
+  const runCoordinatedSequenceRef = useRef(runCoordinatedSequence);
+  runCoordinatedSequenceRef.current = runCoordinatedSequence;
+
+  useEffect(() => {
+    beginOnlineNamePromptAfterReserveRef.current = (h: ICharacter) => {
+      setLockedHero(h);
+      setIsNaming(true);
+      setQuoteMode("prompt");
+      quoteModeRef.current = "prompt";
+      focusNameInput();
+      AudioManager.playButtonClick();
+      const namePrompt =
+        (h.quotes_nameSelected?.length
+          ? randomOf(h.quotes_nameSelected)
+          : null) || t("hero_picker_name_prompt_default");
+      runCoordinatedSequenceRef.current(namePrompt);
+    };
+  }, [t]);
+
+  useEffect(() => {
+    beginOnlineFinalQuoteAfterNameRef.current = (hero: ICharacter) => {
+      setSelected(true);
+      setIsNaming(false);
+      setClaimSubmitting(false);
+      setIsNameInputFocused(false);
+      if (gameId) {
+        void trackCharacterSelected({
+          gameId,
+          characterId: hero.id,
+          mode,
+          playerId: onlinePlayerId ?? "",
+          userId,
+        }).catch((e) => {
+          console.warn("track CHARACTER_SELECTED failed", e);
+        });
+      }
+      const selectedQuotes = hero.quotes_selected?.length
+        ? hero.quotes_selected
+        : [t("hero_picker_quote_fallback")];
+      const q = randomOf(selectedQuotes);
+      setQuoteMode("final");
+      quoteModeRef.current = "final";
+      runCoordinatedSequenceRef.current(q);
+    };
+  }, [gameId, mode, userId, t, onlinePlayerId]);
+
+  useEffect(() => {
+    if (mode !== "ONLINE" || !onlineWsToken) return;
+    connectMultiplayerRelay(onlineWsToken);
+    const unsub = subscribeMultiplayerRelay((raw) => {
+      const d = raw as {
+        type?: string;
+        playerId?: string;
+        characterId?: string;
+        nickname?: string | null;
+      };
+      const st = useGameStore.getState();
+      if (st.mode !== "ONLINE") return;
+      if (
+        d.type === HERO_CLAIM_OK_MESSAGE_TYPE &&
+        d.playerId &&
+        d.characterId
+      ) {
+        let displayName: string;
+        if (d.playerId === st.onlinePlayerId) {
+          if (
+            nameConfirmPendingRef.current &&
+            pendingNameRef.current.trim().length >= 3
+          ) {
+            displayName = pendingNameRef.current.trim();
+          } else if (d.nickname && d.nickname.length >= 3) {
+            displayName = d.nickname;
+          } else {
+            displayName = "Player";
+          }
+        } else {
+          displayName =
+            d.nickname && d.nickname.length >= 3 ? d.nickname : "Player";
+        }
+        st.applyRemoteHeroPick({
+          playerId: d.playerId,
+          characterId: d.characterId,
+          name: displayName,
+        });
+
+        if (d.playerId !== st.onlinePlayerId) return;
+
+        if (
+          nameConfirmPendingRef.current &&
+          lockedHeroForClaimRef.current?.id === d.characterId
+        ) {
+          nameConfirmPendingRef.current = false;
+          setClaimSubmitting(false);
+          const h = lockedHeroForClaimRef.current;
+          if (h) beginOnlineFinalQuoteAfterNameRef.current(h);
+          return;
+        }
+        if (
+          heroReservePendingRef.current &&
+          lockedHeroForClaimRef.current?.id === d.characterId
+        ) {
+          heroReservePendingRef.current = false;
+          setOnlineHeroClaimLoading(false);
+          const h = lockedHeroForClaimRef.current;
+          if (h) beginOnlineNamePromptAfterReserveRef.current(h);
+        }
+      }
+      if (
+        d.type === HERO_CLAIM_DENIED_MESSAGE_TYPE &&
+        typeof d.characterId === "string"
+      ) {
+        if (
+          heroReservePendingRef.current &&
+          lockedHeroForClaimRef.current?.id === d.characterId
+        ) {
+          heroReservePendingRef.current = false;
+          setOnlineHeroClaimLoading(false);
+          lockedHeroForClaimRef.current = null;
+          Alert.alert(t("required_alert_title"), t("online_hero_taken"));
+          return;
+        }
+        if (
+          nameConfirmPendingRef.current &&
+          lockedHeroForClaimRef.current?.id === d.characterId
+        ) {
+          nameConfirmPendingRef.current = false;
+          setClaimSubmitting(false);
+          Alert.alert(t("required_alert_title"), t("online_hero_taken"));
+        }
+      }
+    });
+    return unsub;
+  }, [mode, onlineWsToken, t]);
+
   const handleSelect = () => {
     if (!hero || !hero.unlocked || selected || isAnimating) return;
+    if (mode === "ONLINE") {
+      if (!onlineWsToken || onlineHeroClaimLoading) return;
+      AudioManager.playPickingHero();
+      lockedHeroForClaimRef.current = hero;
+      heroReservePendingRef.current = true;
+      setOnlineHeroClaimLoading(true);
+      connectMultiplayerRelay(onlineWsToken);
+      sendMultiplayerRelay({
+        type: HERO_CLAIM_MESSAGE_TYPE,
+        characterId: hero.id,
+      });
+      return;
+    }
+
     AudioManager.playPickingHero();
     setLockedHero(hero);
     setIsNaming(true);
     setQuoteMode("prompt");
     quoteModeRef.current = "prompt";
-    requestAnimationFrame(() => {
-      nameInputRef.current?.focus();
-    });
+    focusNameInput();
     AudioManager.playButtonClick();
 
     const namePrompt =
@@ -618,6 +1032,20 @@ export default function HeroPickerScreen() {
     const trimmed = playerName.trim();
     if (trimmed.length < 3 || trimmed.length > 8) return;
     AudioManager.playButtonClick();
+
+    if (mode === "ONLINE") {
+      if (!lockedHero || !onlineWsToken) return;
+      nameConfirmPendingRef.current = true;
+      pendingNameRef.current = trimmed;
+      setClaimSubmitting(true);
+      connectMultiplayerRelay(onlineWsToken);
+      sendMultiplayerRelay({
+        type: HERO_CLAIM_MESSAGE_TYPE,
+        characterId: lockedHero.id,
+        nickname: trimmed,
+      });
+      return;
+    }
 
     setSelected(true); // 🔒 lock UI
     setIsNaming(false);
@@ -685,7 +1113,10 @@ export default function HeroPickerScreen() {
 
   if (showEmptyState) {
     return (
-      <SafeAreaView className="flex-1 bg-black items-center justify-center px-8">
+      <SafeAreaView
+        className="flex-1 bg-black items-center justify-center px-8"
+        edges={["right", "left"]}
+      >
         <CustomText variant="h4" className="text-center">
           {t("hero_picker_unavailable")}
         </CustomText>
@@ -716,7 +1147,8 @@ export default function HeroPickerScreen() {
   }
 
   const handleFooterConfirm = () => {
-    if (!hero.unlocked) {
+    const h = lockedHero ?? hero;
+    if (!h?.unlocked) {
       // 🔒 locked hero → само анимация
       lockAnimMapRef.current[displayHero.id]?.();
       return;
@@ -727,10 +1159,7 @@ export default function HeroPickerScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1 }}
-    >
+    <KeyboardAvoidingView enabled={false} style={{ flex: 1 }}>
       <SafeAreaView className="flex-1" edges={["right", "left"]}>
         {showRound1Content ? (
           <ImageBackground
@@ -755,10 +1184,10 @@ export default function HeroPickerScreen() {
               </View>
               <View className="mb-16 px-16 absolute bottom-0 left-0 right-0">
                 <CustomText className="text-center mb-4">
-                  <CustomText className="underline">{firstPlayerName}</CustomText>,
-                  <CustomText>
-                    {" "}{t("round_start_hint")}
+                  <CustomText className="underline">
+                    {firstPlayerName}
                   </CustomText>
+                  ,<CustomText> {t("round_start_hint")}</CustomText>
                 </CustomText>
                 <CustomButton
                   title={t("start_btn")}
@@ -769,168 +1198,283 @@ export default function HeroPickerScreen() {
                   horizontalPadding={48}
                   fullWidth
                   onPress={onRound1Start}
+                  disabled={mode === "ONLINE" && waitingRound1Players}
                 />
               </View>
             </View>
           </ImageBackground>
         ) : (
-        <HeroPickerBackground
-          showOverlay={selected || isNaming}
-          overlayOpacity={overlayOpacity}
-          styles={styles}
-          hideBottomArt={isNameInputFocused}
-        >
-          {showConfetti && (
-            <View
-              pointerEvents="none"
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: SCREEN_WIDTH,
-                height: SCREEN_HEIGHT,
-                justifyContent: "center",
-                alignItems: "center",
-                zIndex: 999,
-              }}
-            >
-              <LottieView
-                source={lottie.confettiTop} // ⬅️ важно: burst animation
-                autoPlay
-                loop={false}
-                resizeMode="cover"
-                style={{
-                  width: SCREEN_WIDTH * 1.4,
-                  height: SCREEN_WIDTH * 1.4,
-                }}
-              />
-            </View>
-          )}
-
-          <QuoteBubble
-            visible={selected || isNaming}
-            text={quoteTyped}
-            opacity={bubbleOpacity}
-            translateY={bubbleTranslateY}
-            scale={bubbleScale}
+          <HeroPickerBackground
+            showOverlay={selected || isNaming || onlineHeroClaimLoading}
+            overlayOpacity={overlayOpacity}
             styles={styles}
-          />
-          {!selected && !isNaming && (
-            <View className="absolute top-16 left-8">
-              <Pressable
-                onPressIn={settingsAnim.pressIn}
-                onPressOut={settingsAnim.pressOut}
-                onPress={() => {
-                  AudioManager.playButtonClick();
-                  navigation.navigate("Settings");
-                }}
-              >
-                <AnimatedImage
-                  source={game_images.settingsIcon}
-                  style={[
-                    { width: 56, height: 56 },
-                    settingsAnim.style,
-                  ]}
-                  contentFit="contain"
-                />
-              </Pressable>
-            </View>
-          )}
-          <View className="flex-1 items-center w-full justify-between px-4 pt-10 pb-[88px]">
-            <View style={{ opacity: isNaming || selected ? 0 : 1 }}>
-              <HeroPickerHeader />
-            </View>
-            <View
-              style={[styles.stage, { overflow: "visible" as const }]}
-              {...(panResponder ? panResponder.panHandlers : {})}
-            >
-              <HeroStage
-                key={displayHero.id}
-                hero={displayHero}
-                heroScale={heroScale}
-                opacity={opacity}
-                translateX={translateX}
-                panResponder={!isNaming && !selected ? panResponder : undefined}
-                canInteract={
-                  !isNaming &&
-                  !selected &&
-                  !isAnimating &&
-                  availableHeroes.length > 1
-                }
-                previewing={previewing}
-                onPrev={onPrev}
-                onNext={onNext}
-                leftArrowAnim={leftArrowAnim}
-                rightArrowAnim={rightArrowAnim}
-                styles={styles}
-                onPlayLockAnim={(fn) => {
-                  lockAnimMapRef.current[displayHero.id] = fn;
-                }}
-                onUnlockVisualComplete={() => {
-                  setUnlockedIds((prev) => {
-                    const next = new Set(prev);
-                    next.add(displayHero.id);
-                    return next;
-                  });
-                  setShowConfetti(true);
-                  setTimeout(() => setShowConfetti(false), 1800);
-                }}
-              />
-            </View>
-
-            {selected && quoteMode === "final" && (
-              <Animated.View
+          >
+            {showConfetti && (
+              <View
+                pointerEvents="none"
                 style={{
-                  opacity: skipOpacity,
-                  transform: [
-                    { translateY: skipTranslateY },
-                    { scale: skipScale },
-                  ],
-                  marginTop: 8,
-                  marginBottom: 12,
-                  paddingHorizontal: 64,
-                  width: "100%",
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: SCREEN_WIDTH,
+                  height: SCREEN_HEIGHT,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  zIndex: 999,
                 }}
               >
-                <CustomButton
-                  title={t("hero_picker_skip")}
-                  onPress={onSkip}
-                  backgroundImage={backgrounds.bg026}
-                  glow
-                  btnSize="sm"
-                  fontSize="sm"
-                  glowColor="rgba(41,255,25,0.8)"
-                  shadowColor="#005f07"
-                  // fullWidth
+                <LottieView
+                  source={lottie.confettiTop} // ⬅️ важно: burst animation
+                  autoPlay
+                  loop={false}
+                  resizeMode="cover"
+                  style={{
+                    width: SCREEN_WIDTH * 1.4,
+                    height: SCREEN_WIDTH * 1.4,
+                  }}
                 />
-              </Animated.View>
+              </View>
             )}
 
-            <View
-              className="w-full"
-              style={{ position: "relative", width: "100%" }}
-            >
-              <HeroPickerFooter
-                hero={displayHero}
-                isNaming={isNaming}
-                playerName={playerName}
-                disabled={selected}
-                inputRef={nameInputRef}
-                onChangeName={(v) => setPlayerName(v)}
-                onConfirm={isNaming ? onConfirmName : handleFooterConfirm}
-                styles={styles}
+            <QuoteBubble
+              visible={selected || isNaming}
+              text={quoteTyped}
+              opacity={bubbleOpacity}
+              translateY={bubbleTranslateY}
+              scale={bubbleScale}
+              styles={styles}
+            />
+            {!selected && !isNaming && !onlineHeroClaimLoading && (
+              <View
                 style={{
-                  opacity: selected ? 0 : 1,
-                  pointerEvents: selected ? "none" : "auto",
-                  transform: [{ translateY: footerTranslateY }],
+                  position: "absolute",
+                  top: insets.top + 8,
+                  left: 16,
+                  zIndex: 30,
                 }}
-                onInputFocus={() => setIsNameInputFocused(true)}
-                onInputBlur={() => setIsNameInputFocused(false)}
-              />
+              >
+                <Pressable
+                  onPressIn={settingsAnim.pressIn}
+                  onPressOut={settingsAnim.pressOut}
+                  onPress={() => {
+                    AudioManager.playButtonClick();
+                    navigation.navigate("Settings");
+                  }}
+                >
+                  <AnimatedImage
+                    source={game_images.settingsIcon}
+                    style={[{ width: 56, height: 56 }, settingsAnim.style]}
+                    contentFit="contain"
+                  />
+                </Pressable>
+              </View>
+            )}
+            <View
+              style={{
+                flex: 1,
+                width: "100%",
+                position: "relative",
+                paddingHorizontal: 16,
+              }}
+            >
+              <View
+                pointerEvents="box-none"
+                style={{
+                  zIndex: 20,
+                  opacity:
+                    isNaming || selected || onlineHeroClaimLoading ? 0 : 1,
+                }}
+              >
+                <HeroPickerHeader />
+              </View>
+              <View
+                style={{
+                  marginTop: titleToHeroGapPx,
+                  flex: 1,
+                  minHeight: 0,
+                  overflow: "visible",
+                  zIndex: 15,
+                  position: "relative",
+                }}
+              >
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: "absolute",
+                    left: -16,
+                    right: -16,
+                    bottom: bottomArtBottomPx,
+                    height: `${Math.round(HERO_PICKER_BOTTOM_ART_HEIGHT_RATIO * 102)}%`,
+                    zIndex: 0,
+                  }}
+                >
+                  <AppImage
+                    source={game_images.heroPickerBottom}
+                    contentFit="cover"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      opacity: isNameInputFocused ? 0 : 1,
+                    }}
+                  />
+                </View>
+                <HeroStage
+                  key={displayHero.id}
+                  hero={displayHero}
+                  heroScale={heroScale}
+                  opacity={opacity}
+                  translateX={translateX}
+                  panResponder={
+                    !isNaming && !selected ? panResponder : undefined
+                  }
+                  canInteract={
+                    !isNaming &&
+                    !selected &&
+                    !isAnimating &&
+                    !onlineHeroClaimLoading &&
+                    availableHeroes.length > 1
+                  }
+                  previewing={previewing}
+                  onPrev={onPrev}
+                  onNext={onNext}
+                  leftArrowAnim={leftArrowAnim}
+                  rightArrowAnim={rightArrowAnim}
+                  styles={styles}
+                  onPlayLockAnim={(fn) => {
+                    lockAnimMapRef.current[displayHero.id] = fn;
+                  }}
+                  onUnlockVisualComplete={() => {
+                    setUnlockedIds((prev) => {
+                      const next = new Set(prev);
+                      next.add(displayHero.id);
+                      return next;
+                    });
+                    setShowConfetti(true);
+                    setTimeout(() => setShowConfetti(false), 1800);
+                  }}
+                />
+              </View>
+
+              <View
+                style={{
+                  marginTop: heroToFooterGapPx,
+                  paddingBottom: footerBottomPad,
+                  zIndex: 25,
+                  alignItems: "center",
+                  width: "100%",
+                  position: "relative",
+                }}
+              >
+                {selected && quoteMode === "final" ? (
+                  <Animated.View
+                    pointerEvents="auto"
+                    style={{
+                      position: "absolute",
+                      left: 16,
+                      right: 16,
+                      bottom: footerBottomPad,
+                      zIndex: 26,
+                      opacity: skipOpacity,
+                      transform: [
+                        { translateY: Animated.add(skipTranslateY, footerTranslateY) },
+                        { scale: skipScale },
+                        { translateY: 6 },
+                      ],
+                    }}
+                  >
+                    <CustomButton
+                      title={t("hero_picker_skip")}
+                      onPress={onSkip}
+                      backgroundImage={backgrounds.bg026}
+                      fullWidth
+                      horizontalPadding={28}
+                      btnSize="sm"
+                      fontSize="sm"
+                      shadowColor="#005f07"
+                    />
+                  </Animated.View>
+                ) : null}
+                <HeroPickerFooter
+                  hero={displayHero}
+                  isNaming={isNaming}
+                  playerName={playerName}
+                  disabled={
+                    selected || claimSubmitting || onlineHeroClaimLoading
+                  }
+                  inputRef={nameInputRef}
+                  onChangeName={(v) => setPlayerName(v)}
+                  onConfirm={isNaming ? onConfirmName : handleFooterConfirm}
+                  styles={styles}
+                  style={{
+                    opacity: selected ? 0 : 1,
+                    pointerEvents: selected ? "none" : "auto",
+                    width: "100%",
+                  }}
+                  keyboardLiftStyle={{
+                    transform: [{ translateY: footerTranslateY }],
+                  }}
+                  onInputFocus={() => setIsNameInputFocused(true)}
+                  onInputBlur={() => setIsNameInputFocused(false)}
+                />
+              </View>
             </View>
-          </View>
-        </HeroPickerBackground>
+            {onlineHeroClaimLoading ? (
+              <View
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  zIndex: 1000,
+                  backgroundColor: "rgba(0,0,0,0.45)",
+                }}
+              >
+                <ActivityIndicator size="small" color="#ffffff" />
+              </View>
+            ) : null}
+            {heroSnipedNotice && mode === "ONLINE" ? (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  zIndex: 3000,
+                  backgroundColor: "rgba(0,0,0,0.72)",
+                  paddingHorizontal: 32,
+                }}
+              >
+                <CustomText
+                  variant="h5"
+                  className="text-center text-white mb-2"
+                >
+                  {t("hero_picker_sniped_title")}
+                </CustomText>
+                <CustomText variant="p" className="text-center text-white/90">
+                  {t("hero_picker_sniped_hint")}
+                </CustomText>
+              </View>
+            ) : null}
+          </HeroPickerBackground>
         )}
+        <OnlineWaitPlayersOverlay
+          visible={
+            mode === "ONLINE" &&
+            (waitingRound1Players || waitingForHeroIntroOthers)
+          }
+          messageKey={
+            waitingForHeroIntroOthers
+              ? "online_wait_hero_intro"
+              : "online_wait_other_players"
+          }
+        />
       </SafeAreaView>
       {showRound1Transition && (
         <Round1TransitionOverlay

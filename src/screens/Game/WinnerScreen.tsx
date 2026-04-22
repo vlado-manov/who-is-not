@@ -1,8 +1,15 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Animated,
   Easing,
   ImageBackground,
+  Platform,
   StyleSheet,
   View,
   useWindowDimensions,
@@ -17,7 +24,20 @@ import { useTranslation } from "react-i18next";
 import LottieView from "lottie-react-native";
 
 import { GameStackParamList } from "../../navigation/types";
+import { GameMode } from "../../api/analytics";
+import {
+  disconnectMultiplayerRelay,
+  sendMultiplayerRelay,
+  subscribeMultiplayerRelay,
+} from "../../api/multiplayerRelay";
+import {
+  HOST_CLOSE_SESSION_MESSAGE_TYPE,
+  HOST_SESSION_NEW_HEROES_MESSAGE_TYPE,
+  HOST_SESSION_RESTART_MESSAGE_TYPE,
+  WINNER_FACT_DISMISSED_MESSAGE_TYPE,
+} from "../../constants/onlineLobby";
 import { useGameStore } from "../../store/useGameStore";
+import { useAuthStore } from "../../store/useUserStore";
 import { useHeroesStore } from "../../store/useHeroesStore";
 import { usePreventBack } from "../../hooks/usePreventBack";
 import { getRevealVariant } from "../../utils/revealQuotes";
@@ -27,6 +47,7 @@ import CustomButton from "../../components/common/CustomButton";
 import CustomText from "../../components/common/CustomText";
 import { backgrounds } from "../../../assets/backgrounds";
 import { lottie } from "../../../assets/lottie";
+import EliminatedGameEndView from "../../components/game/EliminatedGameEndView";
 
 type Nav = StackNavigationProp<GameStackParamList, "Winner">;
 
@@ -41,10 +62,16 @@ const WINNER_TEXT_FR_URI =
 const WINNER_TEXT_ES_URI =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/d9695ece-16c5-48a9-a61a-db6638a1718a-winnerText_es.webp";
 const WINNER_PLATFORM_URI =
-  "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/5051b921-dc67-4c52-a68b-f065ac5eb93d-HeroPickerBottomWinner.webp";
+  "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/33c7abd1-9ef1-40a7-9609-6e1b2eb78ce1-winnerScreenPlatform.webp";
 const ALSO_WINNER_STICKER_URI =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/0896451f-3ad4-403f-943d-ae9e973f5b3f-gg.webp";
 const DEFAULT_FUN_FACT = "Bananas are berries, but strawberries are not.";
+const WINNER_HERO_HEIGHT_PCT = 0.62;
+const WINNER_HERO_BOTTOM_PCT = 0.08;
+const WINNER_PLATFORM_HEIGHT_PCT = 0.3;
+const WINNER_PLATFORM_BOTTOM_PCT = 0;
+const WINNER_TITLE_TO_STAGE_GAP_PCT = 0.04;
+const CONFETTI_RENDER_MODE = Platform.OS === "android" ? "SOFTWARE" : "AUTOMATIC";
 
 function startAnim(animation: Animated.CompositeAnimation) {
   return new Promise<void>((resolve) => animation.start(() => resolve()));
@@ -61,11 +88,22 @@ export default function WinnerScreen() {
   const lives = useGameStore((s) => s.lives);
   const oddOneId = useGameStore((s) => s.oddOneId);
   const votes = useGameStore((s) => s.votes);
+  const mode = useGameStore((s) => s.mode) as GameMode;
+  const onlinePlayerId = useGameStore((s) => s.onlinePlayerId);
+  const onlineIsHost = useGameStore((s) => s.onlineIsHost);
   const heroes = useHeroesStore((s) => s.heroes);
   const restartWithSamePlayersAndHeroes = useGameStore(
     (s) => s.restartWithSamePlayersAndHeroes
   );
   const resetGameState = useGameStore((s) => s.reset);
+  const round = useGameStore((s) => s.round);
+  const gameId = useGameStore((s) => s.gameId);
+  const updateSettings = useAuthStore((s) => s.updateSettings);
+
+  useEffect(() => {
+    if (gameId?.startsWith("dev_")) return;
+    updateSettings({ hasCompletedAnyGame: true });
+  }, [gameId, updateSettings]);
 
   const [showButtons, setShowButtons] = useState(false);
   const [showRevealButton, setShowRevealButton] = useState(false);
@@ -100,7 +138,9 @@ export default function WinnerScreen() {
   const coWinnerStickerOpacity = useRef(new Animated.Value(0)).current;
   const coWinnerStickerScale = useRef(new Animated.Value(1.55)).current;
   const coWinnerStickerY = useRef(new Animated.Value(-34)).current;
-  const stageFunFactsRef = useRef<Record<number, string>>({});
+  const stageFunFactsRef = useRef<Record<string, string>>({});
+  const hasTwoWinnersRef = useRef(false);
+  const winnerFactDismissRecvRef = useRef(0);
 
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -125,10 +165,33 @@ export default function WinnerScreen() {
     return tiedAtTop ? sorted : sorted.slice(0, 1);
   }, [alivePlayers, lives, players]);
   const hasTwoWinners = winnerPlayers.length === 2;
+  hasTwoWinnersRef.current = hasTwoWinners;
+
+  const isLocalEliminated =
+    mode === "ONLINE" &&
+    onlinePlayerId != null &&
+    (lives[onlinePlayerId] ?? 0) <= 0;
+
+  const effectiveWinnerStageIndex = useMemo(() => {
+    if (mode === "ONLINE" && hasTwoWinners && onlinePlayerId) {
+      const idx = winnerPlayers.findIndex((p) => p.id === onlinePlayerId);
+      if (idx >= 0) return idx;
+    }
+    return winnerStageIndex;
+  }, [mode, hasTwoWinners, onlinePlayerId, winnerPlayers, winnerStageIndex]);
+
   const winnerPlayer =
-    winnerPlayers[winnerStageIndex] ?? winnerPlayers[0] ?? null;
-  const shouldShowContinueButton = hasTwoWinners && winnerStageIndex === 0;
-  const shouldShowCoWinnerSticker = hasTwoWinners && winnerStageIndex === 1;
+    winnerPlayers[effectiveWinnerStageIndex] ?? winnerPlayers[0] ?? null;
+
+  /** Pass-and-play only: both winner stages on one device. Online co-winners each stay on their own stage. */
+  const shouldShowContinueButton =
+    hasTwoWinners && winnerStageIndex === 0 && mode !== "ONLINE";
+
+  const canSeeWinnerSurpriseOnline =
+    mode !== "ONLINE" || !onlinePlayerId || winnerPlayer?.id === onlinePlayerId;
+
+  const shouldShowCoWinnerSticker =
+    hasTwoWinners && mode !== "ONLINE" && winnerStageIndex === 1;
 
   const votedWinner = useMemo(() => {
     if (!oddOneId) return null;
@@ -191,12 +254,43 @@ export default function WinnerScreen() {
     () => Math.max(320, Math.round(windowHeight * 0.55)),
     [windowHeight]
   );
+  const winnerTitleHeight = useMemo(
+    () => Math.round(windowHeight * 0.3),
+    [windowHeight]
+  );
+  const winnerHeroHeight = useMemo(
+    () => Math.round(windowHeight * WINNER_HERO_HEIGHT_PCT),
+    [windowHeight]
+  );
+  const winnerPlatformHeight = useMemo(
+    () => Math.round(windowHeight * WINNER_PLATFORM_HEIGHT_PCT),
+    [windowHeight]
+  );
+  const heroBottomOffset = useMemo(
+    () => Math.round(windowHeight * WINNER_HERO_BOTTOM_PCT),
+    [windowHeight]
+  );
+  /** Stage vertical offset from screen bottom (percentage of screen height). */
+  const platformBottomOffset = useMemo(
+    () => Math.round(windowHeight * WINNER_PLATFORM_BOTTOM_PCT),
+    [windowHeight]
+  );
+  const titleTopOffset = useMemo(
+    () => Math.round(windowHeight * 0.002),
+    [windowHeight]
+  );
+  const stageTopOffset = useMemo(
+    () => Math.round(windowHeight * WINNER_TITLE_TO_STAGE_GAP_PCT),
+    [windowHeight]
+  );
 
   useEffect(() => {
     stageFunFactsRef.current = {};
   }, [i18n.language]);
 
   useEffect(() => {
+    if (isLocalEliminated) return;
+
     let cancelled = false;
     const fallbackPrimary = t("winner_fun_fact_fallback", DEFAULT_FUN_FACT);
     const fallbackSecondary = t(
@@ -211,16 +305,19 @@ export default function WinnerScreen() {
       return found || fallbackPrimary;
     };
 
+    const cacheKey = winnerPlayer?.id ?? `_stage_${winnerStageIndex}`;
+
     const loadFunFact = async () => {
-      const cached = stageFunFactsRef.current[winnerStageIndex];
+      const cached = stageFunFactsRef.current[cacheKey];
       if (cached) {
         if (!cancelled) setFunFactText(cached);
         return;
       }
 
+      const firstId = winnerPlayers[0]?.id;
       const excludedFirstWinnerFact =
-        hasTwoWinners && winnerStageIndex === 1
-          ? stageFunFactsRef.current[0]
+        hasTwoWinners && winnerStageIndex === 1 && mode !== "ONLINE" && firstId
+          ? stageFunFactsRef.current[firstId]
           : undefined;
       try {
         const attempts =
@@ -228,7 +325,12 @@ export default function WinnerScreen() {
         let pickedText: string | null = null;
 
         for (let i = 0; i < attempts; i += 1) {
-          const fact = await fetchRandomFunFact(i18n.language);
+          const seedBase = winnerPlayer?.id
+            ? `${winnerPlayer.id}-${round ?? 0}`
+            : `r${round ?? 0}-s${winnerStageIndex}`;
+          const fact = await fetchRandomFunFact(i18n.language, {
+            seed: `${seedBase}-${i}`,
+          });
           const text = fact?.text?.trim();
           if (!text) continue;
           if (excludedFirstWinnerFact && text === excludedFirstWinnerFact) {
@@ -240,11 +342,11 @@ export default function WinnerScreen() {
 
         const safeText =
           pickedText || pickFallbackDifferent(excludedFirstWinnerFact);
-        stageFunFactsRef.current[winnerStageIndex] = safeText;
+        stageFunFactsRef.current[cacheKey] = safeText;
         if (!cancelled) setFunFactText(safeText);
       } catch {
         const safeText = pickFallbackDifferent(excludedFirstWinnerFact);
-        stageFunFactsRef.current[winnerStageIndex] = safeText;
+        stageFunFactsRef.current[cacheKey] = safeText;
         if (!cancelled) setFunFactText(safeText);
       }
     };
@@ -255,7 +357,17 @@ export default function WinnerScreen() {
     return () => {
       cancelled = true;
     };
-  }, [hasTwoWinners, i18n.language, t, winnerStageIndex]);
+  }, [
+    hasTwoWinners,
+    i18n.language,
+    isLocalEliminated,
+    mode,
+    round,
+    t,
+    winnerPlayer?.id,
+    winnerPlayers,
+    winnerStageIndex,
+  ]);
 
   const animateTitleBurst = async () => {
     await startAnim(
@@ -396,6 +508,8 @@ export default function WinnerScreen() {
   };
 
   useEffect(() => {
+    if (isLocalEliminated) return;
+
     const run = async () => {
       screenOpacity.setValue(0);
       screenScale.setValue(1.08);
@@ -497,6 +611,7 @@ export default function WinnerScreen() {
       );
       timersRef.current.push(
         setTimeout(() => {
+          if (!canSeeWinnerSurpriseOnline) return;
           setShowRevealButton(true);
           Animated.parallel([
             Animated.timing(revealBtnOpacity, {
@@ -546,9 +661,14 @@ export default function WinnerScreen() {
     titleX,
     titleY,
     winnerStageIndex,
+    canSeeWinnerSurpriseOnline,
+    mode,
+    onlinePlayerId,
+    winnerPlayer?.id,
+    isLocalEliminated,
   ]);
 
-  const animateFinalButtonsIn = () => {
+  const animateFinalButtonsIn = useCallback(() => {
     setShowButtons(true);
     Animated.parallel([
       Animated.timing(buttonsOpacity, {
@@ -564,7 +684,23 @@ export default function WinnerScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  };
+  }, [buttonsOpacity, buttonsY]);
+
+  useEffect(() => {
+    if (mode !== "ONLINE" || isLocalEliminated) return;
+    winnerFactDismissRecvRef.current = 0;
+    const unsub = subscribeMultiplayerRelay((raw) => {
+      const d = raw as { type?: string };
+      if (d.type !== WINNER_FACT_DISMISSED_MESSAGE_TYPE) return;
+      if (!useGameStore.getState().onlineIsHost) return;
+      winnerFactDismissRecvRef.current += 1;
+      const need = hasTwoWinnersRef.current ? 2 : 1;
+      if (winnerFactDismissRecvRef.current >= need) {
+        animateFinalButtonsIn();
+      }
+    });
+    return unsub;
+  }, [animateFinalButtonsIn, isLocalEliminated, mode]);
 
   const handleRevealSurprise = () => {
     setShowRevealButton(false);
@@ -714,7 +850,11 @@ export default function WinnerScreen() {
         }),
       ]).start(() => {
         setShowSurpriseOverlay(false);
-        animateFinalButtonsIn();
+        if (mode === "ONLINE") {
+          sendMultiplayerRelay({ type: WINNER_FACT_DISMISSED_MESSAGE_TYPE });
+        } else {
+          animateFinalButtonsIn();
+        }
       });
     });
   };
@@ -727,6 +867,9 @@ export default function WinnerScreen() {
         routes: [{ name: "Round" }],
       })
     );
+    if (mode === "ONLINE" && onlineIsHost) {
+      sendMultiplayerRelay({ type: HOST_SESSION_RESTART_MESSAGE_TYPE });
+    }
   };
 
   const handleStartWithDifferentHeroes = () => {
@@ -746,10 +889,32 @@ export default function WinnerScreen() {
         ],
       })
     );
+    if (mode === "ONLINE" && onlineIsHost) {
+      sendMultiplayerRelay({ type: HOST_SESSION_NEW_HEROES_MESSAGE_TYPE });
+    }
+  };
+
+  const handleCloseSessionForEveryone = () => {
+    if (mode === "ONLINE" && onlineIsHost) {
+      sendMultiplayerRelay({ type: HOST_CLOSE_SESSION_MESSAGE_TYPE });
+    }
+    disconnectMultiplayerRelay();
+    resetGameState();
+    const parent = navigation.getParent();
+    parent?.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: "Onboarding", params: { screen: "Menu" } }],
+      })
+    );
   };
   const handleContinueToSecondWinner = () => {
     setWinnerStageIndex(1);
   };
+
+  if (isLocalEliminated && onlinePlayerId) {
+    return <EliminatedGameEndView playerId={onlinePlayerId} />;
+  }
 
   return (
     <SafeAreaView className="flex-1" edges={["right", "left"]}>
@@ -778,6 +943,7 @@ export default function WinnerScreen() {
                 source={lottie.confettiTop}
                 autoPlay
                 loop={false}
+                renderMode={CONFETTI_RENDER_MODE}
                 speed={0.7}
                 style={styles.confettiA}
               />
@@ -785,6 +951,7 @@ export default function WinnerScreen() {
                 source={lottie.confettiTop}
                 autoPlay
                 loop={false}
+                renderMode={CONFETTI_RENDER_MODE}
                 speed={1.35}
                 style={styles.confettiB}
               />
@@ -792,6 +959,7 @@ export default function WinnerScreen() {
                 source={lottie.confettiTop}
                 autoPlay
                 loop={false}
+                renderMode={CONFETTI_RENDER_MODE}
                 speed={0.9}
                 style={styles.confettiC}
               />
@@ -799,6 +967,7 @@ export default function WinnerScreen() {
                 source={lottie.confettiTop}
                 autoPlay
                 loop={false}
+                renderMode={CONFETTI_RENDER_MODE}
                 speed={1.6}
                 style={styles.confettiD}
               />
@@ -806,6 +975,7 @@ export default function WinnerScreen() {
                 source={lottie.confettiTop}
                 autoPlay
                 loop={false}
+                renderMode={CONFETTI_RENDER_MODE}
                 speed={0.8}
                 style={styles.confettiE}
               />
@@ -813,6 +983,7 @@ export default function WinnerScreen() {
                 source={lottie.confettiTop}
                 autoPlay
                 loop={false}
+                renderMode={CONFETTI_RENDER_MODE}
                 speed={1.2}
                 style={styles.confettiF}
               />
@@ -820,6 +991,7 @@ export default function WinnerScreen() {
                 source={lottie.confettiTop}
                 autoPlay
                 loop={false}
+                renderMode={CONFETTI_RENDER_MODE}
                 speed={1.05}
                 style={styles.confettiG}
               />
@@ -827,6 +999,7 @@ export default function WinnerScreen() {
                 source={lottie.confettiTop}
                 autoPlay
                 loop={false}
+                renderMode={CONFETTI_RENDER_MODE}
                 speed={1.75}
                 style={styles.confettiK}
               />
@@ -834,6 +1007,7 @@ export default function WinnerScreen() {
                 source={lottie.confettiTop}
                 autoPlay
                 loop={false}
+                renderMode={CONFETTI_RENDER_MODE}
                 speed={0.65}
                 style={styles.confettiL}
               />
@@ -841,6 +1015,7 @@ export default function WinnerScreen() {
                 source={lottie.confettiTop}
                 autoPlay
                 loop={false}
+                renderMode={CONFETTI_RENDER_MODE}
                 speed={1.45}
                 style={styles.confettiM}
               />
@@ -849,6 +1024,7 @@ export default function WinnerScreen() {
                   source={lottie.confettiTop}
                   autoPlay
                   loop={false}
+                  renderMode={CONFETTI_RENDER_MODE}
                   speed={1.3}
                   style={styles.confettiH}
                 />
@@ -858,6 +1034,7 @@ export default function WinnerScreen() {
                   source={lottie.confettiTop}
                   autoPlay
                   loop={false}
+                  renderMode={CONFETTI_RENDER_MODE}
                   speed={0.75}
                   style={styles.confettiI}
                 />
@@ -867,6 +1044,7 @@ export default function WinnerScreen() {
                   source={lottie.confettiTop}
                   autoPlay
                   loop={false}
+                  renderMode={CONFETTI_RENDER_MODE}
                   speed={1.55}
                   style={styles.confettiJ}
                 />
@@ -877,6 +1055,7 @@ export default function WinnerScreen() {
                     source={lottie.confettiTop}
                     autoPlay
                     loop={false}
+                    renderMode={CONFETTI_RENDER_MODE}
                     speed={1.1}
                     style={styles.confettiWave2A}
                   />
@@ -884,6 +1063,7 @@ export default function WinnerScreen() {
                     source={lottie.confettiTop}
                     autoPlay
                     loop={false}
+                    renderMode={CONFETTI_RENDER_MODE}
                     speed={0.85}
                     style={styles.confettiWave2B}
                   />
@@ -891,6 +1071,7 @@ export default function WinnerScreen() {
                     source={lottie.confettiTop}
                     autoPlay
                     loop={false}
+                    renderMode={CONFETTI_RENDER_MODE}
                     speed={1.4}
                     style={styles.confettiWave2C}
                   />
@@ -902,6 +1083,7 @@ export default function WinnerScreen() {
                     source={lottie.confettiTop}
                     autoPlay
                     loop
+                    renderMode={CONFETTI_RENDER_MODE}
                     speed={0.95}
                     style={styles.confettiWave3A}
                   />
@@ -909,6 +1091,7 @@ export default function WinnerScreen() {
                     source={lottie.confettiTop}
                     autoPlay
                     loop
+                    renderMode={CONFETTI_RENDER_MODE}
                     speed={1.2}
                     style={styles.confettiWave3B}
                   />
@@ -916,6 +1099,7 @@ export default function WinnerScreen() {
                     source={lottie.confettiTop}
                     autoPlay
                     loop
+                    renderMode={CONFETTI_RENDER_MODE}
                     speed={0.78}
                     style={styles.confettiWave3C}
                   />
@@ -924,62 +1108,94 @@ export default function WinnerScreen() {
             </View>
           )}
 
-          <Animated.View
-            style={{
-              transform: [{ translateX: titleX }, { translateY: titleY }],
-            }}
+          <View
+            style={[
+              styles.mainStageLayout,
+              {
+                paddingTop: insets.top + titleTopOffset,
+                paddingHorizontal: 8,
+              },
+            ]}
           >
-            <AppImage
-              source={{ uri: winnerTitleUri }}
-              contentFit="contain"
-              style={styles.winnerTitle}
-            />
-            {shouldShowCoWinnerSticker && (
-              <Animated.View
+            <Animated.View
+              style={[
+                styles.topTitleWrap,
+                {
+                  transform: [{ translateX: titleX }, { translateY: titleY }],
+                },
+              ]}
+            >
+              <AppImage
+                source={{ uri: winnerTitleUri }}
+                contentFit="contain"
+                style={[styles.winnerTitle, { height: winnerTitleHeight }]}
+              />
+              {shouldShowCoWinnerSticker && (
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    styles.coWinnerStickerWrap,
+                    {
+                      top: Math.max(120, winnerTitleHeight - 70),
+                      opacity: coWinnerStickerOpacity,
+                      transform: [
+                        { translateY: coWinnerStickerY },
+                        { scale: coWinnerStickerScale },
+                      ],
+                    },
+                  ]}
+                >
+                  <AppImage
+                    source={{ uri: ALSO_WINNER_STICKER_URI }}
+                    contentFit="contain"
+                    style={styles.coWinnerSticker}
+                  />
+                </Animated.View>
+              )}
+            </Animated.View>
+
+            <View style={[styles.stageWrap, { marginTop: stageTopOffset }]}>
+              <View
                 pointerEvents="none"
                 style={[
-                  styles.coWinnerStickerWrap,
+                  styles.winnerPlatformWrap,
                   {
-                    opacity: coWinnerStickerOpacity,
-                    transform: [
-                      { translateY: coWinnerStickerY },
-                      { scale: coWinnerStickerScale },
-                    ],
+                    left: -8 - insets.left,
+                    right: -8 - insets.right,
+                    height: winnerPlatformHeight,
+                    bottom: platformBottomOffset,
                   },
                 ]}
               >
                 <AppImage
-                  source={{ uri: ALSO_WINNER_STICKER_URI }}
-                  contentFit="contain"
-                  style={styles.coWinnerSticker}
+                  source={{ uri: WINNER_PLATFORM_URI }}
+                  contentFit="cover"
+                  contentPosition="bottom"
+                  style={styles.winnerPlatform}
                 />
+              </View>
+
+              <Animated.View
+                style={[
+                  styles.heroWrap,
+                  {
+                    // Keep the hero anchored to a fixed viewport percentage
+                    // instead of shifting upward on devices with larger bottom insets.
+                    bottom: heroBottomOffset,
+                    transform: [{ translateY: heroY }],
+                  },
+                ]}
+              >
+                {winnerHeroImage && (
+                  <AppImage
+                    source={winnerHeroImage}
+                    contentFit="contain"
+                    contentPosition="bottom"
+                    style={[styles.winnerHero, { height: winnerHeroHeight }]}
+                  />
+                )}
               </Animated.View>
-            )}
-          </Animated.View>
-
-          <View style={styles.stageWrap}>
-            <Animated.View
-              style={[
-                styles.heroWrap,
-                {
-                  transform: [{ translateY: heroY }],
-                },
-              ]}
-            >
-              {winnerHeroImage && (
-                <AppImage
-                  source={winnerHeroImage}
-                  contentFit="contain"
-                  style={styles.winnerHero}
-                />
-              )}
-            </Animated.View>
-
-            <AppImage
-              source={{ uri: WINNER_PLATFORM_URI }}
-              contentFit="cover"
-              style={styles.winnerPlatform}
-            />
+            </View>
           </View>
 
           {showRevealButton && (
@@ -1045,15 +1261,15 @@ export default function WinnerScreen() {
                       ]}
                     >
                       <CustomText
-                        variant="p"
+                        variant="p-small"
                         className="text-center"
                         textColor="#762a05"
                       >
-                        {t("winner_fun_fact_title")}
+                        {t("winner_fun_fact_subtitle")}
                       </CustomText>
                       <View style={styles.surpriseDivider} />
                       <CustomText
-                        variant="h6-headline"
+                        variant="h5"
                         className="text-center"
                         textColor="#592410"
                       >
@@ -1065,7 +1281,7 @@ export default function WinnerScreen() {
                         className="text-center"
                         textColor="#762a05"
                       >
-                        {t("winner_fun_fact_subtitle")}
+                        {t("winner_fun_fact_title")}
                       </CustomText>
                     </Animated.View>
                   </ImageBackground>
@@ -1121,6 +1337,14 @@ export default function WinnerScreen() {
                   glowColor="rgba(41,255,25,0.8)"
                   shadowColor="#005f07"
                 />
+              ) : mode === "ONLINE" && !onlineIsHost ? (
+                <CustomText
+                  variant="p"
+                  className="text-center px-4"
+                  textColor="#fff7ec"
+                >
+                  {t("winner_waiting_host")}
+                </CustomText>
               ) : (
                 <>
                   <CustomButton
@@ -1145,9 +1369,32 @@ export default function WinnerScreen() {
                     backgroundImage={backgrounds.bg015}
                     shadowColor="#540d0d"
                   />
+                  <CustomButton
+                    title={t("winner_close_session_btn")}
+                    fullWidth
+                    onPress={handleCloseSessionForEveryone}
+                    btnSize="sm"
+                    fontSize="sm"
+                    buttonClassName="mt-4"
+                    glow
+                    backgroundImage={backgrounds.bg015}
+                    shadowColor="#2a0a0a"
+                  />
                 </>
               )}
             </Animated.View>
+          )}
+
+          {mode === "ONLINE" && !canSeeWinnerSurpriseOnline && !showButtons && (
+            <View style={styles.waitingFactHint} pointerEvents="none">
+              <CustomText
+                variant="p-small"
+                className="text-center px-6"
+                textColor="#f5e6d8"
+              >
+                {t("winner_waiting_fact")}
+              </CustomText>
+            </View>
           )}
         </Animated.View>
       </ImageBackground>
@@ -1156,6 +1403,13 @@ export default function WinnerScreen() {
 }
 
 const styles = StyleSheet.create({
+  waitingFactHint: {
+    position: "absolute",
+    bottom: 120,
+    left: 8,
+    right: 8,
+    zIndex: 8,
+  },
   bg: {
     flex: 1,
   },
@@ -1167,18 +1421,23 @@ const styles = StyleSheet.create({
   screenLayer: {
     flex: 1,
   },
-  winnerTitle: {
-    position: "absolute",
-    top: 40,
-    left: 0,
+  mainStageLayout: {
+    flex: 1,
     width: "100%",
-    height: 330,
+    position: "relative",
+  },
+  topTitleWrap: {
     zIndex: 6,
+    alignItems: "center",
+    width: "100%",
+    position: "relative",
+  },
+  winnerTitle: {
+    width: "100%",
   },
   coWinnerStickerWrap: {
     position: "absolute",
-    top: 270,
-    // left: 0,
+    top: 180,
     right: 0,
     alignItems: "center",
     zIndex: 7,
@@ -1188,11 +1447,10 @@ const styles = StyleSheet.create({
     height: 82,
   },
   stageWrap: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: -20,
+    flex: 1,
+    minHeight: 0,
+    overflow: "visible",
+    position: "relative",
     alignItems: "center",
     justifyContent: "flex-end",
     zIndex: 5,
@@ -1201,35 +1459,37 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 120,
+    bottom: 0,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-end",
     zIndex: 7,
   },
   winnerHero: {
     width: "100%",
-    height: 570,
   },
-  winnerPlatform: {
+  winnerPlatformWrap: {
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: -10,
+    bottom: 0,
+    zIndex: 4,
+  },
+  winnerPlatform: {
     width: "100%",
-    height: "80%",
-    zIndex: 6,
+    height: "100%",
+    zIndex: 4,
   },
   buttonsWrap: {
     position: "absolute",
-    left: 40,
-    right: 40,
+    left: 8,
+    right: 8,
     bottom: 0,
     zIndex: 8,
   },
   revealButtonWrap: {
     position: "absolute",
-    left: 40,
-    right: 40,
+    left: 8,
+    right: 8,
     top: "50%",
     marginTop: -26,
     zIndex: 9,
@@ -1239,7 +1499,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.8)",
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: 8,
     zIndex: 30,
   },
   surprisePlateShadow: {
@@ -1282,8 +1542,8 @@ const styles = StyleSheet.create({
   },
   closeButtonWrap: {
     position: "absolute",
-    left: 40,
-    right: 40,
+    left: 8,
+    right: 8,
     bottom: 36,
     zIndex: 32,
   },

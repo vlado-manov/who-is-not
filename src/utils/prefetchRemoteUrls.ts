@@ -1,6 +1,6 @@
 // src/utils/prefetchRemoteUrls.ts
 // Central list of remote image URLs used in the app. Prefetch at bootstrap.
-import { Image } from "expo-image";
+import { prefetchExpoImageUri } from "./prefetchExpoImage";
 
 const BASE_URL =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery";
@@ -28,6 +28,8 @@ export const REMOTE_GAME_URLS: string[] = [
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/09ff9060-48c0-4c0b-a3a0-8dfa725893fb-btnMinus.webp",
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/431055a5-400c-4912-82bc-20f323fe5f9a-btnPlus.webp",
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/09ab591f-5c5a-4cb6-a2bf-e2ba51cc1d80-calcPpl.webp",
+  "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/e978f7d0-9f18-4927-ae64-61033bf85d4d-calcPpl2.webp",
+  "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/d7566b2a-d7d6-4666-98a9-af56656d0bf8-calcPpl3.webp",
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/189c0167-2f86-4f03-8fc4-e21aa01c03c2-arrowLeft.webp",
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/601f3287-867f-4966-b5da-e92d6cbc29a6-arrowRight.webp",
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/107a0ffc-d5fe-4ab3-9f92-b537ae121453-HeroPickerBottom.webp",
@@ -100,6 +102,6 @@ export const REMOTE_GAME_URLS: string[] = [
 
 export async function prefetchRemoteGameUrls(): Promise<void> {
   await Promise.all(
-    REMOTE_GAME_URLS.map((url) => Image.prefetch(url).catch(() => false))
+    REMOTE_GAME_URLS.map((url) => prefetchExpoImageUri(url).catch(() => false)),
   );
 }

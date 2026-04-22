@@ -28,6 +28,8 @@ import { usePreventBack } from "../../hooks/usePreventBack";
 import { useTranslation } from "react-i18next";
 import { formatQuestionWithName } from "../../utils/formatQuestionText";
 import {
+  deterministicPickIndex,
+  getRevealQuoteI18nKey,
   getRevealVariant,
   LoseVariant,
   WinVariant,
@@ -304,10 +306,7 @@ const RevealScreen = () => {
     ]);
     quoteIntroAnimRef.current.start(() => {
       if (isContinuingRef.current) return;
-      const text = impostorLost
-        ? "Oh man, i really hoped i might win this one"
-        : "Hell yeah i completely obliterated you guys, you guys suck!";
-      typeQuote(text, () => {
+      typeQuote(revealQuoteText, () => {
         // void AudioManager.playHeroPickerEnd();
       });
     });
@@ -381,6 +380,20 @@ const RevealScreen = () => {
     impostorWon
   );
 
+  /** Same for every device in the round (no per-client random title art). */
+  const revealVisualSeed = useMemo(
+    () =>
+      `${gameId ?? "local"}_${round ?? 0}_${oddOneId}_${revealVariant}_${
+        impostorWon ? "w" : "l"
+      }`,
+    [gameId, round, oddOneId, revealVariant, impostorWon]
+  );
+
+  const revealQuoteText = useMemo(
+    () => t(getRevealQuoteI18nKey(impostorWon, revealVariant)),
+    [t, impostorWon, revealVariant]
+  );
+
   /* -------------------------------------------------------------------------- */
   /* ASSETS */
   /* -------------------------------------------------------------------------- */
@@ -388,64 +401,59 @@ const RevealScreen = () => {
   const backgroundImage = impostorLost ? backgrounds.bg030 : backgrounds.bg029;
 
   const titleImage: ImageSourcePropType = useMemo(() => {
+    const seed = `${revealVisualSeed}-title`;
     if (impostorWon) {
       const winVariant = revealVariant as WinVariant;
       switch (winVariant) {
-        case "PERFECT_BLUFF":
-          // wonroundgood – won without being suspected
-          return {
-            uri: [
-              "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/698b6249-2c84-4de1-80a7-1d040a7cab15-captain.webp",
-              "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/3098328b-e20e-48bd-8fdb-90818f71290e-knocks.webp",
-              "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/15a91088-0b9d-414c-ac73-c7ef77c60d13-flawless.webp",
-            ][Math.floor(Math.random() * 3)],
-          };
-        case "BARELY_SOLD_IT":
-          // wonroundbad – won but one vote from losing
-          return {
-            uri: [
-              "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/0e944d74-3c4d-4145-be57-852da2d8f6e7-lucky.webp",
-              "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/ecfaa1ec-2d85-4d22-a835-98382a6bb39a-minute.webp",
-            ][Math.floor(Math.random() * 2)],
-          };
+        case "PERFECT_BLUFF": {
+          const urls = [
+            "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/698b6249-2c84-4de1-80a7-1d040a7cab15-captain.webp",
+            "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/3098328b-e20e-48bd-8fdb-90818f71290e-knocks.webp",
+            "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/15a91088-0b9d-414c-ac73-c7ef77c60d13-flawless.webp",
+          ];
+          return { uri: urls[deterministicPickIndex(seed, urls.length)] };
+        }
+        case "BARELY_SOLD_IT": {
+          const urls = [
+            "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/0e944d74-3c4d-4145-be57-852da2d8f6e7-lucky.webp",
+            "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/ecfaa1ec-2d85-4d22-a835-98382a6bb39a-minute.webp",
+          ];
+          return { uri: urls[deterministicPickIndex(seed, urls.length)] };
+        }
         case "NORMAL":
-        default:
-          // wonroundnormal – won with at least one vote
-          return {
-            uri: [
-              "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/0896451f-3ad4-403f-943d-ae9e973f5b3f-gg.webp",
-              "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/8a423802-d7a2-45b1-8f83-d32e1603274a-winner.webp",
-            ][Math.floor(Math.random() * 2)],
-          };
+        default: {
+          const urls = [
+            "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/0896451f-3ad4-403f-943d-ae9e973f5b3f-gg.webp",
+            "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/8a423802-d7a2-45b1-8f83-d32e1603274a-winner.webp",
+          ];
+          return { uri: urls[deterministicPickIndex(seed, urls.length)] };
+        }
       }
     }
 
     const loseVariant = revealVariant as LoseVariant;
     switch (loseVariant) {
-      case "COOKED":
-        // lostroundgood – lost, everyone identified the impostor
-        return {
-          uri: [
-            "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/67314e35-f3f5-422f-b722-74ee78dfc829-soweak.webp",
-            "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/8da5ee85-aaa0-4db9-ae2f-a9fb975beb4c-smallpp.webp",
-          ][Math.floor(Math.random() * 2)],
-        };
+      case "COOKED": {
+        const urls = [
+          "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/67314e35-f3f5-422f-b722-74ee78dfc829-soweak.webp",
+          "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/8da5ee85-aaa0-4db9-ae2f-a9fb975beb4c-smallpp.webp",
+        ];
+        return { uri: urls[deterministicPickIndex(seed, urls.length)] };
+      }
       case "NEARLY_THERE":
-        // lostroundbad – lost by a narrow margin
         return {
           uri: "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/4e14f65c-3931-4b6a-a5a8-ca45e1783cef-tough.webp",
         };
       case "NORMAL":
-      default:
-        // lostroundnormal – lost, but managed to fool some players
-        return {
-          uri: [
-            "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/28db9184-2ddf-4784-95d7-c60dbd049cf9-inevitable.webp",
-            "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/3d363964-d229-4eb9-bc84-a1e926192071-defeat.webp",
-          ][Math.floor(Math.random() * 2)],
-        };
+      default: {
+        const urls = [
+          "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/28db9184-2ddf-4784-95d7-c60dbd049cf9-inevitable.webp",
+          "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/3d363964-d229-4eb9-bc84-a1e926192071-defeat.webp",
+        ];
+        return { uri: urls[deterministicPickIndex(seed, urls.length)] };
+      }
     }
-  }, [impostorWon, revealVariant]);
+  }, [impostorWon, revealVariant, revealVisualSeed]);
 
   const questionFrameImage = impostorLost
     ? backgrounds.bg016
@@ -481,8 +489,9 @@ const RevealScreen = () => {
 
     if (!pool || pool.length === 0) return null;
 
-    return pool[Math.floor(Math.random() * pool.length)];
-  }, [heroes, imposterCharacter, impostorWon, revealVariant]);
+    const idx = deterministicPickIndex(`${revealVisualSeed}-char`, pool.length);
+    return pool[idx];
+  }, [heroes, imposterCharacter, impostorWon, revealVariant, revealVisualSeed]);
 
   /* -------------------------------------------------------------------------- */
   /* ACTION */
@@ -646,6 +655,8 @@ const RevealScreen = () => {
                 text={imposterQuestionDisplayText}
                 background={questionFrameImage}
                 mode={impostorLost ? "dark" : "light"}
+                textVariant="h5-headline"
+                textColorOverride={impostorLost ? "#fff" : "#000"}
               />
             </Animated.View>
 
@@ -659,6 +670,7 @@ const RevealScreen = () => {
               >
                 <CustomButton
                   title={t("continue_btn")}
+                  btnSize="sm"
                   fullWidth
                   backgroundImage={
                     impostorLost ? backgrounds.bg003 : backgrounds.bg026
@@ -734,7 +746,7 @@ const styles = StyleSheet.create({
 
   questionWrap: {
     alignItems: "center",
-    marginBottom: 40,
+    marginBottom: 24,
   },
   questionFrame: {
     width: "100%",

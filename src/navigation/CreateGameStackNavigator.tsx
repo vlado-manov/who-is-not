@@ -1,9 +1,14 @@
+import React from "react";
+import { StyleSheet, View } from "react-native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { CreateGameStackParamList } from "./types";
+import DevGameExitOverlay from "../components/dev/DevGameExitOverlay";
 import PlayersNumberScreen from "../screens/PlayersNumberScreen";
 import HeroPickerScreen from "../screens/HeroPickerScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import LobbyScreen from "../screens/LobbyScreen";
+import OnlineHostScreen from "../screens/OnlineHostScreen";
+import OnlineJoinScreen from "../screens/OnlineJoinScreen";
 import PassDeviceScreen from "../components/PassDeviceScreen";
 import { Transitions } from "./transitions";
 // import RoundScreen from "../components/RoundScreen";
@@ -19,6 +24,7 @@ export default function CreateGameStackNavigator() {
   };
 
   return (
+    <View style={styles.wrap}>
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
@@ -29,7 +35,7 @@ export default function CreateGameStackNavigator() {
       <Stack.Screen
         name="PlayersNumber"
         component={PlayersNumberScreen}
-        options={{ cardStyleInterpolator: Transitions.fade }}
+        options={{ cardStyleInterpolator: Transitions.slideFromTop }}
       />
       <Stack.Screen
         name="HeroPicker"
@@ -39,7 +45,13 @@ export default function CreateGameStackNavigator() {
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ cardStyleInterpolator: Transitions.fade }}
+        options={{
+          cardStyleInterpolator: Transitions.slideFromRight,
+          gestureDirection: "horizontal",
+          gestureEnabled: true,
+          cardStyle: { backgroundColor: "transparent" },
+          cardOverlayEnabled: false,
+        }}
       />
       <Stack.Screen name="PassDevice" component={PassDeviceScreen} />
       <Stack.Screen
@@ -47,7 +59,23 @@ export default function CreateGameStackNavigator() {
         component={LobbyScreen}
         options={instantTransition}
       />
+      <Stack.Screen
+        name="OnlineHost"
+        component={OnlineHostScreen}
+        options={{ cardStyleInterpolator: Transitions.slideFromTop }}
+      />
+      <Stack.Screen
+        name="OnlineJoin"
+        component={OnlineJoinScreen}
+        options={{ cardStyleInterpolator: Transitions.slideFromTop }}
+      />
       {/* <Stack.Screen name="Round" component={RoundScreen} /> */}
     </Stack.Navigator>
+    {__DEV__ && <DevGameExitOverlay />}
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  wrap: { flex: 1 },
+});

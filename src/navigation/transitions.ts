@@ -190,9 +190,17 @@ export const forFlipHorizontal: StackCardStyleInterpolator = ({ current }) => {
   return { cardStyle: { transform: [{ perspective: 1000 }, { rotateY }] } };
 };
 
+/**
+ * Push: card enters from bottom. Pop: card exits downward (good for “dismiss” / back).
+ * Same interpolator as slideFromBottom — use for secondary screens (Settings, Profile, …).
+ */
+export const forSlideDismissDown = forSlideFromBottom;
+
 export const Transitions = {
   slideFromTop: forSlideFromTop,
   slideFromBottom: forSlideFromBottom,
+  /** Alias: back gesture feels like sliding the screen down toward the bottom. */
+  slideDismissDown: forSlideDismissDown,
   slideFromRight: forSlideFromRight,
   slideFromLeft: forSlideFromLeft,
   fade: forFade,

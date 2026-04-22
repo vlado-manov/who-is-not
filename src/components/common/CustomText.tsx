@@ -1,6 +1,11 @@
 // src/components/common/CustomText.tsx
 import React, { ReactNode, useMemo } from "react";
-import { Text, TextProps, useWindowDimensions } from "react-native";
+import {
+  Platform,
+  Text,
+  TextProps,
+  useWindowDimensions,
+} from "react-native";
 
 type TextVariant =
   | "h0"
@@ -24,6 +29,25 @@ type TextVariant =
   | "footnote"
   | "quote";
 
+/** Headings / labels: stay on one line; font shrinks to fit width (iOS + Android RN). */
+const SINGLE_LINE_SHRINK_VARIANTS = new Set<TextVariant>([
+  "h0",
+  "h1",
+  "h2",
+  "h2-small",
+  "h2-headline",
+  "h3",
+  "h3-headline",
+  "h3-small",
+  "h4",
+  "h4-headline",
+  "h5",
+  "h5-headline",
+  "h6",
+  "h6-headline",
+  "label",
+]);
+
 interface Props extends TextProps {
   children: ReactNode;
   variant?: TextVariant;
@@ -32,6 +56,8 @@ interface Props extends TextProps {
   shadowStrong?: boolean;
   responsive?: boolean;
   textColor?: string;
+  /** When true, heading text may wrap (opt out of single-line shrink). */
+  allowWrap?: boolean;
 }
 
 export default function CustomText({
@@ -42,9 +68,14 @@ export default function CustomText({
   shadowStrong = false,
   responsive = true,
   textColor,
+  allowWrap = false,
   ...rest
 }: Props) {
   const { width } = useWindowDimensions();
+  const { style: restStyle, ...textRest } = rest;
+
+  const headingSingleLineShrink =
+    !allowWrap && SINGLE_LINE_SHRINK_VARIANTS.has(variant);
 
   const baseSize = useMemo(() => {
     switch (variant) {
@@ -153,11 +184,27 @@ export default function CustomText({
         .filter(Boolean)
         .join(" ")
         .trim()}
+      {...(headingSingleLineShrink
+        ? {
+            numberOfLines: 1,
+            adjustsFontSizeToFit: true,
+            minimumFontScale: 0.32,
+            maxFontSizeMultiplier: 1.35,
+          }
+        : {})}
+      {...textRest}
       style={[
         { fontSize },
         inlineColor,
+        headingSingleLineShrink && {
+          flexShrink: 1,
+          minWidth: 0,
+          maxWidth: "100%",
+        },
+        Platform.OS === "android" && headingSingleLineShrink && {
+          includeFontPadding: false,
+        },
         shadow && {
-          // textShadowColor: "rgba(0,0,0,0.55)",
           textShadowOffset: { width: 0, height: 1.75 },
           textShadowRadius: 0,
         },
@@ -166,8 +213,8 @@ export default function CustomText({
           textShadowOffset: { width: 0, height: 1 },
           textShadowRadius: 0,
         },
+        restStyle,
       ]}
-      {...rest}
     >
       {children}
     </Text>

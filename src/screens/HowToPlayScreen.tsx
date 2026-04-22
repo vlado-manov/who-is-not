@@ -4,24 +4,26 @@ import {
   ImageBackground,
   TouchableOpacity,
   FlatList,
-  Dimensions,
   TouchableWithoutFeedback,
   FlatListProps,
   ViewToken,
   ScrollView,
   ImageSourcePropType,
+  useWindowDimensions,
+  StyleSheet,
 } from "react-native";
 import AppImage from "../components/AppImage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { backgrounds } from "../../assets/backgrounds";
-import { Entypo } from "@expo/vector-icons";
 import CustomText from "../components/common/CustomText";
+import ScreenTopBar from "../components/common/ScreenTopBar";
 import { useNavigation } from "@react-navigation/native";
+import { navigateBackSafe } from "../navigation/navigateBackSafe";
 import { useTranslation } from "react-i18next";
 import { OnboardingStackParamList } from "../navigation/types";
 import { StackNavigationProp } from "@react-navigation/stack";
-import AudioManager from "../utils/audioManager";
 import { htp_images } from "../../assets/images";
+import { useResponsive } from "../utils/responsive";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Rules">;
 
@@ -31,8 +33,6 @@ type Step = {
   bullets: string[];
   image: ImageSourcePropType;
 };
-
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
 function getHtpSteps(t: (key: string) => string): Step[] {
   return [
@@ -71,6 +71,8 @@ function getHtpSteps(t: (key: string) => string): Step[] {
 
 type StepCardProps = {
   step: Step;
+  itemWidth: number;
+  imageHeight: number;
   showPrev?: boolean;
   showNext?: boolean;
   onPrev?: () => void;
@@ -80,6 +82,8 @@ type StepCardProps = {
 
 function StepCard({
   step,
+  itemWidth,
+  imageHeight,
   showPrev,
   showNext,
   onPrev,
@@ -89,7 +93,7 @@ function StepCard({
   return (
     <View
       style={{
-        width: SCREEN_W,
+        width: itemWidth,
         paddingHorizontal: 0,
         alignItems: "center",
         justifyContent: "flex-start",
@@ -144,7 +148,7 @@ function StepCard({
           <AppImage
             source={step.image}
             contentFit="contain"
-            style={{ width: "100%", height: 225 }}
+            style={{ width: "100%", height: imageHeight }}
           />
           <View>
             <CustomText variant="h5" textColor="black" className="text-center">
@@ -169,13 +173,16 @@ function StepCard({
 const HowToPlayScreen = () => {
   const navigation = useNavigation<Nav>();
   const { t } = useTranslation();
+  const { horizontalPadding, topIconSize } = useResponsive();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const steps = React.useMemo(() => getHtpSteps(t), [t]);
   const [index, setIndex] = useState(0);
   const flatRef = useRef<FlatList<Step>>(null);
+  const cardImageHeight = Math.min(225, Math.max(160, windowHeight * 0.28));
 
   const getItemLayout = (_: any, i: number) => ({
-    length: SCREEN_W,
-    offset: SCREEN_W * i,
+    length: windowWidth,
+    offset: windowWidth * i,
     index: i,
   });
   const viewabilityConfig = useRef({
@@ -199,31 +206,33 @@ const HowToPlayScreen = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1" edges={["right", "left"]}>
-      <ImageBackground
-        source={backgrounds.bg023}
-        style={{ flex: 1 }}
-        resizeMode="cover"
-      >
+    <View style={styles.root}>
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+        <ImageBackground
+          source={backgrounds.bg023}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        >
+          <ScreenTopBar
+            variant="soloBackFromCenter"
+            horizontalPadding={horizontalPadding}
+            topIconSize={topIconSize}
+            showBack
+            onSettings={() => {}}
+            onProfile={() => {}}
+            onBack={() => navigateBackSafe(navigation)}
+            backAccessibilityLabel={t("back_btn")}
+          />
         <ScrollView
           contentContainerStyle={{
-            paddingVertical: 64,
+            paddingTop: 72,
+            paddingBottom: Math.min(48, windowHeight * 0.06),
             alignItems: "center",
             flexGrow: 1,
           }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <View className="px-8 w-full mt-6">
-            <TouchableOpacity
-              onPress={() => {
-                AudioManager.playButtonClick();
-                navigation.goBack();
-              }}
-              className="flex flex-row gap-2 items-center"
-            >
-              <Entypo name="arrow-with-circle-left" size={48} color="white" />
-            </TouchableOpacity>
-          </View>
-
           <View className="items-center w-full justify-center px-4">
             <CustomText variant="h3-headline" className="text-center w-full">
               {t("htp_heading_1")}
@@ -241,6 +250,8 @@ const HowToPlayScreen = () => {
               renderItem={({ item }) => (
                 <StepCard
                   step={item}
+                  itemWidth={windowWidth}
+                  imageHeight={cardImageHeight}
                   showPrev={index > 0}
                   showNext={index < steps.length - 1}
                   onPrev={() => goTo(index - 1)}
@@ -251,7 +262,7 @@ const HowToPlayScreen = () => {
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
-              snapToInterval={SCREEN_W}
+              snapToInterval={windowWidth}
               decelerationRate="fast"
               getItemLayout={getItemLayout}
               onViewableItemsChanged={onViewableItemsChanged}
@@ -282,8 +293,14 @@ const HowToPlayScreen = () => {
           </View>
         </ScrollView>
       </ImageBackground>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#0a0a0a" },
+  safe: { flex: 1, backgroundColor: "transparent" },
+});
 
 export default HowToPlayScreen;

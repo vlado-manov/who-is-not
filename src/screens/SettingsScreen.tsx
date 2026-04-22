@@ -2,14 +2,14 @@ import React, { useMemo, useState } from "react";
 import {
   View,
   ScrollView,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
 } from "react-native";
 import ImageBackgroundWithLoadGate from "../components/ImageBackgroundWithLoadGate";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Entypo } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { navigateBackSafe } from "../navigation/navigateBackSafe";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { OnboardingStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/useUserStore";
@@ -19,12 +19,16 @@ import CustomInput from "../components/common/CustomInput";
 import CustomButton from "../components/common/CustomButton";
 import { backgrounds } from "../../assets/backgrounds";
 import { useTranslation } from "react-i18next";
+import ScreenTopBar from "../components/common/ScreenTopBar";
+import { useResponsive } from "../utils/responsive";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Settings">;
 
 export default function SettingsScreen() {
   const navigation = useNavigation<Nav>();
   const { t } = useTranslation();
+  const { horizontalPadding, topIconSize } = useResponsive();
+
   const { isGuest, name, email } = useAuthStore((s) => s.user);
   const updateName = useAuthStore((s) => s.updateName);
   const { settings, updateSettings } = useAuthStore();
@@ -68,37 +72,37 @@ export default function SettingsScreen() {
   const toggleSfx = () => applyAudioSettings(musicOn, !sfxOn);
 
   return (
-    <SafeAreaView className="flex-1" edges={["right", "left"]}>
-      <ImageBackgroundWithLoadGate
-        source={backgrounds.bg023}
-        style={{ flex: 1, width: "100%", height: "100%" }}
-        resizeMode="cover"
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.select({ ios: "padding", android: undefined })}
-          style={{ flex: 1 }}
+    <View style={styles.root}>
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+        <ImageBackgroundWithLoadGate
+          source={backgrounds.bg023}
+          showChildrenWhileLoading
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
         >
-          <ScrollView
-            contentContainerStyle={{
-              flexGrow: 1,
-              paddingBottom: 56,
-              paddingTop: 64,
-            }}
-            keyboardShouldPersistTaps="handled"
+          <ScreenTopBar
+            variant="soloBackFromCenter"
+            horizontalPadding={horizontalPadding}
+            topIconSize={topIconSize}
+            showBack
+            onSettings={() => {}}
+            onProfile={() => {}}
+            onBack={() => navigateBackSafe(navigation)}
+            backAccessibilityLabel={t("back_btn")}
+          />
+          <KeyboardAvoidingView
+            behavior={Platform.select({ ios: "padding", android: undefined })}
+            style={{ flex: 1 }}
           >
-            <View className="px-8">
-              <TouchableOpacity
-                onPress={() => {
-                  AudioManager.playButtonClick();
-                  navigation.goBack();
-                }}
-                className="flex flex-row gap-2 items-center"
-              >
-                <Entypo name="arrow-with-circle-left" size={48} color="white" />
-              </TouchableOpacity>
-            </View>
-
-            <View className="items-center w-full justify-center px-4 mt-6 mb-2">
+            <ScrollView
+              contentContainerStyle={{
+                flexGrow: 1,
+                paddingBottom: 56,
+                paddingTop: 72,
+              }}
+              keyboardShouldPersistTaps="handled"
+            >
+            <View className="items-center w-full justify-center px-4 mt-2 mb-2">
               <CustomText variant="h3-headline" className="text-center w-full" shadow>
                 {t("settings_title_1")}
               </CustomText>
@@ -178,7 +182,12 @@ export default function SettingsScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </ImageBackgroundWithLoadGate>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#0a0a0a" },
+  safe: { flex: 1, backgroundColor: "transparent" },
+});

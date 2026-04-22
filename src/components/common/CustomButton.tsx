@@ -45,6 +45,32 @@ interface CustomButtonProps {
   /** icon */
   icon?: ImageSourcePropType;
   iconSize?: number;
+  /** Defaults to `iconSize` for both dimensions when omitted. */
+  iconWidth?: number;
+  iconHeight?: number;
+  /** Vector / custom icon (e.g. @expo/vector-icons). Shown before `icon` image if both set. */
+  iconNode?: React.ReactNode;
+  iconPosition?: "inline" | "leftAbsolute";
+  /**
+   * Renders the icon *outside* the clipped button body (sibling of overflow:hidden layer).
+   * `play` / `party`: top -8, left -10 · `store`: left -16, bottom -8 · `rulebook`: right side, vertically centered.
+   */
+  iconOverlayPreset?: "play" | "store" | "rulebook" | "party";
+  /** e.g. `-10deg` — used with overlay presets. */
+  iconRotation?: string;
+  /**
+   * Absolute offsets for the overlay icon (px; may be negative). Omitted keys fall back to
+   * `iconOverlayPreset` / `leftAbsolute` defaults; only set keys are applied to layout.
+   */
+  iconTop?: number;
+  iconBottom?: number;
+  iconLeft?: number;
+  iconRight?: number;
+  /**
+   * When `true` (default), extra horizontal padding keeps the label away from the overlay icon.
+   * Set `false` to keep the title centered/symmetric — icon is decorative only (`pointerEvents: none`).
+   */
+  iconOverlayPadText?: boolean;
 
   /** sizing */
   btnSize?: ButtonSize;
@@ -54,9 +80,13 @@ interface CustomButtonProps {
   /** text */
   fontSize?: ButtonFontSize;
   fontSizePx?: number;
+  /** Overrides default min scale when `adjustsFontSizeToFit` shrinks the title. */
+  titleMinFontScale?: number;
 
   /** badge */
   label?: string;
+  /** Pill position when `label` is set. Default `right` (top-right corner). */
+  labelSide?: "left" | "right";
   horizontalPadding?: number;
   /** glow */
   glow?: boolean;
@@ -65,6 +95,8 @@ interface CustomButtonProps {
   shadowColor?: string;
   /** classes */
   buttonClassName?: string;
+  /** Falls back to `title` when set */
+  accessibilityLabel?: string;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -95,6 +127,39 @@ const BTN_SIZE_HEIGHT: Record<ButtonSize, number> = {
   lg: 96,
 };
 
+function getPresetOverlayOffsets(
+  preset: CustomButtonProps["iconOverlayPreset"],
+  iconPosition: "inline" | "leftAbsolute",
+  resolvedHeight: number,
+  ih: number,
+): Partial<Record<"top" | "bottom" | "left" | "right", number>> {
+  if (preset === "store") return { left: -16, bottom: -8 };
+  if (preset === "rulebook")
+    return { right: -10, top: (resolvedHeight - ih) / 2 };
+  if (preset === "play" || preset === "party") return { left: -10, top: -8 };
+  if (iconPosition === "leftAbsolute") return { left: -10, top: -8 };
+  return {};
+}
+
+function mergeIconOverlayOffsets(
+  presetOffsets: Partial<Record<"top" | "bottom" | "left" | "right", number>>,
+  iconTop: number | undefined,
+  iconBottom: number | undefined,
+  iconLeft: number | undefined,
+  iconRight: number | undefined,
+): Record<string, number> {
+  const top = iconTop !== undefined ? iconTop : presetOffsets.top;
+  const bottom = iconBottom !== undefined ? iconBottom : presetOffsets.bottom;
+  const left = iconLeft !== undefined ? iconLeft : presetOffsets.left;
+  const right = iconRight !== undefined ? iconRight : presetOffsets.right;
+  const out: Record<string, number> = {};
+  if (top !== undefined) out.top = top;
+  if (bottom !== undefined) out.bottom = bottom;
+  if (left !== undefined) out.left = left;
+  if (right !== undefined) out.right = right;
+  return out;
+}
+
 /* -------------------------------------------------------------------------- */
 /* COMPONENT */
 /* -------------------------------------------------------------------------- */
@@ -115,6 +180,17 @@ export default function CustomButton({
 
   icon,
   iconSize = 36,
+  iconWidth,
+  iconHeight,
+  iconNode,
+  iconPosition = "inline",
+  iconOverlayPreset,
+  iconRotation = "-8deg",
+  iconTop,
+  iconBottom,
+  iconLeft,
+  iconRight,
+  iconOverlayPadText = true,
 
   btnSize = "md",
   height,
@@ -122,15 +198,20 @@ export default function CustomButton({
 
   fontSize = "md",
   fontSizePx,
+  titleMinFontScale,
 
   label,
-  horizontalPadding = 24,
+  labelSide = "right",
+  horizontalPadding = 8,
   glow = false,
   glowColor = "rgba(253, 193, 194, 0.8)",
   glowIntensity = 8,
   shadowColor = "#000",
   buttonClassName,
+  accessibilityLabel: accessibilityLabelProp,
 }: CustomButtonProps) {
+  const accessibilityLabel =
+    accessibilityLabelProp ?? (title ? title : undefined);
   const pressAnim = useRef(new Animated.Value(0)).current;
 
   /* ----------------------------- Animations ------------------------------ */
@@ -180,6 +261,63 @@ export default function CustomButton({
 
   const resolvedFontSize = fontSizePx ?? FONT_SIZE_MAP[fontSize];
 
+  const iw = iconWidth ?? iconSize;
+  const ih = iconHeight ?? iconSize;
+
+  const hasCustomOverlayOffsets =
+    iconTop !== undefined ||
+    iconBottom !== undefined ||
+    iconLeft !== undefined ||
+    iconRight !== undefined;
+
+  const presetOffsets = getPresetOverlayOffsets(
+    iconOverlayPreset,
+    iconPosition,
+    resolvedHeight,
+    ih,
+  );
+  const iconOverlayOffsets = mergeIconOverlayOffsets(
+    presetOffsets,
+    iconTop,
+    iconBottom,
+    iconLeft,
+    iconRight,
+  );
+
+  const iconOutsideOverlay = Boolean(
+    icon &&
+    (iconOverlayPreset ||
+      iconPosition === "leftAbsolute" ||
+      hasCustomOverlayOffsets),
+  );
+
+  /** Long titles: tighter horizontal padding (8px) so text can stay larger before scaling down. */
+  const compactPad = title.length > 22 || (fullWidth && title.length > 16);
+  const basePad = compactPad ? 8 : horizontalPadding;
+  const padForLeftIcon = Math.max(basePad, Math.round(iw * 0.55) + 8);
+  const padForRightIcon = Math.max(basePad, Math.round(iw * 0.4) + 8);
+
+  let contentPaddingLeft = basePad;
+  let contentPaddingRight = basePad;
+  if (iconOutsideOverlay && icon && iconOverlayPadText) {
+    if (iconOverlayPreset === "rulebook" || iconRight !== undefined) {
+      contentPaddingRight = padForRightIcon;
+    }
+    if (
+      iconOverlayPreset === "play" ||
+      iconOverlayPreset === "party" ||
+      iconOverlayPreset === "store" ||
+      iconPosition === "leftAbsolute" ||
+      iconLeft !== undefined ||
+      iconTop !== undefined ||
+      iconBottom !== undefined
+    ) {
+      if (iconOverlayPreset !== "rulebook" && iconRight === undefined) {
+        contentPaddingLeft = padForLeftIcon;
+      }
+    }
+  }
+
   const shadow =
     Platform.OS === "ios"
       ? {
@@ -205,7 +343,11 @@ export default function CustomButton({
   return (
     <View
       className={buttonClassName}
-      style={[glowShadow, fullWidth && { width: "100%" }]}
+      style={[
+        glowShadow,
+        fullWidth && { width: "100%" },
+        iconOutsideOverlay && { overflow: "visible" as const },
+      ]}
     >
       {glow && (
         <View
@@ -221,10 +363,18 @@ export default function CustomButton({
         />
       )}
 
-      <View style={[shadow, { borderRadius: radius, width: "100%" }]}>
+      <View
+        style={[
+          shadow,
+          { borderRadius: radius, width: "100%" },
+          iconOutsideOverlay && { overflow: "visible" as const },
+        ]}
+      >
         <Pressable
           style={{ width: "100%" }}
           disabled={disabled}
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabel}
           onPress={(e) => {
             AudioManager.playButtonClick();
             onPress?.(e);
@@ -232,106 +382,141 @@ export default function CustomButton({
           onPressIn={onPressIn}
           onPressOut={onPressOut}
         >
-          <Animated.View
-            style={{
-              transform: [{ translateY }, { scale }],
-              borderRadius: radius,
-              overflow: "hidden",
-              height: resolvedHeight,
-              width: variant === "circle" ? diameter : "100%",
-              opacity: disabled ? 0.5 : 1,
-            }}
-          >
-            {/* BACKGROUND */}
-            {backgroundImage ? (
-              <AppImage
-                source={backgroundImage}
-                contentFit="cover"
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  width: "100%",
-                  height: "100%",
-                }}
-              />
-            ) : solidColor ? (
-              <View
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  backgroundColor: solidColor,
-                }}
-              />
-            ) : (
-              <LinearGradient
-                colors={colors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{ position: "absolute", inset: 0 }}
-              />
-            )}
-
-            {/* GLOSS */}
-            <View
+          <View style={{ position: "relative", width: "100%" }}>
+            <Animated.View
               style={{
-                position: "absolute",
-                top: 4,
-                left: 4,
-                right: 4,
-                height: "45%",
+                transform: [{ translateY }, { scale }],
                 borderRadius: radius,
-                backgroundColor: "rgba(255,255,255,0.25)",
-              }}
-            />
-
-            {/* CONTENT */}
-            <View
-              style={{
-                flex: 1,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 14,
-                paddingHorizontal: horizontalPadding,
+                overflow: "hidden",
+                height: resolvedHeight,
+                width: variant === "circle" ? diameter : "100%",
+                opacity: disabled ? 0.5 : 1,
               }}
             >
-              {icon && (
+              {/* BACKGROUND */}
+              {backgroundImage ? (
                 <AppImage
-                  source={icon}
-                  contentFit="contain"
-                  style={{ width: iconSize, height: iconSize }}
+                  source={backgroundImage}
+                  contentFit="cover"
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                  }}
+                />
+              ) : solidColor ? (
+                <View
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    backgroundColor: solidColor,
+                  }}
+                />
+              ) : (
+                <LinearGradient
+                  colors={colors}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{ position: "absolute", inset: 0 }}
                 />
               )}
 
-              <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.5}
+              {/* GLOSS */}
+              <View
                 style={{
-                  color: "#fff",
-                  fontSize: resolvedFontSize,
-                  textTransform: "uppercase",
-                  fontFamily: "SeymourOne-Regular",
-                  textShadowColor: "rgba(0,0,0,0.35)",
-                  textShadowOffset: { width: 0, height: 3 },
-                  textShadowRadius: 4,
+                  position: "absolute",
+                  top: 4,
+                  left: 4,
+                  right: 4,
+                  height: "45%",
+                  borderRadius: radius,
+                  backgroundColor: "rgba(255,255,255,0.25)",
+                }}
+              />
+
+              {/* CONTENT */}
+              <View
+                style={{
+                  flex: 1,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: iconNode ? 8 : 14,
+                  paddingLeft: contentPaddingLeft,
+                  paddingRight: contentPaddingRight,
+                  minWidth: 0,
                 }}
               >
-                {title}
-              </Text>
-            </View>
+                {iconNode}
+                {icon && !iconOutsideOverlay && (
+                  <AppImage
+                    source={icon}
+                    contentFit="contain"
+                    style={{
+                      width: iw,
+                      height: ih,
+                    }}
+                  />
+                )}
 
-            {/* PRESS OVERLAY */}
-            <Animated.View
-              pointerEvents="none"
-              style={{
-                position: "absolute",
-                inset: 0,
-                backgroundColor: "#000",
-                opacity: overlayOpacity,
-              }}
-            />
-          </Animated.View>
+                {title ? (
+                  <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={
+                      titleMinFontScale ?? (compactPad ? 0.62 : 0.5)
+                    }
+                    style={{
+                      flexShrink: 1,
+                      color: "#fff",
+                      fontSize: resolvedFontSize,
+                      textTransform: "uppercase",
+                      fontFamily: "SeymourOne-Regular",
+                      textShadowColor: "rgba(0,0,0,0.35)",
+                      textShadowOffset: { width: 0, height: 3 },
+                      textShadowRadius: 4,
+                    }}
+                  >
+                    {title}
+                  </Text>
+                ) : null}
+              </View>
+
+              {/* PRESS OVERLAY */}
+              <Animated.View
+                pointerEvents="none"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  backgroundColor: "#000",
+                  opacity: overlayOpacity,
+                }}
+              />
+            </Animated.View>
+
+            {iconOutsideOverlay && icon ? (
+              <View
+                pointerEvents="none"
+                style={[
+                  {
+                    position: "absolute",
+                    width: iw,
+                    height: ih,
+                    zIndex: 4,
+                    transform: [{ rotate: iconRotation }],
+                  },
+                  iconOverlayOffsets,
+                ]}
+              >
+                <AppImage
+                  source={icon}
+                  contentFit="contain"
+                  style={{ width: iw, height: ih }}
+                />
+              </View>
+            ) : null}
+          </View>
         </Pressable>
 
         {/* BADGE */}
@@ -340,17 +525,21 @@ export default function CustomButton({
             style={{
               position: "absolute",
               top: -10,
-              right: -10,
+              ...(labelSide === "left" ? { left: -10 } : { right: -10 }),
               backgroundColor: "#FFD966",
-              paddingHorizontal: 10,
+              paddingHorizontal: 8,
               paddingVertical: 4,
               borderRadius: 999,
+              maxWidth: 148,
             }}
           >
             <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.55}
               style={{
                 color: "#000",
-                fontSize: 12,
+                fontSize: 10,
                 fontWeight: "800",
                 textTransform: "uppercase",
               }}

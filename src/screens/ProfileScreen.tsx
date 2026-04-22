@@ -4,6 +4,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  StyleSheet,
 } from "react-native";
 import ImageBackgroundWithLoadGate from "../components/ImageBackgroundWithLoadGate";
 import React, { useState } from "react";
@@ -11,10 +12,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
 import { Share } from "react-native";
-import { Entypo } from "@expo/vector-icons";
 import { backgrounds } from "../../assets/backgrounds";
 import CustomText from "../components/common/CustomText";
 import { useNavigation } from "@react-navigation/native";
+import { navigateBackSafe } from "../navigation/navigateBackSafe";
 import { useTranslation } from "react-i18next";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { OnboardingStackParamList } from "../navigation/types";
@@ -27,8 +28,10 @@ import AudioManager from "../utils/audioManager";
 import { useBackendStats } from "../hooks/useBackendStats";
 import { getApiBaseUrl } from "../api/client";
 import { getReferralMe } from "../api/referral";
+import ScreenTopBar from "../components/common/ScreenTopBar";
+import { useResponsive } from "../utils/responsive";
 
-type Nav = StackNavigationProp<OnboardingStackParamList, "Store">;
+type Nav = StackNavigationProp<OnboardingStackParamList, "Profile">;
 
 const ProfileScreen = () => {
   const navigation = useNavigation<Nav>();
@@ -39,6 +42,7 @@ const ProfileScreen = () => {
   const { loading, error, global, kpis, refresh } = useBackendStats();
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
 
+  const { horizontalPadding, topIconSize } = useResponsive();
   const { data: referralData, isLoading: referralLoading } = useQuery({
     queryKey: ["referral", "me", user.id],
     queryFn: () => getReferralMe(user.id),
@@ -70,45 +74,53 @@ const ProfileScreen = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1" edges={["right", "left"]}>
-      <ImageBackgroundWithLoadGate
-        source={backgrounds.bg023}
-        style={{ flex: 1, width: "100%", height: "100%", position: "relative" }}
-        resizeMode="cover"
-      >
-        <ScrollView
-          contentContainerStyle={{
-            paddingVertical: 64,
-            flexGrow: 1,
-            justifyContent: "space-between",
-            position: "relative",
-          }}
+    <View style={styles.root}>
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+        <ImageBackgroundWithLoadGate
+          source={backgrounds.bg023}
+          showChildrenWhileLoading
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
         >
-          <View className="relative">
-            <View className="px-8">
-              <TouchableOpacity
-                onPress={() => {
-                  AudioManager.playButtonClick();
-                  navigation.goBack();
-                }}
-                className="flex flex-row gap-2 items-center"
-              >
-                <Entypo name="arrow-with-circle-left" size={48} color="white" />
-              </TouchableOpacity>
-            </View>
-            <View className="items-center w-full justify-center px-4 mt-[40px]">
-              <CustomText variant="h3-headline" className="text-center w-full">
-                {t("your_profile_1")}
-              </CustomText>
-              <CustomText variant="h3" className="-rotate-3 text-center w-full">
-                {t("your_profile_2")}
-              </CustomText>
-            </View>
-            <ProfileInfoComponent
-              setImagePickerVisible={setImagePickerVisible}
-            />
+          <ScreenTopBar
+            variant="soloBackFromCenter"
+            horizontalPadding={horizontalPadding}
+            topIconSize={topIconSize}
+            showBack
+            onSettings={() => {}}
+            onProfile={() => {}}
+            onBack={() => navigateBackSafe(navigation)}
+            backAccessibilityLabel={t("back_btn")}
+          />
+          <ScrollView
+            contentContainerStyle={{
+              paddingTop: 72,
+              paddingBottom: 48,
+              flexGrow: 1,
+              justifyContent: "space-between",
+              position: "relative",
+            }}
+          >
+            <View className="relative">
+              <View className="items-center w-full justify-center px-4 mt-2">
+                <CustomText
+                  variant="h3-headline"
+                  className="text-center w-full"
+                >
+                  {t("your_profile_1")}
+                </CustomText>
+                <CustomText
+                  variant="h3"
+                  className="-rotate-3 text-center w-full"
+                >
+                  {t("your_profile_2")}
+                </CustomText>
+              </View>
+              <ProfileInfoComponent
+                setImagePickerVisible={setImagePickerVisible}
+              />
 
-            {/* <View className="mx-6 mt-6 rounded-2xl bg-black/45 p-4 border border-white/15">
+              {/* <View className="mx-6 mt-6 rounded-2xl bg-black/45 p-4 border border-white/15">
               <View className="flex-row items-center justify-between mb-2">
                 <CustomText variant="h6-headline">{t("live_stats")}</CustomText>
                 <TouchableOpacity onPress={() => void refresh()}>
@@ -133,7 +145,7 @@ const ProfileScreen = () => {
                 </View>
               )}
             </View> */}
-            {/* {authStatus !== "guest" && (
+              {/* {authStatus !== "guest" && (
               <View className="mx-6 mt-4 rounded-2xl bg-black/45 p-4 border border-white/20">
                 <CustomText variant="h6-headline" className="text-white mb-1">
                   {t("invite_friends")}
@@ -191,43 +203,49 @@ const ProfileScreen = () => {
                 )}
               </View>
             )} */}
-            {authStatus === "guest" && <ProfileLoginComponent />}
-          </View>
-          <View className="items-center">
-            {authStatus != "guest" && (
-              <CustomButton
-                title={t("logout")}
-                onPress={signOut}
-                buttonClassName=" max-w-[50%] w-auto mb-4"
-                appearance="tertiary"
-                fullWidth
-                backgroundImage={backgrounds.bg015}
-                glow
-                glowColor="rgba(255,167,73,0.8)"
-                shadowColor="#540d0d"
-              />
-            )}
-            <View className="flex-row gap-2 mt-4">
-              <TouchableOpacity>
-                <CustomText className="underline">
-                  {t("privacy_policy")}
-                </CustomText>
-              </TouchableOpacity>
-              <CustomText>{t("and")}</CustomText>
-              <TouchableOpacity>
-                <CustomText className="underline">{t("terms")}</CustomText>
-              </TouchableOpacity>
+              {authStatus === "guest" && <ProfileLoginComponent />}
             </View>
-          </View>
-        </ScrollView>
-        {imagePickerVisible && (
-          <ProfileImagePickerComponent
-            setImagePickerVisible={setImagePickerVisible}
-          />
-        )}
-      </ImageBackgroundWithLoadGate>
-    </SafeAreaView>
+            <View className="items-center" style={{ paddingHorizontal: 40 }}>
+              {authStatus != "guest" && (
+                <CustomButton
+                  title={t("logout")}
+                  onPress={signOut}
+                  buttonClassName="mb-4"
+                  appearance="tertiary"
+                  fullWidth
+                  btnSize="sm"
+                  fontSize="sm"
+                  backgroundImage={backgrounds.bg015}
+                  shadowColor="#540d0d"
+                />
+              )}
+              <View className="flex-row gap-2 mt-4">
+                <TouchableOpacity>
+                  <CustomText className="underline">
+                    {t("privacy_policy")}
+                  </CustomText>
+                </TouchableOpacity>
+                <CustomText>{t("and")}</CustomText>
+                <TouchableOpacity>
+                  <CustomText className="underline">{t("terms")}</CustomText>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+          {imagePickerVisible && (
+            <ProfileImagePickerComponent
+              setImagePickerVisible={setImagePickerVisible}
+            />
+          )}
+        </ImageBackgroundWithLoadGate>
+      </SafeAreaView>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#0a0a0a" },
+  safe: { flex: 1, backgroundColor: "transparent" },
+});
 
 export default ProfileScreen;

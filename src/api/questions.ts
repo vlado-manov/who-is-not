@@ -1,10 +1,10 @@
 import { apiGet } from "./client";
-import type { IQuestion } from "../types/question";
+import type { IQuestion, QuestionTypeApi } from "../types/question";
 
 type QuestionDto = {
   id: string;
   text: string;
-  type: "pick" | "rate" | "number";
+  type: QuestionTypeApi;
   used: number;
   isActive: boolean;
   relatedGroupIds: string[];
@@ -97,9 +97,17 @@ function parseFunFactPayload(input: unknown): FunFactDto | null {
 }
 
 export async function fetchRandomFunFact(
-  lang?: string
+  lang?: string,
+  opts?: { seed?: string }
 ): Promise<FunFactDto | null> {
-  const qs = lang?.trim() ? `lang=${encodeURIComponent(lang.trim())}` : "";
+  const parts: string[] = [];
+  if (lang?.trim()) {
+    parts.push(`lang=${encodeURIComponent(lang.trim())}`);
+  }
+  if (opts?.seed?.trim()) {
+    parts.push(`seed=${encodeURIComponent(opts.seed.trim())}`);
+  }
+  const qs = parts.join("&");
   const path = qs ? `/questions/fun-fact?${qs}` : "/questions/fun-fact";
 
   return apiGet<FunFactDto | null>(path, {

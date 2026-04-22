@@ -1,6 +1,12 @@
 // src/screens/Game/PassDeviceGameplayScreen.tsx
 import React, { useMemo } from "react";
-import { View, Pressable, Dimensions } from "react-native";
+import {
+  View,
+  Pressable,
+  useWindowDimensions,
+  StyleSheet,
+  ScrollView,
+} from "react-native";
 import AppImage from "../AppImage";
 import ImageBackgroundWithLoadGate from "../ImageBackgroundWithLoadGate";
 import {
@@ -21,6 +27,7 @@ import AudioManager from "../../utils/audioManager";
 import { useAuthStore } from "../../store/useUserStore";
 import { usePreventBack } from "../../hooks/usePreventBack";
 import i18n from "../../i18n";
+import { useResponsive } from "../../utils/responsive";
 
 type R = RouteProp<GameStackParamList, "PassDeviceGameplay">;
 type Nav = StackNavigationProp<GameStackParamList, "PassDeviceGameplay">;
@@ -61,26 +68,43 @@ const PassDeviceGameplayScreen = () => {
     AudioManager.setSoundEnabled(newVal, true);
   };
 
+  const { width: windowWidth } = useWindowDimensions();
+  const { logo, horizontalPadding } = useResponsive();
+  const padH = horizontalPadding;
+
   return (
     <SafeAreaView className="flex-1 bg-primary-700" edges={["right", "left"]}>
       <ImageBackgroundWithLoadGate
-        source={backgrounds.bg023}
+        source={backgrounds.bg027}
         style={{ flex: 1 }}
         resizeMode="cover"
       >
-        <View
-          className="flex-1 items-center w-full justify-start relative"
-          style={{ overflow: "visible" }}
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[
+            styles.column,
+            {
+              paddingTop: insets.top + 8,
+              paddingBottom: insets.bottom + 16,
+              paddingHorizontal: padH,
+            },
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          bounces
         >
-          <View className="justify-center items-center w-full absolute">
-            <Pressable className="mt-[40px]" onPress={toggleSound}>
+          <View className="items-center w-full">
+            <Pressable onPress={toggleSound}>
               <AppImage
                 source={logoSource}
-                style={{ width: 360, height: 280 }}
+                style={{ width: logo.width, height: logo.height }}
                 contentFit="contain"
               />
             </Pressable>
-            <CustomText variant="h4-headline" className="text-center z-50 px-6">
+            <CustomText
+              variant="h4-headline"
+              className="text-center z-50 px-2 mt-4"
+            >
               {t("hand_phone_to")}
             </CustomText>
             <CustomText variant="h3" shadow className="capitalize">
@@ -89,51 +113,65 @@ const PassDeviceGameplayScreen = () => {
             <CustomText variant="p-small">({t("no_peeking")})</CustomText>
           </View>
 
-          <View
-            style={{
-              position: "absolute",
-              bottom: "10%",
-              left: 0,
-              right: 0,
-              paddingBottom: insets.bottom,
-              width: Dimensions.get("window").width,
-              overflow: "visible",
-            }}
-          >
+          <View style={styles.illustrationBlock}>
             <AppImage
               source={game_images.passDevice}
               contentFit="cover"
-              style={{
-                width: Dimensions.get("window").width,
-                aspectRatio: 350 / 320,
-              }}
+              style={[styles.passDeviceImageFullWidth, { width: windowWidth }]}
             />
           </View>
-        </View>
 
-        <View
-          className="absolute bottom-0 left-0 right-0 px-16 pb-12"
-          style={{ paddingBottom: insets.bottom + 48 }}
-        >
-          <CustomText variant="p" className="text-center px-8 mb-6">
-            {currentPlayer
-              ? `${currentPlayer.name}, ${t("click_next_phone")}`
-              : t("click_next_phone")}
-          </CustomText>
-          <CustomButton
-            title={t("its_me")}
-            backgroundImage={backgrounds.bg026}
-            glow
-            glowColor="rgba(41,255,25,0.8)"
-            shadowColor="#005f07"
-            horizontalPadding={48}
-            fullWidth
-            onPress={onContinue}
-          />
-        </View>
+          <View className="w-full" style={styles.ctaBlock}>
+            <CustomButton
+              title={t("its_me")}
+              backgroundImage={backgrounds.bg026}
+              glow
+              glowColor="rgba(41,255,25,0.8)"
+              shadowColor="#005f07"
+              horizontalPadding={Math.min(48, padH + 20)}
+              fullWidth
+              onPress={onContinue}
+            />
+            <CustomText
+              variant="p"
+              className="text-center px-2"
+              style={styles.ctaHint}
+            >
+              {currentPlayer
+                ? `${currentPlayer.name}, ${t("click_next_phone")}`
+                : t("click_next_phone")}
+            </CustomText>
+          </View>
+        </ScrollView>
       </ImageBackgroundWithLoadGate>
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  scroll: {
+    flex: 1,
+  },
+  column: {
+    flexGrow: 1,
+    justifyContent: "space-between",
+    minHeight: "100%",
+  },
+  illustrationBlock: {
+    marginTop: -16,
+    width: "100%",
+  },
+  ctaBlock: {
+    marginTop: -80,
+    flexShrink: 0,
+  },
+  ctaHint: {
+    marginTop: 10,
+  },
+  passDeviceImageFullWidth: {
+    alignSelf: "center",
+    aspectRatio: 350 / 320,
+  },
+});
 
 export default PassDeviceGameplayScreen;

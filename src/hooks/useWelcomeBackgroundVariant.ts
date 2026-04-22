@@ -25,6 +25,9 @@ const VARIANTS: Variant[] = [
   },
 ];
 
+/** All welcome curtain backgrounds — prefetch together so Android has decoded assets ready. */
+export const WELCOME_BACKGROUND_URIS = VARIANTS.map((v) => v.uri);
+
 export function useWelcomeBackgroundVariant() {
   const { width, height } = useWindowDimensions();
 

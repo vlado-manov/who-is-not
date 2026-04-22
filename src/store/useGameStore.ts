@@ -1,5 +1,10 @@
 // src/store/useGameStore.ts
 import { create } from "zustand";
+import {
+  disconnectMultiplayerRelay,
+  sendMultiplayerRelay,
+} from "../api/multiplayerRelay";
+import { ROUND_STATE_MESSAGE_TYPE } from "../constants/onlineLobby";
 import type { IQuestion } from "../types/question";
 import { GameMode } from "../api/analytics";
 
@@ -44,22 +49,35 @@ const defaultGameSettings = (): GameSettings => ({
   livesPerPlayer: 3,
 });
 
-type QuestionType = "pick" | "rate" | "number";
+type QuestionType = "pick" | "rate" | "number" | "input";
 
-/** 12-round schedule; then repeats from the start. Bonus round is step 6. */
+/** Host-authoritative round payload for ONLINE sync (see ROUND_STATE_MESSAGE_TYPE). */
+export type MultiplayerRoundStateSnapshot = {
+  currentBaseQuestionId: string;
+  currentOddQuestionId: string;
+  oddOneId: string;
+  questionType: QuestionType;
+  isBonusRound: boolean;
+  questionNameTarget: string | null;
+  impostorNameSubstitute: string | null;
+  usedQuestionIds: string[];
+};
+
+/**
+ * Единна последователност за LOCAL (party) и ONLINE: `initRoundQuestions` + host snapshot.
+ * Повтаря се на всеки 10 рунда; бонус на позиция 5 (визуално „рунд 5“).
+ */
 const ROUND_SCHEDULE: (QuestionType | "bonus")[] = [
-  "pick",   // 1
-  "pick",   // 2
+  "pick", // 1
+  "pick", // 2
   "number", // 3
-  "rate",   // 4
-  "pick",   // 5
-  "bonus",  // 6
-  "number", // 7
-  "rate",   // 8
-  "pick",   // 9
-  "number", // 10
-  "number", // 11
-  "rate",   // 12
+  "input", // 4
+  "bonus", // 5 — бонус (без масов въпрос в Results)
+  "pick", // 6
+  "rate", // 7
+  "input", // 8
+  "number", // 9
+  "rate", // 10
 ];
 
 function getScheduleTypeForRound(roundIndex: number): QuestionType | "bonus" {
@@ -73,6 +91,18 @@ type GameState = {
   currentRoundId?: string;
   mode: GameMode;
   roomCode?: string;
+  /** Backend online room id (multiplayer). */
+  onlineRoomId?: string;
+  /** Host-only secret from create room (persist for rejoin). */
+  onlineHostSecret?: string | null;
+  /** This device’s player id in the current online session. */
+  onlinePlayerId?: string;
+  onlineWsToken?: string;
+  onlineIsHost?: boolean;
+  /** Host’s UI language for this session (question copy + i18n). Set at lobby start. */
+  onlineSessionLanguage?: string;
+  /** ONLINE: this device is spectating after elimination (blur + dead chat). */
+  onlineSpectating?: boolean;
   phase: Phase;
   players: Player[];
   round: number; // брой завършени рундове
@@ -107,6 +137,21 @@ type GameState = {
   lastAppliedLivesRoundKey?: string;
 
   set: (p: Partial<GameState>) => void;
+  setOnlineSpectating: (v: boolean) => void;
+  /** Sets online lobby session fields and starts an ONLINE game id. */
+  applyOnlinePartySession: (p: {
+    roomId: string;
+    joinCode: string;
+    hostSecret: string | null;
+    wsToken: string;
+    playerId: string;
+    isHost: boolean;
+  }) => void;
+  /** After lobby: set table size and reset round state; keeps ONLINE session + gameId. */
+  prepareOnlineGameFromLobby: (playerCount: number) => void;
+  setOnlineSessionLanguage: (lang: string | undefined) => void;
+  /** Apply host round snapshot (guests only; same questions/impostor for everyone). */
+  applyRoundSnapshot: (snapshot: MultiplayerRoundStateSnapshot) => void;
   setGameQuestions: (questions: IQuestion[]) => void;
   startGameSession: (mode: GameMode) => string;
   setCurrentRoundId: (roundId?: string) => void;
@@ -114,6 +159,12 @@ type GameState = {
   beginLocalGame: (count: number) => void;
   addPlayer: (p: Player) => void;
   assignCharacter: (playerId: string, characterId: string) => void;
+  /** Merge a server-confirmed hero pick (ONLINE). Updates players + takenCharacters. */
+  applyRemoteHeroPick: (args: {
+    playerId: string;
+    characterId: string;
+    name: string;
+  }) => void;
   isCharacterTaken: (characterId: string) => boolean;
   getPlayersCount: () => number;
   setGameSettings: (patch: Partial<GameSettings>) => void;
@@ -140,6 +191,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   gameId: undefined,
   currentRoundId: undefined,
   mode: "LOCAL",
+  onlineRoomId: undefined,
+  onlineHostSecret: undefined,
+  onlinePlayerId: undefined,
+  onlineWsToken: undefined,
+  onlineIsHost: undefined,
+  onlineSessionLanguage: undefined,
+  onlineSpectating: false,
   phase: "lobby",
   players: [],
   round: 0,
@@ -162,6 +220,61 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   set: (p) => set(p),
 
+  setOnlineSpectating: (v) => set({ onlineSpectating: v }),
+
+  applyOnlinePartySession: (p) => {
+    const gameId = `game_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    set({
+      gameId,
+      mode: "ONLINE",
+      currentRoundId: undefined,
+      roomCode: p.joinCode,
+      onlineRoomId: p.roomId,
+      onlineHostSecret: p.hostSecret,
+      onlineWsToken: p.wsToken,
+      onlinePlayerId: p.playerId,
+      onlineIsHost: p.isHost,
+      onlineSessionLanguage: undefined,
+      phase: "lobby",
+    });
+  },
+
+  setOnlineSessionLanguage: (lang) => set({ onlineSessionLanguage: lang }),
+
+  applyRoundSnapshot: (snapshot) =>
+    set({
+      ...snapshot,
+      answers: {},
+      votes: {},
+    }),
+
+  prepareOnlineGameFromLobby: (playerCount) =>
+    set((s) => {
+      if (s.mode !== "ONLINE") return s;
+      return {
+        phase: "lobby",
+        players: [],
+        round: 0,
+        answers: {},
+        takenCharacters: [],
+        targetPlayersCount: playerCount,
+        oddOneId: undefined,
+        timerSec: undefined,
+        currentBaseQuestionId: undefined,
+        currentOddQuestionId: undefined,
+        questionNameTarget: undefined,
+        impostorNameSubstitute: undefined,
+        questionType: undefined,
+        isBonusRound: false,
+        gameQuestions: [],
+        votes: {},
+        usedQuestionIds: [],
+        lives: {},
+        lastAppliedLivesRoundKey: undefined,
+        onlineSessionLanguage: s.onlineSessionLanguage,
+      };
+    }),
+
   setGameQuestions: (questions) => set({ gameQuestions: questions }),
 
   startGameSession: (mode) => {
@@ -172,12 +285,20 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setCurrentRoundId: (roundId) => set({ currentRoundId: roundId }),
 
-  reset: () =>
+  reset: () => {
+    disconnectMultiplayerRelay();
     set({
       gameId: undefined,
       currentRoundId: undefined,
       mode: "LOCAL",
       roomCode: undefined,
+      onlineRoomId: undefined,
+      onlineHostSecret: undefined,
+      onlinePlayerId: undefined,
+      onlineWsToken: undefined,
+      onlineIsHost: undefined,
+      onlineSessionLanguage: undefined,
+      onlineSpectating: false,
       phase: "lobby",
       players: [],
       round: 0,
@@ -198,7 +319,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       usedQuestionIds: [],
       lives: {},
       lastAppliedLivesRoundKey: undefined,
-    }),
+    });
+  },
 
   beginLocalGame: (count) =>
     set((s) => ({
@@ -214,6 +336,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       oddOneId: undefined,
       timerSec: undefined,
       roomCode: undefined,
+      onlineRoomId: undefined,
+      onlineHostSecret: undefined,
+      onlinePlayerId: undefined,
+      onlineWsToken: undefined,
+      onlineIsHost: undefined,
+      onlineSessionLanguage: undefined,
       gameSettings: s.gameSettings,
       currentBaseQuestionId: undefined,
       currentOddQuestionId: undefined,
@@ -244,6 +372,27 @@ export const useGameStore = create<GameState>((set, get) => ({
         players,
         takenCharacters: [...s.takenCharacters, characterId],
       };
+    }),
+
+  applyRemoteHeroPick: ({ playerId, characterId, name }) =>
+    set((s) => {
+      if (s.mode !== "ONLINE") return s;
+      const existingIdx = s.players.findIndex((p) => p.id === playerId);
+      const oldChar =
+        existingIdx >= 0 ? s.players[existingIdx].characterId : undefined;
+      let taken = s.takenCharacters.filter((id) => id !== oldChar);
+      if (taken.includes(characterId)) return s;
+      const nextPlayer: Player = {
+        id: playerId,
+        name,
+        characterId,
+        connected: true,
+      };
+      const players =
+        existingIdx >= 0
+          ? s.players.map((p, i) => (i === existingIdx ? nextPlayer : p))
+          : [...s.players, nextPlayer];
+      return { players, takenCharacters: [...taken, characterId] };
     }),
 
   isCharacterTaken: (characterId) =>
@@ -320,7 +469,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       return fullPool.filter((q) => q.id !== base.id);
     };
 
-    const possibleTypes: QuestionType[] = ["pick", "rate", "number"];
+    const possibleTypes: QuestionType[] = ["pick", "rate", "number", "input"];
     let candidates = possibleTypes
       .map((t) => ({ type: t, list: pickSourceForType(t) }))
       .filter((x) => x.list.length >= 2);
@@ -409,7 +558,33 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (Object.keys(s.lives).length === 0 && s.players.length > 0) {
       s.initLives();
     }
+    if (s.mode === "ONLINE" && !s.onlineIsHost) {
+      return;
+    }
     get().initRoundQuestions();
+    const st = get();
+    if (st.mode !== "ONLINE" || !st.onlineIsHost) return;
+    if (
+      !st.currentBaseQuestionId ||
+      !st.currentOddQuestionId ||
+      !st.oddOneId ||
+      !st.questionType
+    ) {
+      return;
+    }
+    sendMultiplayerRelay({
+      type: ROUND_STATE_MESSAGE_TYPE,
+      payload: {
+        currentBaseQuestionId: st.currentBaseQuestionId,
+        currentOddQuestionId: st.currentOddQuestionId,
+        oddOneId: st.oddOneId,
+        questionType: st.questionType,
+        isBonusRound: st.isBonusRound ?? false,
+        questionNameTarget: st.questionNameTarget ?? null,
+        impostorNameSubstitute: st.impostorNameSubstitute ?? null,
+        usedQuestionIds: st.usedQuestionIds ?? [],
+      },
+    });
   },
 
   // вдигаме броя на завършените рундове
@@ -449,6 +624,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         takenCharacters,
         lives: nextLives,
         lastAppliedLivesRoundKey: undefined,
+        onlineSpectating: false,
       };
     }),
 

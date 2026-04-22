@@ -1,6 +1,6 @@
 import { IPack } from "./pack";
 
-export type QuestionTypeApi = "pick" | "rate" | "number";
+export type QuestionTypeApi = "pick" | "rate" | "number" | "input";
 
 export interface IQuestion {
   id: string;

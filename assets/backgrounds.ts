@@ -18,7 +18,15 @@ export const backgrounds = {
   bg019: { uri: `${R2}/0c94e51c-8441-4ce7-b0e6-4bab4555b278-bg019.webp` },
   bg022: { uri: `${R2}/c2f18448-68f7-467e-9778-359b5d04f370-bg022.webp` },
   bg023: { uri: `${R2}/f2148fbc-f11a-4892-bddd-a90e652dd67c-IMG_4006.webp` },
+  bg024: { uri: `${R2}/0da0f559-3aa8-4a67-8741-af28f38a6912-bg001.webp` },
+  bg025: { uri: `${R2}/f476da26-cd35-4a5a-a4ba-108a84338a7a-bg019.webp` },
   bg026: { uri: `${R2}/4948042f-d7c4-42e0-b62a-7158cbc84f48-bg026.webp` },
+  bg027: {
+    uri: `${R2}/a2fc9ef6-3784-4335-980e-b0774928c70e-ChatGPT Image 8.04.2026 Ð³., 16_10_41.webp`,
+  },
+  bg028: {
+    uri: `${R2}/f5a28a0c-fc98-4bc2-9d12-dc36cfb56222-ChatGPT Image 8.04.2026 Ð³., 16_10_50.webp`,
+  },
   bg029: { uri: `${R2}/62640c5a-b953-4641-a7ce-f1b2e73138be-bg029.webp` },
   bg030: { uri: `${R2}/e2e9083e-b7c8-4399-8ac6-0d6aa8b0f4f1-bg030.webp` },
   bgheroes01: `${R2}/ba09f448-5270-4b9b-84d1-aaac8869f4b4-bg-heroes01.webp`,

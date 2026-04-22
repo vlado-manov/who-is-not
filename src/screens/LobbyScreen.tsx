@@ -1,6 +1,6 @@
 // src/screens/LobbyScreen.tsx
 import React, { useEffect, useRef, useState } from "react";
-import { View, Dimensions, Animated, Easing, Alert } from "react-native";
+import { View, Animated, Easing, Alert, useWindowDimensions } from "react-native";
 import AppImage from "../components/AppImage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CustomText from "../components/common/CustomText";
@@ -22,8 +22,6 @@ import { fetchQuestions } from "../api/questions";
 import i18n from "../i18n";
 import { usePreventBack } from "../hooks/usePreventBack";
 
-const { height: H, width: W } = Dimensions.get("window");
-
 // ✅ навигация: от CreateGame stack + Root stack
 type CreateNav = StackNavigationProp<CreateGameStackParamList, "Lobby">;
 type RootNav = StackNavigationProp<RootStackParamList>;
@@ -34,6 +32,7 @@ const CURTAIN_CLOSED = 0;
 
 export default function LobbyScreen() {
   const navigation = useNavigation<HeroNav>();
+  const { width: W, height: H } = useWindowDimensions();
   usePreventBack();
   const playersCount = useGameStore(
     (s) => s.targetPlayersCount ?? s.players.length,

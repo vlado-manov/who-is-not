@@ -1,20 +1,29 @@
-﻿// src/components/CurtainOverlay.tsx
+// src/components/CurtainOverlay.tsx
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
   Easing,
+  Platform,
+  Pressable,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
-import { Image as ExpoImage } from "expo-image";
+import { useTranslation } from "react-i18next";
 import { images } from "../../assets/images";
-import { backgrounds } from "../../assets/backgrounds";
 import AppImage from "./AppImage";
-import CustomButton from "./common/CustomButton";
+import CustomText from "./common/CustomText";
 import AudioManager from "../utils/audioManager";
-import { useWelcomeBackgroundVariant } from "../hooks/useWelcomeBackgroundVariant";
+import {
+  useWelcomeBackgroundVariant,
+  WELCOME_BACKGROUND_URIS,
+} from "../hooks/useWelcomeBackgroundVariant";
+import {
+  prefetchExpoImageUri,
+  prefetchExpoImageUris,
+} from "../utils/prefetchExpoImage";
 
 const { height: H, width: W } = Dimensions.get("window");
 
@@ -56,6 +65,11 @@ export default function CurtainOverlay({
   preloadWithProgress,
 }: Props) {
   const isWelcomeInitial = mode === "welcomeInitial";
+  const { width: windowW, height: windowH } = useWindowDimensions();
+  /** Module-level Dimensions can be 0 on Android before first layout — breaks logo/loader sizes. */
+  const safeW = windowW > 0 ? windowW : W || 360;
+  const safeH = windowH > 0 ? windowH : H || 640;
+  const logoBox = Math.max(48, Math.min(safeW * 0.4, 200));
   const { selectedBackgroundUri } = useWelcomeBackgroundVariant();
 
   const curtainTopSource =
@@ -80,12 +94,23 @@ export default function CurtainOverlay({
   const welcomeIrisScale = useRef(new Animated.Value(1)).current;
   const welcomeIrisRadius = useRef(new Animated.Value(0)).current;
 
+  const loaderBarMaxWidth = Math.max(0, safeW - 64);
+  const loaderFillWidth = welcomeProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, loaderBarMaxWidth],
+  });
+
   const loaderOpacity = useRef(new Animated.Value(1)).current;
   const loaderPatternShift = useRef(new Animated.Value(0)).current;
 
   const startButtonOpacity = useRef(new Animated.Value(0)).current;
   const startButtonTranslateY = useRef(new Animated.Value(28)).current;
   const startButtonScale = useRef(new Animated.Value(0.96)).current;
+  const idleBounce = useRef(new Animated.Value(0)).current;
+  const idleRotate = useRef(new Animated.Value(0)).current;
+  const welcomeIdleLoopsStopRef = useRef<(() => void) | null>(null);
+
+  const { t } = useTranslation();
 
   const [canTouch, setCanTouch] = useState(false);
   const [imagesReady, setImagesReady] = useState(false);
@@ -98,6 +123,73 @@ export default function CurtainOverlay({
 
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
+
+  const preloadWithProgressRef = useRef(preloadWithProgress);
+  preloadWithProgressRef.current = preloadWithProgress;
+  const preloadBeforeAnimateRef = useRef(preloadBeforeAnimate);
+  preloadBeforeAnimateRef.current = preloadBeforeAnimate;
+
+  const stopWelcomeIdleLoops = () => {
+    welcomeIdleLoopsStopRef.current?.();
+    welcomeIdleLoopsStopRef.current = null;
+  };
+
+  const startWelcomeIdleLoops = () => {
+    stopWelcomeIdleLoops();
+    idleBounce.setValue(0);
+    idleRotate.setValue(0);
+    const bounceLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(idleBounce, {
+          toValue: -7,
+          duration: 320,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(idleBounce, {
+          toValue: 0,
+          duration: 380,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(idleBounce, {
+          toValue: -4,
+          duration: 220,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(idleBounce, {
+          toValue: 0,
+          duration: 320,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.delay(900),
+      ]),
+    );
+    const rotateLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(idleRotate, {
+          toValue: 1,
+          duration: 1400,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(idleRotate, {
+          toValue: -1,
+          duration: 1400,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    bounceLoop.start();
+    rotateLoop.start();
+    welcomeIdleLoopsStopRef.current = () => {
+      bounceLoop.stop();
+      rotateLoop.stop();
+    };
+  };
 
   useEffect(() => {
     if (!isWelcomeInitial) {
@@ -114,23 +206,30 @@ export default function CurtainOverlay({
         curtainTopUrl,
         curtainBottomUrl,
       ].filter((u): u is string => Boolean(u));
-      Promise.all(urls.map((u) => ExpoImage.prefetch(u).catch(() => false)))
+      Promise.all(urls.map((u) => prefetchExpoImageUri(u)))
         .then(() => setImagesReady(true))
         .catch(() => setImagesReady(true));
       return;
     }
 
     let active = true;
-    ExpoImage.prefetch(images.webtzarLogo.uri)
-      .catch(() => false)
-      .then(() => {
-        if (!active) return;
-        setImagesReady(true);
-        setWelcomePhase("intro");
-      });
+    const fallback = setTimeout(() => {
+      if (!active) return;
+      setImagesReady(true);
+      setWelcomePhase("intro");
+    }, 5000);
+
+    void (async () => {
+      await prefetchExpoImageUri(images.webtzarLogo.uri);
+      clearTimeout(fallback);
+      if (!active) return;
+      setImagesReady(true);
+      setWelcomePhase("intro");
+    })();
 
     return () => {
       active = false;
+      clearTimeout(fallback);
     };
   }, [isWelcomeInitial]);
 
@@ -172,19 +271,26 @@ export default function CurtainOverlay({
     if (!isWelcomeInitial) return;
 
     let active = true;
-    setWelcomeLoaderVisualReady(false);
-    Promise.all([
-      ExpoImage.prefetch(selectedBackgroundUri).catch(() => false),
-      ExpoImage.prefetch(WELCOME_LOADER_FILL_URI).catch(() => false),
-    ]).then(() => {
+    const fallback = setTimeout(() => {
       if (!active) return;
       setWelcomeLoaderVisualReady(true);
-    });
+    }, 10000);
+
+    void (async () => {
+      await prefetchExpoImageUris([
+        ...WELCOME_BACKGROUND_URIS,
+        WELCOME_LOADER_FILL_URI,
+      ]);
+      clearTimeout(fallback);
+      if (!active) return;
+      setWelcomeLoaderVisualReady(true);
+    })();
 
     return () => {
       active = false;
+      clearTimeout(fallback);
     };
-  }, [isWelcomeInitial, selectedBackgroundUri]);
+  }, [isWelcomeInitial]);
 
   useEffect(() => {
     if (!isWelcomeInitial) return;
@@ -200,6 +306,9 @@ export default function CurtainOverlay({
     startButtonOpacity.setValue(0);
     startButtonTranslateY.setValue(28);
     startButtonScale.setValue(0.96);
+    idleBounce.setValue(0);
+    idleRotate.setValue(0);
+    stopWelcomeIdleLoops();
     setWelcomeCanStart(false);
 
     let active = true;
@@ -215,15 +324,18 @@ export default function CurtainOverlay({
     };
 
     const run = async () => {
+      const doPreloadWithProgress = preloadWithProgressRef.current;
+      const doPreloadBeforeAnimate = preloadBeforeAnimateRef.current;
+
       try {
-        if (preloadWithProgress) {
-          await preloadWithProgress((p) => {
+        if (doPreloadWithProgress) {
+          await doPreloadWithProgress((p) => {
             if (!active) return;
             setProgress(p);
           });
-        } else if (preloadBeforeAnimate) {
+        } else if (doPreloadBeforeAnimate) {
           setProgress(0.1);
-          await preloadBeforeAnimate();
+          await doPreloadBeforeAnimate();
           setProgress(1);
         } else {
           setProgress(1);
@@ -241,61 +353,34 @@ export default function CurtainOverlay({
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start(({ finished }) => {
-        if (!active || !finished) return;
+        if (!active) return;
+        if (!finished) {
+          loaderOpacity.setValue(0);
+        }
         setWelcomeCanStart(true);
 
         Animated.parallel([
           Animated.timing(startButtonOpacity, {
             toValue: 1,
-            duration: 360,
+            duration: 420,
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
-          Animated.sequence([
-            Animated.spring(startButtonTranslateY, {
-              toValue: 0,
-              speed: 12,
-              bounciness: 6,
-              useNativeDriver: true,
-            }),
-            Animated.spring(startButtonScale, {
-              toValue: 1.03,
-              speed: 10,
-              bounciness: 7,
-              useNativeDriver: true,
-            }),
-            Animated.spring(startButtonScale, {
-              toValue: 1,
-              speed: 12,
-              bounciness: 5,
-              useNativeDriver: true,
-            }),
-            Animated.spring(startButtonTranslateY, {
-              toValue: -7,
-              speed: 14,
-              bounciness: 7,
-              useNativeDriver: true,
-            }),
-            Animated.spring(startButtonTranslateY, {
-              toValue: 0,
-              speed: 14,
-              bounciness: 6,
-              useNativeDriver: true,
-            }),
-            Animated.spring(startButtonTranslateY, {
-              toValue: -4,
-              speed: 14,
-              bounciness: 6,
-              useNativeDriver: true,
-            }),
-            Animated.spring(startButtonTranslateY, {
-              toValue: 0,
-              speed: 14,
-              bounciness: 5,
-              useNativeDriver: true,
-            }),
-          ]),
-        ]).start();
+          Animated.spring(startButtonTranslateY, {
+            toValue: 0,
+            speed: 14,
+            bounciness: 6,
+            useNativeDriver: true,
+          }),
+          Animated.spring(startButtonScale, {
+            toValue: 1,
+            friction: 7,
+            tension: 100,
+            useNativeDriver: true,
+          }),
+        ]).start(({ finished }) => {
+          if (finished && active) startWelcomeIdleLoops();
+        });
       });
     };
 
@@ -303,23 +388,9 @@ export default function CurtainOverlay({
 
     return () => {
       active = false;
+      stopWelcomeIdleLoops();
     };
-  }, [
-    isWelcomeInitial,
-    loaderOpacity,
-    loaderPatternShift,
-    preloadBeforeAnimate,
-    preloadWithProgress,
-    selectedBackgroundUri,
-    startButtonOpacity,
-    startButtonScale,
-    startButtonTranslateY,
-    welcomeIrisRadius,
-    welcomeIrisScale,
-    welcomeLoadingOpacity,
-    welcomeProgress,
-    welcomePhase,
-  ]);
+  }, [isWelcomeInitial, welcomePhase]);
 
   useEffect(() => {
     if (!isWelcomeInitial) return;
@@ -344,7 +415,21 @@ export default function CurtainOverlay({
   const handleWelcomeStart = () => {
     if (!welcomeCanStart) return;
 
+    stopWelcomeIdleLoops();
+
     AudioManager.playBackground();
+
+    if (Platform.OS === "android") {
+      Animated.timing(welcomeLoadingOpacity, {
+        toValue: 0,
+        duration: 620,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start(({ finished }) => {
+        if (finished) onDoneRef.current();
+      });
+      return;
+    }
 
     Animated.parallel([
       Animated.timing(welcomeLoadingOpacity, {
@@ -360,7 +445,7 @@ export default function CurtainOverlay({
         useNativeDriver: false,
       }),
       Animated.timing(welcomeIrisRadius, {
-        toValue: Math.max(H, W),
+        toValue: Math.max(safeH, safeW),
         duration: 620,
         easing: Easing.inOut(Easing.cubic),
         useNativeDriver: false,
@@ -394,13 +479,13 @@ export default function CurtainOverlay({
       }
       const anims = [
         Animated.timing(topY, {
-          toValue: -H / 2 - overshootPx,
+          toValue: -safeH / 2 - overshootPx,
           duration: durationMs,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(bottomY, {
-          toValue: H / 2 + overshootPx,
+          toValue: safeH / 2 + overshootPx,
           duration: durationMs,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
@@ -490,13 +575,13 @@ export default function CurtainOverlay({
       Animated.delay(delayMs),
       Animated.parallel([
         Animated.timing(topY, {
-          toValue: -H / 2 - overshootPx,
+          toValue: -safeH / 2 - overshootPx,
           duration: durationMs,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(bottomY, {
-          toValue: H / 2 + overshootPx,
+          toValue: safeH / 2 + overshootPx,
           duration: durationMs,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
@@ -531,6 +616,7 @@ export default function CurtainOverlay({
     logoOpacity,
     overshootPx,
     preloadDone,
+    safeH,
     skipLogo,
     topY,
   ]);
@@ -546,25 +632,25 @@ export default function CurtainOverlay({
     }
 
     if (welcomePhase === "intro") {
+      const introLogoAnimatedStyle =
+        Platform.OS === "android"
+          ? { opacity: welcomeLogoOpacity }
+          : {
+              opacity: welcomeLogoOpacity,
+              transform: [{ scale: welcomeLogoScale }],
+            };
+
       return (
         <View
           pointerEvents="auto"
           style={[styles.container, { backgroundColor: "#000" }]}
         >
-          <Animated.View
-            style={[
-              styles.logoWrap,
-              {
-                opacity: welcomeLogoOpacity,
-                transform: [{ scale: welcomeLogoScale }],
-              },
-            ]}
-          >
+          <Animated.View style={[styles.logoWrap, introLogoAnimatedStyle]}>
             <Text style={styles.poweredBy}>powered by</Text>
             <AppImage
               source={images.webtzarLogo}
               contentFit="contain"
-              style={styles.logoImage}
+              style={{ width: logoBox, height: logoBox }}
             />
           </Animated.View>
         </View>
@@ -580,14 +666,111 @@ export default function CurtainOverlay({
       );
     }
 
-    const loaderFillWidth = welcomeProgress.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0, W - 64],
-    });
+    if (Platform.OS === "android") {
+      return (
+        <View
+          pointerEvents="auto"
+          style={[styles.container, { backgroundColor: "#000" }]}
+        >
+          <Animated.View
+            style={[StyleSheet.absoluteFillObject, { opacity: welcomeLoadingOpacity }]}
+          >
+            <AppImage
+              source={{ uri: selectedBackgroundUri }}
+              contentFit="cover"
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: safeW,
+                height: safeH,
+              }}
+            />
+            <View pointerEvents="box-none" style={StyleSheet.absoluteFillObject}>
+              <Animated.View
+                style={[styles.loaderShell, { opacity: loaderOpacity }]}
+              >
+              <View style={styles.loaderTrack}>
+                <View style={styles.loaderTrackSecond}>
+                  <Animated.View
+                    style={[styles.loaderFillClip, { width: loaderFillWidth }]}
+                  >
+                    <Animated.View
+                      style={[
+                        styles.loaderPatternRow,
+                        { transform: [{ translateX: loaderPatternShift }] },
+                      ]}
+                    >
+                      {Array.from({ length: LOADER_PATTERN_COUNT }).map(
+                        (_, idx) => (
+                          <AppImage
+                            key={`loader-pattern-${idx}`}
+                            source={{ uri: WELCOME_LOADER_FILL_URI }}
+                            contentFit="cover"
+                            style={styles.loaderPatternSegment}
+                          />
+                        ),
+                      )}
+                    </Animated.View>
+                  </Animated.View>
+                </View>
+              </View>
+              </Animated.View>
+
+              {welcomeCanStart && (
+                <Animated.View
+                  style={[
+                    styles.startButtonWrap,
+                    { opacity: startButtonOpacity },
+                  ]}
+                >
+                  <Pressable
+                    onPress={handleWelcomeStart}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("start_btn")}
+                    style={styles.startLabelPressable}
+                  >
+                    <Animated.View
+                      style={{
+                        transform: [
+                          {
+                            translateY: Animated.add(
+                              startButtonTranslateY,
+                              idleBounce,
+                            ),
+                          },
+                          { scale: startButtonScale },
+                          {
+                            rotate: idleRotate.interpolate({
+                              inputRange: [-1, 1],
+                              outputRange: ["-3deg", "3deg"],
+                            }),
+                          },
+                        ],
+                      }}
+                    >
+                      <CustomText
+                        variant="h2"
+                        className="text-center"
+                        textColor="#fff8e8"
+                        shadow
+                      >
+                        {t("start_btn")}
+                      </CustomText>
+                    </Animated.View>
+                  </Pressable>
+                </Animated.View>
+              )}
+            </View>
+          </Animated.View>
+        </View>
+      );
+    }
 
     return (
       <Animated.View
         pointerEvents="auto"
+        needsOffscreenAlphaCompositing={false}
         style={[
           styles.container,
           {
@@ -601,7 +784,7 @@ export default function CurtainOverlay({
       >
         <AppImage
           source={{ uri: selectedBackgroundUri }}
-          contentFit="contain"
+          contentFit="cover"
           style={StyleSheet.absoluteFillObject}
         />
 
@@ -617,16 +800,14 @@ export default function CurtainOverlay({
                     { transform: [{ translateX: loaderPatternShift }] },
                   ]}
                 >
-                  {Array.from({ length: LOADER_PATTERN_COUNT }).map(
-                    (_, idx) => (
-                      <AppImage
-                        key={`loader-pattern-${idx}`}
-                        source={{ uri: WELCOME_LOADER_FILL_URI }}
-                        contentFit="cover"
-                        style={styles.loaderPatternSegment}
-                      />
-                    )
-                  )}
+                  {Array.from({ length: LOADER_PATTERN_COUNT }).map((_, idx) => (
+                    <AppImage
+                      key={`loader-pattern-${idx}`}
+                      source={{ uri: WELCOME_LOADER_FILL_URI }}
+                      contentFit="cover"
+                      style={styles.loaderPatternSegment}
+                    />
+                  ))}
                 </Animated.View>
               </Animated.View>
             </View>
@@ -635,27 +816,43 @@ export default function CurtainOverlay({
 
         {welcomeCanStart && (
           <Animated.View
-            style={[
-              styles.startButtonWrap,
-              {
-                opacity: startButtonOpacity,
-                transform: [
-                  { translateY: startButtonTranslateY },
-                  { scale: startButtonScale },
-                ],
-              },
-            ]}
+            style={[styles.startButtonWrap, { opacity: startButtonOpacity }]}
           >
-            <CustomButton
-              title="Start"
-              appearance="tertiary"
-              backgroundImage={backgrounds.bg006}
-              glow
-              fullWidth
+            <Pressable
               onPress={handleWelcomeStart}
-              glowColor="rgba(255,204,0,1)"
-              shadowColor="#834400"
-            />
+              accessibilityRole="button"
+              accessibilityLabel={t("start_btn")}
+              style={styles.startLabelPressable}
+            >
+              <Animated.View
+                style={{
+                  transform: [
+                    {
+                      translateY: Animated.add(
+                        startButtonTranslateY,
+                        idleBounce,
+                      ),
+                    },
+                    { scale: startButtonScale },
+                    {
+                      rotate: idleRotate.interpolate({
+                        inputRange: [-1, 1],
+                        outputRange: ["-3deg", "3deg"],
+                      }),
+                    },
+                  ],
+                }}
+              >
+                <CustomText
+                  variant="h2"
+                  className="text-center"
+                  textColor="#fff8e8"
+                  shadow
+                >
+                  {t("start_btn")}
+                </CustomText>
+              </Animated.View>
+            </Pressable>
           </Animated.View>
         )}
       </Animated.View>
@@ -694,7 +891,7 @@ export default function CurtainOverlay({
         <AppImage
           source={images.webtzarLogo}
           contentFit="contain"
-          style={styles.logoImage}
+          style={{ width: logoBox, height: logoBox }}
         />
       </Animated.View>
 
@@ -761,10 +958,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     letterSpacing: 1,
   },
-  logoImage: {
-    width: Math.min(W * 0.4, 200),
-    height: Math.min(W * 0.4, 200),
-  },
   loaderShell: {
     position: "absolute",
     left: 48,
@@ -809,5 +1002,11 @@ const styles = StyleSheet.create({
     left: 32,
     right: 32,
     bottom: 80,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  startLabelPressable: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
 });

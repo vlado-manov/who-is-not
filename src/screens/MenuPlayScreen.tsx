@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { View, Pressable, Animated } from "react-native";
+import { useMemo, useState } from "react";
+import { View, Pressable, ScrollView, StyleSheet } from "react-native";
 import ImageBackgroundWithLoadGate from "../components/ImageBackgroundWithLoadGate";
 import {
   CompositeNavigationProp,
@@ -7,7 +8,6 @@ import {
 } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { backgrounds } from "../../assets/backgrounds";
-import CustomText from "../components/common/CustomText";
 import CustomButton from "../components/common/CustomButton";
 import {
   OnboardingStackParamList,
@@ -16,59 +16,63 @@ import {
 import { StackNavigationProp } from "@react-navigation/stack";
 import { useAuthStore } from "../store/useUserStore";
 import { game_images } from "../../assets/images";
-import { useMemo, useRef } from "react";
 import AudioManager from "../utils/audioManager";
-import { Image } from "expo-image";
 import AppImage from "../components/AppImage";
 import { trackPlayerSessionStarted } from "../api/analytics";
-
-const AnimatedImage = Animated.createAnimatedComponent(Image);
+import { useResponsive } from "../utils/responsive";
+import ScreenTopBar from "../components/common/ScreenTopBar";
+import { navigateBackSafe } from "../navigation/navigateBackSafe";
+import OnlineJoinRoomModal from "../components/modals/OnlineJoinRoomModal";
 
 type OnbNav = StackNavigationProp<OnboardingStackParamList, "MenuPlay">;
 type RootNav = StackNavigationProp<RootStackParamList>;
 type Nav = CompositeNavigationProp<OnbNav, RootNav>;
-const useIconPressAnim = () => {
-  const anim = useRef(new Animated.Value(0)).current;
-
-  const pressIn = () =>
-    Animated.timing(anim, {
-      toValue: 1,
-      duration: 80,
-      useNativeDriver: true,
-    }).start();
-
-  const pressOut = () =>
-    Animated.timing(anim, {
-      toValue: 0,
-      duration: 120,
-      useNativeDriver: true,
-    }).start();
-
-  const style = {
-    transform: [
-      {
-        translateY: anim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, 4],
-        }),
-      },
-      {
-        scale: anim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [1, 0.94],
-        }),
-      },
-    ],
-  };
-
-  return { style, pressIn, pressOut };
-};
 const MenuPlayScreen = () => {
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<Nav>();
+  const [joinModalVisible, setJoinModalVisible] = useState(false);
   const { settings, updateSettings, user } = useAuthStore();
-  const settingsAnim = useIconPressAnim();
-  const profileAnim = useIconPressAnim();
+  const {
+    logo,
+    htpOverlay,
+    horizontalPadding,
+    topIconSize,
+    logoBlockMarginTop,
+    windowHeight,
+    windowWidth,
+    isShortScreen,
+  } = useResponsive();
+
+  const menuLayout = useMemo(() => {
+    const narrow = windowWidth < 380;
+    const low = windowHeight < 640;
+    if (!(low || narrow)) {
+      return {
+        btnSize: "md" as const,
+        fontSize: "sm" as const,
+        fontSizePx: undefined as number | undefined,
+        gap: 24,
+        sectionMarginTop: 28,
+        sectionPaddingTop: 12,
+        iconScale: 1,
+        titleMinFontScale: undefined as number | undefined,
+      };
+    }
+    const veryTight = isShortScreen || windowHeight < 600 || windowWidth < 340;
+    return {
+      btnSize: veryTight ? ("xs" as const) : ("sm" as const),
+      fontSize: "xs" as const,
+      fontSizePx: veryTight ? 15 : 16,
+      gap: veryTight ? 12 : 16,
+      sectionMarginTop: veryTight ? 14 : 20,
+      sectionPaddingTop: veryTight ? 6 : 10,
+      iconScale: veryTight ? 0.68 : 0.78,
+      titleMinFontScale: veryTight ? 0.4 : 0.46,
+    };
+  }, [windowWidth, windowHeight, isShortScreen]);
+
+  const s = menuLayout.iconScale;
+
   const logoSource = useMemo(() => {
     const sound = settings.soundEnabled ? "MusicOn" : "MusicOff";
 
@@ -89,132 +93,239 @@ const MenuPlayScreen = () => {
     updateSettings({ soundEnabled: newVal });
     AudioManager.setSoundEnabled(newVal);
   };
-  return (
-    <SafeAreaView className="flex-1" edges={["right", "left"]}>
-      <ImageBackgroundWithLoadGate
-        source={backgrounds.bg023}
-        style={{ flex: 1, width: "100%", height: "100%" }}
-        resizeMode="cover"
-      >
-        <View className="absolute top-16 left-8">
-          {/* <Ionicons name="settings" size={24} color="#fce58d" />
-           */}
-          <Pressable
-            onPressIn={settingsAnim.pressIn}
-            onPressOut={settingsAnim.pressOut}
-            onPress={() => {
-              AudioManager.playButtonClick();
-              navigation.navigate("Settings");
-            }}
-          >
-            <AnimatedImage
-              source={game_images.settingsIcon}
-              style={[
-                { width: 56, height: 56 },
-                settingsAnim.style,
-              ]}
-              contentFit="contain"
-            />
-          </Pressable>
-        </View>
-        <View className="absolute top-16 right-8">
-          {/* <Ionicons name="settings" size={24} color="#fce58d" />
-           */}
-          <Pressable
-            onPressIn={profileAnim.pressIn}
-            onPressOut={profileAnim.pressOut}
-            onPress={() => {
-              AudioManager.playButtonClick();
-              navigation.navigate("Profile");
-            }}
-          >
-            <AnimatedImage
-              source={game_images.userIcon}
-              style={[
-                { width: 56, height: 56 },
-                profileAnim.style,
-              ]}
-              contentFit="contain"
-            />
-          </Pressable>
-        </View>
-        <View className="flex-1 items-center w-full px-4">
-          <View className="flex-1 items-center w-full justify-between px-4 gap-3 relative pt-40">
-            <Pressable className="" onPress={toggleSound}>
-              <AppImage
-                source={logoSource}
-                style={{ width: 360, height: 280 }}
-                contentFit="contain"
-              />
-            </Pressable>
-          </View>
 
-          <View className="max-w-[80%] w-full justify-center items-center gap-6 h-full">
-            <CustomButton
-              title={t("menuPlay_device_btn")}
-              fullWidth
-              buttonClassName="-rotate-1 mt-2"
-              onPress={() => {
-                void trackPlayerSessionStarted({
-                  userId: user.id,
-                  source: "MENU_PLAY",
-                  step: "local_create_game_tapped",
-                  language: i18n.language,
-                }).catch((e) => {
-                  console.warn(
-                    "track PLAYER_SESSION_STARTED(local_create_game_tapped) failed",
-                    e
-                  );
-                });
-                navigation.navigate("CreateGame");
+  const scrollMinH = Math.max(windowHeight - 24, 520);
+
+  return (
+    <View style={styles.root}>
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+        <ImageBackgroundWithLoadGate
+          source={backgrounds.bg023}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        >
+          <ScreenTopBar
+            horizontalPadding={horizontalPadding}
+            topIconSize={topIconSize}
+            showBack
+            useExpoImage
+            onSettings={() => navigation.navigate("Settings")}
+            onProfile={() => navigation.navigate("Profile")}
+            onBack={() =>
+              navigation.canGoBack()
+                ? navigateBackSafe(navigation)
+                : navigation.navigate("Welcome")
+            }
+            backAccessibilityLabel={t("back_btn")}
+          />
+
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={{
+              flexGrow: 1,
+              minHeight: scrollMinH,
+              paddingHorizontal: horizontalPadding,
+              paddingBottom: 28,
+            }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View
+              style={{ alignItems: "center", marginTop: logoBlockMarginTop }}
+            >
+              <Pressable onPress={toggleSound}>
+                <View
+                  style={{
+                    width: logo.width,
+                    height: logo.height,
+                    position: "relative",
+                    alignItems: "center",
+                  }}
+                >
+                  {/* <AppImage
+                    source={game_images.menuPlayIcon}
+                    style={{
+                      position: "absolute",
+                      width: htpOverlay.width,
+                      height: htpOverlay.height,
+                      top: htpOverlay.top - 24,
+                      left: htpOverlay.left,
+                    }}
+                    contentFit="contain"
+                  /> */}
+                  <AppImage
+                    source={logoSource}
+                    style={{ width: logo.width, height: logo.height }}
+                    contentFit="contain"
+                  />
+                </View>
+              </Pressable>
+            </View>
+
+            <View
+              style={{
+                width: "100%",
+                maxWidth: 420,
+                alignSelf: "center",
+                gap: menuLayout.gap,
+                marginTop: menuLayout.sectionMarginTop,
+                flexGrow: 1,
+                paddingTop: menuLayout.sectionPaddingTop,
+                paddingBottom: 8,
               }}
-              label={t("play_one_device")}
-              backgroundImage={backgrounds.bg026}
-              shadowColor="#005f07"
-            />
-            <CustomButton
-              title={t("menuPlay_host_btn")}
-              fullWidth
-              label={t("invite_friends_label")}
-              buttonClassName="-rotate-1 mt-2"
-              backgroundImage={backgrounds.bg022}
-              shadowColor="#410047"
-              onPress={() => {
-                void trackPlayerSessionStarted({
-                  userId: user.id,
-                  source: "MENU_PLAY",
-                  step: "host_tapped",
-                  language: i18n.language,
-                  mode: "ONLINE",
-                }).catch((e) => {
-                  console.warn("track PLAYER_SESSION_STARTED(host_tapped) failed", e);
-                });
-              }}
-            />
-            <CustomButton
-              title={t("menuPlay_join_btn")}
-              fullWidth
-              buttonClassName="-rotate-1 mt-2"
-              backgroundImage={backgrounds.bg015}
-              label={t("scan_qr_code")}
-              shadowColor="#540d0d"
-              onPress={() => {
-                void trackPlayerSessionStarted({
-                  userId: user.id,
-                  source: "MENU_PLAY",
-                  step: "join_tapped",
-                  language: i18n.language,
-                  mode: "ONLINE",
-                }).catch((e) => {
-                  console.warn("track PLAYER_SESSION_STARTED(join_tapped) failed", e);
-                });
-              }}
-            />
-          </View>
-        </View>
-      </ImageBackgroundWithLoadGate>
-    </SafeAreaView>
+            >
+              <CustomButton
+                title={t("menuPlay_device_btn")}
+                fullWidth
+                btnSize={menuLayout.btnSize}
+                fontSize={menuLayout.fontSize}
+                fontSizePx={menuLayout.fontSizePx}
+                titleMinFontScale={menuLayout.titleMinFontScale}
+                buttonClassName="-rotate-1"
+                iconOverlayPadText
+                icon={game_images.partyModeIcon}
+                iconWidth={Math.round(120 * s)}
+                iconHeight={Math.round(104 * s)}
+                iconSize={Math.round(120 * s)}
+                iconOverlayPreset="rulebook"
+                iconRotation="16deg"
+                iconTop={Math.round(-10 * s)}
+                iconRight={Math.round(-25 * s)}
+                onPress={() => {
+                  void trackPlayerSessionStarted({
+                    userId: user.id,
+                    source: "MENU_PLAY",
+                    step: "local_create_game_tapped",
+                    language: i18n.language,
+                  }).catch((e) => {
+                    console.warn(
+                      "track PLAYER_SESSION_STARTED(local_create_game_tapped) failed",
+                      e,
+                    );
+                  });
+                  navigation.navigate("CreateGame");
+                }}
+                label={t("play_one_device")}
+                labelSide="left"
+                backgroundImage={backgrounds.bg026}
+                shadowColor="#005f07"
+              />
+              <CustomButton
+                title={t("menuPlay_host_btn")}
+                fullWidth
+                btnSize={menuLayout.btnSize}
+                fontSize={menuLayout.fontSize}
+                fontSizePx={menuLayout.fontSizePx}
+                titleMinFontScale={menuLayout.titleMinFontScale}
+                iconOverlayPadText
+                label={t("invite_friends_label")}
+                buttonClassName="-rotate-1"
+                icon={game_images.hostGameIcon}
+                iconWidth={Math.round(104 * s)}
+                iconHeight={Math.round(88 * s)}
+                iconSize={Math.round(104 * s)}
+                iconLeft={Math.round(-24 * s)}
+                iconOverlayPreset="party"
+                iconRotation="10deg"
+                backgroundImage={backgrounds.bg022}
+                shadowColor="#410047"
+                onPress={() => {
+                  void trackPlayerSessionStarted({
+                    userId: user.id,
+                    source: "MENU_PLAY",
+                    step: "host_tapped",
+                    language: i18n.language,
+                    mode: "ONLINE",
+                  }).catch((e) => {
+                    console.warn(
+                      "track PLAYER_SESSION_STARTED(host_tapped) failed",
+                      e,
+                    );
+                  });
+                  AudioManager.playButtonClick();
+                  navigation.navigate("CreateGame", { screen: "OnlineHost" });
+                }}
+              />
+              <CustomButton
+                title={t("menuPlay_join_btn")}
+                fullWidth
+                iconOverlayPadText
+                btnSize={menuLayout.btnSize}
+                fontSize={menuLayout.fontSize}
+                fontSizePx={menuLayout.fontSizePx}
+                titleMinFontScale={menuLayout.titleMinFontScale}
+                iconOverlayPreset="rulebook"
+                buttonClassName="-rotate-1"
+                icon={game_images.joinGameIcon}
+                iconWidth={Math.round(104 * s)}
+                iconHeight={Math.round(88 * s)}
+                iconSize={Math.round(104 * s)}
+                iconRight={Math.round(-20 * s)}
+                iconRotation="-8deg"
+                backgroundImage={backgrounds.bg015}
+                label={t("scan_qr_code")}
+                labelSide="left"
+                shadowColor="#540d0d"
+                onPress={() => {
+                  void trackPlayerSessionStarted({
+                    userId: user.id,
+                    source: "MENU_PLAY",
+                    step: "join_tapped",
+                    language: i18n.language,
+                    mode: "ONLINE",
+                  }).catch((e) => {
+                    console.warn(
+                      "track PLAYER_SESSION_STARTED(join_tapped) failed",
+                      e,
+                    );
+                  });
+                  AudioManager.playButtonClick();
+                  setJoinModalVisible(true);
+                }}
+              />
+              {__DEV__ && (
+                <CustomButton
+                  title="Dev: multiplayer screen lab"
+                  fullWidth
+                  btnSize="xs"
+                  fontSize="xs"
+                  buttonClassName="mt-4 opacity-90"
+                  backgroundImage={backgrounds.bg005}
+                  shadowColor="#333"
+                  onPress={() => {
+                    AudioManager.playButtonClick();
+                    navigation.navigate("DevMultiplayerLab");
+                  }}
+                />
+              )}
+            </View>
+          </ScrollView>
+        </ImageBackgroundWithLoadGate>
+      </SafeAreaView>
+      <OnlineJoinRoomModal
+        visible={joinModalVisible}
+        onDismiss={() => setJoinModalVisible(false)}
+        onJoined={() => {
+          setJoinModalVisible(false);
+          navigation.navigate("CreateGame", { screen: "OnlineJoin" });
+        }}
+      />
+    </View>
   );
 };
 
 export default MenuPlayScreen;
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: "#0a0a0a",
+  },
+  safe: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
+  scroll: {
+    flex: 1,
+  },
+});

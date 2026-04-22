@@ -14,6 +14,7 @@ import {
   LayoutChangeEvent,
   useWindowDimensions,
   Animated,
+  Easing,
 } from "react-native";
 import AppImage from "./AppImage";
 import Svg, { Path, Defs, LinearGradient, Stop } from "react-native-svg";
@@ -121,49 +122,237 @@ export default function RatingSlider({
     [pathData],
   );
 
-  const centerBounceX = useRef(new Animated.Value(0)).current;
-  const centerBounceY = useRef(new Animated.Value(0)).current;
-  const centerScale = useRef(new Animated.Value(1)).current;
-  const centerRotate = useRef(new Animated.Value(0)).current;
+  /** Light continuous bob on the selected thumb (outer circle) — keep as is. */
+  const thumbBobY = useRef(new Animated.Value(0)).current;
+  const thumbBobScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    const spring = { tension: 140, friction: 11, useNativeDriver: true };
-    const d = (ms: number) => Animated.delay(ms);
-
-    const to = (x: number, y: number) =>
-      Animated.parallel([
-        Animated.spring(centerBounceX, { ...spring, toValue: x }),
-        Animated.spring(centerBounceY, { ...spring, toValue: y }),
-      ]);
-
-    const scale = (s: number) =>
-      Animated.spring(centerScale, { ...spring, toValue: s });
-
-    const tilt = (deg: number) =>
-      Animated.spring(centerRotate, { ...spring, toValue: deg });
-
-    const centerAttention = Animated.loop(
+    const ease = Easing.inOut(Easing.sin);
+    const out = Easing.out(Easing.quad);
+    const bob = Animated.loop(
       Animated.sequence([
-        Animated.sequence([to(0, -22), to(0, 0)]),
-        d(600),
-        Animated.parallel([scale(1.07), to(0, -8)]),
-        Animated.parallel([scale(1), to(0, 0)]),
-        d(500),
-        Animated.sequence([to(-16, -20), to(0, 0)]),
-        d(800),
-        Animated.sequence([tilt(-4), tilt(4), tilt(0)]),
-        d(400),
-        Animated.sequence([to(16, -20), to(0, 0)]),
-        d(700),
-        Animated.sequence([scale(0.96), scale(1.05), scale(1)]),
-        d(500),
-        Animated.sequence([to(0, -16), to(0, 0), to(0, -16), to(0, 0)]),
-        d(1200),
+        Animated.parallel([
+          Animated.timing(thumbBobY, {
+            toValue: -5,
+            duration: 520,
+            easing: ease,
+            useNativeDriver: true,
+          }),
+          Animated.timing(thumbBobScale, {
+            toValue: 1.035,
+            duration: 520,
+            easing: ease,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(thumbBobY, {
+            toValue: 0,
+            duration: 520,
+            easing: ease,
+            useNativeDriver: true,
+          }),
+          Animated.timing(thumbBobScale, {
+            toValue: 1,
+            duration: 520,
+            easing: ease,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.sequence([
+          Animated.parallel([
+            Animated.timing(thumbBobY, {
+              toValue: -3,
+              duration: 140,
+              easing: out,
+              useNativeDriver: true,
+            }),
+            Animated.timing(thumbBobScale, {
+              toValue: 1.022,
+              duration: 140,
+              easing: out,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.parallel([
+            Animated.timing(thumbBobY, {
+              toValue: 0,
+              duration: 160,
+              easing: ease,
+              useNativeDriver: true,
+            }),
+            Animated.timing(thumbBobScale, {
+              toValue: 1,
+              duration: 160,
+              easing: ease,
+              useNativeDriver: true,
+            }),
+          ]),
+        ]),
+        Animated.delay(160),
       ]),
+      { iterations: -1 },
     );
-    centerAttention.start();
-    return () => centerAttention.stop();
-  }, [centerBounceX, centerBounceY, centerScale, centerRotate]);
+    bob.start();
+    return () => bob.stop();
+  }, [thumbBobY, thumbBobScale]);
+
+  /** Center score graphic — seamless loop: big float, soft landing, playful double-bob. */
+  const centerFloatY = useRef(new Animated.Value(0)).current;
+  const centerPulse = useRef(new Animated.Value(1)).current;
+  const centerWobble = useRef(new Animated.Value(0)).current;
+  const centerSwayX = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const smooth = Easing.inOut(Easing.sin);
+    const snap = Easing.out(Easing.back(1.12));
+
+    const centerLoop = Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(centerFloatY, {
+            toValue: -10,
+            duration: 780,
+            easing: smooth,
+            useNativeDriver: true,
+          }),
+          Animated.timing(centerPulse, {
+            toValue: 1.1,
+            duration: 780,
+            easing: smooth,
+            useNativeDriver: true,
+          }),
+          Animated.timing(centerWobble, {
+            toValue: 1,
+            duration: 780,
+            easing: smooth,
+            useNativeDriver: true,
+          }),
+          Animated.timing(centerSwayX, {
+            toValue: 4,
+            duration: 780,
+            easing: smooth,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.delay(100),
+        Animated.parallel([
+          Animated.timing(centerFloatY, {
+            toValue: 2,
+            duration: 340,
+            easing: snap,
+            useNativeDriver: true,
+          }),
+          Animated.timing(centerPulse, {
+            toValue: 0.96,
+            duration: 340,
+            easing: Easing.in(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(centerWobble, {
+            toValue: -0.9,
+            duration: 340,
+            easing: smooth,
+            useNativeDriver: true,
+          }),
+          Animated.timing(centerSwayX, {
+            toValue: -3,
+            duration: 340,
+            easing: smooth,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(centerFloatY, {
+            toValue: 0,
+            duration: 480,
+            easing: smooth,
+            useNativeDriver: true,
+          }),
+          Animated.timing(centerPulse, {
+            toValue: 1,
+            duration: 480,
+            easing: smooth,
+            useNativeDriver: true,
+          }),
+          Animated.timing(centerWobble, {
+            toValue: 0,
+            duration: 480,
+            easing: smooth,
+            useNativeDriver: true,
+          }),
+          Animated.timing(centerSwayX, {
+            toValue: 0,
+            duration: 480,
+            easing: smooth,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.sequence([
+          Animated.parallel([
+            Animated.timing(centerFloatY, {
+              toValue: -5,
+              duration: 160,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }),
+            Animated.timing(centerPulse, {
+              toValue: 1.06,
+              duration: 160,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.parallel([
+            Animated.timing(centerFloatY, {
+              toValue: 0,
+              duration: 180,
+              easing: smooth,
+              useNativeDriver: true,
+            }),
+            Animated.timing(centerPulse, {
+              toValue: 1,
+              duration: 180,
+              easing: smooth,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.parallel([
+            Animated.timing(centerFloatY, {
+              toValue: -3,
+              duration: 130,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }),
+            Animated.timing(centerPulse, {
+              toValue: 1.035,
+              duration: 130,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.parallel([
+            Animated.timing(centerFloatY, {
+              toValue: 0,
+              duration: 200,
+              easing: smooth,
+              useNativeDriver: true,
+            }),
+            Animated.timing(centerPulse, {
+              toValue: 1,
+              duration: 200,
+              easing: smooth,
+              useNativeDriver: true,
+            }),
+          ]),
+        ]),
+        Animated.delay(280),
+      ]),
+      { iterations: -1 },
+    );
+    centerLoop.start();
+    return () => centerLoop.stop();
+  }, [centerFloatY, centerPulse, centerWobble, centerSwayX]);
 
   const handleTouch = useCallback(
     (localX: number, localY: number) => {
@@ -338,15 +527,15 @@ export default function RatingSlider({
                 width: centerBtnSize,
                 height: centerBtnSize,
                 transform: [
-                  { translateX: centerBounceX },
-                  { translateY: centerBounceY },
-                  { scale: centerScale },
+                  { translateX: centerSwayX },
+                  { translateY: centerFloatY },
                   {
-                    rotate: centerRotate.interpolate({
-                      inputRange: [-4, 0, 4],
-                      outputRange: ["-4deg", "0deg", "4deg"],
+                    rotate: centerWobble.interpolate({
+                      inputRange: [-1, 0, 1],
+                      outputRange: ["-5deg", "0deg", "5deg"],
                     }),
                   },
+                  { scale: centerPulse },
                 ],
               },
             ]}
@@ -375,7 +564,7 @@ export default function RatingSlider({
             </View>
           ))}
 
-          <View
+          <Animated.View
             style={[
               styles.thumb,
               styles.thumbGlow,
@@ -384,6 +573,10 @@ export default function RatingSlider({
                 top: thumbPos.y - thumbSize / 2,
                 width: thumbSize,
                 height: thumbSize,
+                transform: [
+                  { translateY: thumbBobY },
+                  { scale: thumbBobScale },
+                ],
               },
             ]}
             pointerEvents="none"
@@ -397,7 +590,7 @@ export default function RatingSlider({
               <View style={styles.thumbBorder} />
               <Text style={styles.thumbText}>{value}</Text>
             </ImageBackground>
-          </View>
+          </Animated.View>
         </View>
       </GestureDetector>
     </View>

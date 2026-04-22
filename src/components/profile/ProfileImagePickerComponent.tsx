@@ -214,6 +214,7 @@ export default function ProfileImagePickerComponent({
                 buttonClassName="min-w-[140px]"
                 backgroundImage={backgrounds.bg026}
                 glow
+                fullWidth
                 glowColor="rgba(41,255,25,0.5)"
                 shadowColor="#005f07"
               />

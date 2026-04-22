@@ -11,6 +11,8 @@ type Props = {
   subtitle?: string;
   mode?: Mode;
   background: any;
+  textVariant?: "h5" | "h5-headline" | "h6-headline";
+  textColorOverride?: string;
 };
 
 const THEME = {
@@ -47,6 +49,8 @@ const QuestionPlate = ({
   subtitle,
   background,
   mode = "light",
+  textVariant = "h5",
+  textColorOverride,
 }: Props) => {
   const theme = THEME[mode];
 
@@ -89,9 +93,10 @@ const QuestionPlate = ({
         )}
 
         <CustomText
-          variant="h5-headline"
+          variant={textVariant}
           className="text-center"
-          textColor={theme.text}
+          textColor={textColorOverride ?? theme.text}
+          allowWrap
         >
           {text}
         </CustomText>

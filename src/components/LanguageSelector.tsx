@@ -19,6 +19,12 @@ const FLAGS: Record<Lang, any> = {
   bg: require("../../assets/images/flags/bg.png"),
 };
 
+/** Android often renders bitmaps slightly larger; keep flags visually aligned with iOS. */
+const FLAG_SIZE =
+  Platform.OS === "android"
+    ? { w: 28, h: 18 }
+    : { w: 32, h: 20 };
+
 export default function LanguageSelector() {
   const { i18n } = useTranslation();
   const userId = useAuthStore((s) => s.user.id);
@@ -45,7 +51,6 @@ export default function LanguageSelector() {
 
         return (
           <View key={code} style={{ marginHorizontal: 4 }}>
-            {/* Glow halo (works everywhere) */}
             {active && (
               <View
                 pointerEvents="none"
@@ -62,8 +67,8 @@ export default function LanguageSelector() {
               onPress={() => setLang(code as Lang)}
               style={[
                 {
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
+                  paddingHorizontal: Platform.OS === "android" ? 8 : 10,
+                  paddingVertical: Platform.OS === "android" ? 5 : 6,
                   borderRadius: 10,
                   backgroundColor: active
                     ? "#ffec21"
@@ -84,8 +89,8 @@ export default function LanguageSelector() {
                 source={img}
                 contentFit="contain"
                 style={{
-                  width: 32,
-                  height: 20,
+                  width: FLAG_SIZE.w,
+                  height: FLAG_SIZE.h,
                   borderRadius: 4,
                 }}
               />

@@ -12,7 +12,7 @@ import {
   ScrollView,
   Pressable,
 } from "react-native";
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef, useLayoutEffect } from "react";
 import CustomText from "../common/CustomText";
 import { EvilIcons, FontAwesome } from "@expo/vector-icons";
 import CustomButton from "../common/CustomButton";
@@ -20,6 +20,8 @@ import { useGameStore } from "../../store/useGameStore";
 import { useTranslation } from "react-i18next";
 import { fetchQuestionPacks, type QuestionPackDto } from "../../api/questions";
 import { backgrounds } from "../../../assets/backgrounds";
+import AudioManager from "../../utils/audioManager";
+import { usePlateModalCardWidth } from "./usePlateModalCardWidth";
 
 type Props = {
   setGameSettingsVisible: React.Dispatch<React.SetStateAction<boolean>>;
@@ -45,17 +47,18 @@ const isMainPack = (slug: string) => slug === "main" || slug === "main-pack";
 
 const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
   const { t } = useTranslation();
+  const plateWidth = usePlateModalCardWidth();
   const gameSettings = useGameStore((s) => s.gameSettings);
   const setGameSettings = useGameStore((s) => s.setGameSettings);
 
   const [selectedSec, setSelectedSec] = useState<number>(
-    gameSettings?.discussionSeconds ?? 120
+    gameSettings?.discussionSeconds ?? 120,
   );
   const [selectedLives, setSelectedLives] = useState<3 | 5>(
-    gameSettings?.livesPerPlayer ?? 3
+    gameSettings?.livesPerPlayer ?? 3,
   );
   const [selectedSlugs, setSelectedSlugs] = useState<string[]>(
-    () => gameSettings?.selectedPacks ?? []
+    () => gameSettings?.selectedPacks ?? [],
   );
   const [openDropdown, setOpenDropdown] = useState(false);
   const [availablePacks, setAvailablePacks] = useState<QuestionPackDto[]>([]);
@@ -63,6 +66,13 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
 
   const scaleAnim = useRef(new Animated.Value(0.3)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  const timeDropdownTriggerRef = useRef<View>(null);
+  const [timeDropdownRect, setTimeDropdownRect] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
 
   useEffect(() => {
     Animated.parallel([
@@ -80,6 +90,16 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
     ]).start();
   }, [scaleAnim, opacityAnim]);
 
+  useLayoutEffect(() => {
+    if (!openDropdown) {
+      setTimeDropdownRect(null);
+      return;
+    }
+    timeDropdownTriggerRef.current?.measureInWindow((x, y, width, height) => {
+      setTimeDropdownRect({ x, y, width, height });
+    });
+  }, [openDropdown]);
+
   useEffect(() => {
     let cancelled = false;
     fetchQuestionPacks()
@@ -88,9 +108,9 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
           setAvailablePacks(list);
           setSelectedSlugs((prev) => {
             if (list.length === 0) return prev;
-            const firstSlug = list[0].slug;
-            if (prev.includes(firstSlug)) return prev;
-            return [firstSlug, ...prev.filter((s) => s !== firstSlug)];
+            const valid = prev.filter((s) => list.some((p) => p.slug === s));
+            if (valid.length > 0) return valid;
+            return [list[0].slug];
           });
         }
       })
@@ -107,10 +127,11 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
 
   const selectedLabel = useMemo(
     () => TIME_OPTIONS.find((o) => o.seconds === selectedSec)?.label ?? "2:00",
-    [selectedSec]
+    [selectedSec],
   );
 
   const togglePack = (slug: string) => {
+    AudioManager.playButtonClick();
     const has = selectedSlugs.includes(slug);
     if (has && selectedSlugs.length === 1) {
       Alert.alert(t("required_alert_title"), t("required_alert_message"));
@@ -127,7 +148,13 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
     setSelectedSlugs([...selectedSlugs, slug]);
   };
 
+  const closeTimeDropdown = () => {
+    setOpenDropdown(false);
+    setTimeDropdownRect(null);
+  };
+
   const onSave = () => {
+    closeTimeDropdown();
     const finalPacks =
       selectedSlugs.length > 0
         ? selectedSlugs
@@ -141,10 +168,23 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
   };
 
   return (
-    <Pressable style={styles.backdrop} onPress={() => setGameSettingsVisible(false)}>
+    <Pressable
+      style={styles.backdrop}
+      onPress={() => {
+        AudioManager.playButtonClick();
+        if (openDropdown) {
+          closeTimeDropdown();
+          return;
+        }
+        setGameSettingsVisible(false);
+      }}
+    >
       <TouchableOpacity
         style={styles.closeBtn}
-        onPress={() => setGameSettingsVisible(false)}
+        onPress={() => {
+          AudioManager.playButtonClick();
+          setGameSettingsVisible(false);
+        }}
         activeOpacity={0.8}
       >
         <EvilIcons name="close" size={36} color="rgba(255,255,255,0.95)" />
@@ -154,196 +194,226 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
         <Animated.View
           style={[
             styles.modalWrap,
+            { width: plateWidth },
             {
               opacity: opacityAnim,
               transform: [{ scale: scaleAnim }],
             },
           ]}
         >
-        <View style={styles.namePlateShadow}>
-          <ImageBackground
-            source={backgrounds.bg005}
-            resizeMode="stretch"
-            imageStyle={{ borderRadius: 18 }}
-            style={styles.namePlate}
-          >
-            <CustomText
-              variant="p"
-              className="text-center"
-              textColor="#762a05"
+          <View style={styles.namePlateShadow}>
+            <ImageBackground
+              source={backgrounds.bg005}
+              resizeMode="stretch"
+              imageStyle={{ borderRadius: 18 }}
+              style={[styles.namePlate, { width: plateWidth }]}
             >
-              {t("game_settings")}
-            </CustomText>
-
-            <View style={styles.nameDivider} />
-
-            <CustomText
-              variant="h6-headline"
-              className="text-center"
-              textColor="#592410"
-            >
-              {t("lives_per_player")}
-            </CustomText>
-            <View style={styles.livesRow}>
-              {LIVES_OPTIONS.map((opt) => (
-                <Pressable
-                  key={opt.value}
-                  style={[
-                    styles.livesOption,
-                    selectedLives === opt.value && styles.livesOptionSelected,
-                  ]}
-                  onPress={() => setSelectedLives(opt.value)}
-                >
-                  <CustomText
-                    variant="p"
-                    textColor={
-                      selectedLives === opt.value ? "#592410" : "#762a05"
-                    }
-                  >
-                    {opt.label}
-                  </CustomText>
-                </Pressable>
-              ))}
-            </View>
-
-            <View style={styles.nameDivider} />
-
-            <CustomText
-              variant="h6-headline"
-              className="text-center"
-              textColor="#592410"
-            >
-              {t("time_for_discussion")}
-            </CustomText>
-
-            <View style={styles.dropdownWrap}>
-              <Pressable
-                style={styles.dropdownTrigger}
-                onPress={() => setOpenDropdown((v) => !v)}
+              <CustomText
+                variant="p"
+                className="text-center"
+                textColor="#762a05"
               >
-                <CustomText variant="p" textColor="#592410">
-                  {selectedLabel}
-                </CustomText>
-                <FontAwesome
-                  name={openDropdown ? "angle-up" : "angle-down"}
-                  size={20}
-                  color="#762a05"
-                />
-              </Pressable>
+                {t("game_settings")}
+              </CustomText>
 
-              {openDropdown ? (
-                <View style={styles.dropdownList}>
-                  {TIME_OPTIONS.map((opt) => (
-                    <Pressable
-                      key={opt.seconds}
-                      style={[
-                        styles.dropdownItem,
-                        opt.seconds === selectedSec && styles.dropdownItemSelected,
-                      ]}
-                      onPress={() => {
-                        setSelectedSec(opt.seconds);
-                        setOpenDropdown(false);
-                      }}
+              <View style={styles.nameDivider} />
+
+              <CustomText
+                variant="h6"
+                className="text-center"
+                textColor="#592410"
+              >
+                {t("lives_per_player")}
+              </CustomText>
+              <View style={styles.livesRow}>
+                {LIVES_OPTIONS.map((opt) => (
+                  <Pressable
+                    key={opt.value}
+                    style={[
+                      styles.livesOption,
+                      selectedLives === opt.value && styles.livesOptionSelected,
+                    ]}
+                    onPress={() => {
+                      AudioManager.playButtonClick();
+                      setSelectedLives(opt.value);
+                    }}
+                  >
+                    <CustomText
+                      variant="p"
+                      textColor={
+                        selectedLives === opt.value ? "#592410" : "#762a05"
+                      }
                     >
-                      <CustomText
-                        variant="p-small"
-                        textColor={
-                          opt.seconds === selectedSec ? "#762a05" : "#592410"
-                        }
-                      >
-                        {opt.label}
-                      </CustomText>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : null}
-            </View>
-
-            <View style={styles.nameDivider} />
-
-            <CustomText
-              variant="h6-headline"
-              className="text-center"
-              textColor="#592410"
-            >
-              {t("packages_included")}
-            </CustomText>
-
-            {packsLoading ? (
-              <View style={styles.packsLoading}>
-                <ActivityIndicator size="small" color="#762a05" />
+                      {opt.label}
+                    </CustomText>
+                  </Pressable>
+                ))}
               </View>
-            ) : (
-              <ScrollView
-                style={styles.packsScroll}
-                contentContainerStyle={styles.packsScrollContent}
-                showsVerticalScrollIndicator={false}
-                nestedScrollEnabled
-              >
-                {availablePacks.length === 0 ? (
-                  <CustomText
-                    variant="p-small"
-                    className="text-center py-2"
-                    textColor="#762a05"
-                  >
-                    {t("no_packs_available") || "No question packs available."}
-                  </CustomText>
-                ) : (
-                  <View style={styles.packsList}>
-                    {availablePacks.map((pack) => {
-                      const checked = selectedSlugs.includes(pack.slug);
-                      const isMain = isMainPack(pack.slug);
-                      return (
-                        <Pressable
-                          key={pack.slug}
-                          style={[
-                            styles.packRow,
-                            checked && styles.packRowChecked,
-                          ]}
-                          onPress={() => togglePack(pack.slug)}
-                        >
-                          <CustomText
-                            variant="p-small"
-                            textColor={checked ? "#592410" : "#762a05"}
-                          >
-                            {pack.title} ({pack.questionsCount})
-                            {isMain ? " ★" : ""}
-                          </CustomText>
-                          <View
-                            style={[
-                              styles.checkbox,
-                              checked && styles.checkboxChecked,
-                            ]}
-                          >
-                            {checked ? (
-                              <FontAwesome
-                                name="check"
-                                size={12}
-                                color="#fff"
-                              />
-                            ) : null}
-                          </View>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                )}
-              </ScrollView>
-            )}
-          </ImageBackground>
-        </View>
 
-        <CustomButton
-          title={t("save")}
-          buttonClassName="mt-5 w-full"
-          onPress={onSave}
-          backgroundImage={backgrounds.bg026}
-          glow
-          glowColor="rgba(41,255,25,0.6)"
-          shadowColor="#005f07"
-        />
-      </Animated.View>
+              <View style={styles.nameDivider} />
+
+              <CustomText
+                variant="h6"
+                className="text-center"
+                textColor="#592410"
+              >
+                {t("time_for_discussion")}
+              </CustomText>
+
+              <View style={styles.dropdownWrap} collapsable={false}>
+                <View ref={timeDropdownTriggerRef} collapsable={false}>
+                  <Pressable
+                    style={styles.dropdownTrigger}
+                    onPress={() => {
+                      AudioManager.playButtonClick();
+                      setOpenDropdown((v) => !v);
+                    }}
+                  >
+                    <CustomText variant="p" textColor="#592410">
+                      {selectedLabel}
+                    </CustomText>
+                    <FontAwesome
+                      name={openDropdown ? "angle-up" : "angle-down"}
+                      size={20}
+                      color="#762a05"
+                    />
+                  </Pressable>
+                </View>
+              </View>
+
+              <View style={styles.nameDivider} />
+
+              <CustomText
+                variant="h6"
+                className="text-center"
+                textColor="#592410"
+              >
+                {t("packages_included")}
+              </CustomText>
+
+              {packsLoading ? (
+                <View style={styles.packsLoading}>
+                  <ActivityIndicator size="small" color="#762a05" />
+                </View>
+              ) : (
+                <ScrollView
+                  style={styles.packsScroll}
+                  contentContainerStyle={styles.packsScrollContent}
+                  showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled
+                >
+                  {availablePacks.length === 0 ? (
+                    <CustomText
+                      variant="p-small"
+                      className="text-center py-2"
+                      textColor="#762a05"
+                    >
+                      {t("no_packs_available") ||
+                        "No question packs available."}
+                    </CustomText>
+                  ) : (
+                    <View style={styles.packsList}>
+                      {availablePacks.map((pack) => {
+                        const checked = selectedSlugs.includes(pack.slug);
+                        const isMain = isMainPack(pack.slug);
+                        return (
+                          <Pressable
+                            key={pack.slug}
+                            style={[
+                              styles.packRow,
+                              checked && styles.packRowChecked,
+                            ]}
+                            onPress={() => togglePack(pack.slug)}
+                          >
+                            <CustomText
+                              variant="p-small"
+                              textColor={checked ? "#592410" : "#762a05"}
+                            >
+                              {pack.title} ({pack.questionsCount})
+                              {isMain ? " ★" : ""}
+                            </CustomText>
+                            <View
+                              style={[
+                                styles.checkbox,
+                                checked && styles.checkboxChecked,
+                              ]}
+                            >
+                              {checked ? (
+                                <FontAwesome
+                                  name="check"
+                                  size={12}
+                                  color="#fff"
+                                />
+                              ) : null}
+                            </View>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  )}
+                </ScrollView>
+              )}
+            </ImageBackground>
+          </View>
+
+          <CustomButton
+            title={t("save")}
+            buttonClassName="mt-5 w-full"
+            onPress={onSave}
+            backgroundImage={backgrounds.bg026}
+            btnSize="sm"
+            fontSize="sm"
+            glow
+            glowColor="rgba(41,255,25,0.6)"
+            shadowColor="#005f07"
+          />
+        </Animated.View>
       </TouchableWithoutFeedback>
+
+      {openDropdown && timeDropdownRect ? (
+        <View
+          style={[
+            styles.timeDropdownFloating,
+            {
+              left: timeDropdownRect.x,
+              top: timeDropdownRect.y + timeDropdownRect.height + 6,
+              width: timeDropdownRect.width,
+            },
+          ]}
+          pointerEvents="box-none"
+        >
+          <ScrollView
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            style={styles.dropdownListScroll}
+          >
+            {TIME_OPTIONS.map((opt) => (
+              <Pressable
+                key={opt.seconds}
+                style={[
+                  styles.dropdownItem,
+                  opt.seconds === selectedSec && styles.dropdownItemSelected,
+                ]}
+                onPress={() => {
+                  AudioManager.playButtonClick();
+                  setSelectedSec(opt.seconds);
+                  closeTimeDropdown();
+                }}
+              >
+                <CustomText
+                  variant="p-small"
+                  textColor={
+                    opt.seconds === selectedSec ? "#762a05" : "#592410"
+                  }
+                >
+                  {opt.label}
+                </CustomText>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
     </Pressable>
   );
 };
@@ -355,7 +425,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     inset: 0,
     backgroundColor: "rgba(0,0,0,0.82)",
-    alignItems: "center",
+    alignItems: "stretch",
     justifyContent: "center",
     width: "100%",
     height: "100%",
@@ -366,13 +436,28 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 48,
     right: 20,
-    zIndex: 10,
+    zIndex: 100060,
     padding: 8,
+    elevation: 100060,
+  },
+  timeDropdownFloating: {
+    position: "absolute",
+    maxHeight: 240,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,247,236,0.98)",
+    borderWidth: 1,
+    borderColor: "rgba(160,110,60,0.4)",
+    overflow: "hidden",
+    zIndex: 100050,
+    elevation: 100050,
+  },
+  dropdownListScroll: {
+    maxHeight: 240,
   },
   modalWrap: {
-    width: "100%",
-    maxWidth: 380,
-    alignItems: "center",
+    alignSelf: "center",
+    alignItems: "stretch",
+    maxWidth: "100%",
   },
   namePlateShadow: {
     shadowColor: "#fff",
@@ -381,12 +466,16 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 14,
     width: "100%",
+    alignSelf: "stretch",
   },
   namePlate: {
     borderRadius: 18,
     paddingHorizontal: 24,
     paddingVertical: 20,
     alignItems: "center",
+    alignSelf: "stretch",
+    width: "100%",
+    maxWidth: "100%",
     shadowColor: "#ffd800",
     shadowOpacity: 0.8,
     shadowRadius: 4,
@@ -399,7 +488,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   nameDivider: {
+    alignSelf: "center",
     width: "88%",
+    maxWidth: "100%",
     height: 1,
     marginVertical: 10,
     backgroundColor: "rgba(89,36,16,0.5)",
@@ -408,6 +499,7 @@ const styles = StyleSheet.create({
     width: "100%",
     marginTop: 6,
     marginBottom: 4,
+    zIndex: 0,
   },
   dropdownTrigger: {
     flexDirection: "row",
@@ -419,14 +511,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,247,236,0.9)",
     borderWidth: 1,
     borderColor: "rgba(160,110,60,0.4)",
-  },
-  dropdownList: {
-    marginTop: 6,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,247,236,0.98)",
-    borderWidth: 1,
-    borderColor: "rgba(160,110,60,0.4)",
-    overflow: "hidden",
   },
   dropdownItem: {
     paddingVertical: 12,

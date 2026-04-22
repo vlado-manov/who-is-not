@@ -7,6 +7,7 @@ import ProfileScreen from "../screens/ProfileScreen";
 import ReferralScreen from "../screens/ReferralScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import HowToPlayScreen from "../screens/HowToPlayScreen";
+import DevMultiplayerLabScreen from "../screens/dev/DevMultiplayerLabScreen";
 import { Transitions } from "./transitions";
 
 const Stack = createStackNavigator<OnboardingStackParamList>();
@@ -25,38 +26,65 @@ export default function OnboardingStackNavigator() {
         name="MenuPlay"
         component={MenuPlayScreen}
         options={{
-          cardStyleInterpolator: Transitions.fade,
+          cardStyleInterpolator: Transitions.slideFromTop,
         }}
       />
       <Stack.Screen
         name="Store"
         component={StoreScreen}
         options={{
-          cardStyleInterpolator: Transitions.fade,
+          cardStyleInterpolator: Transitions.slideFromRight,
+          gestureDirection: "horizontal",
+          cardStyle: { backgroundColor: "transparent" },
+          cardOverlayEnabled: false,
         }}
       />
-      <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          cardStyleInterpolator: Transitions.slideFromRight,
+          gestureDirection: "horizontal",
+          cardStyle: { backgroundColor: "transparent" },
+          cardOverlayEnabled: false,
+        }}
+      />
       <Stack.Screen
         name="Referral"
         component={ReferralScreen}
         options={{
-          cardStyleInterpolator: Transitions.fade,
+          cardStyleInterpolator: Transitions.slideFromTop,
         }}
       />
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}
         options={{
-          cardStyleInterpolator: Transitions.fade,
+          cardStyleInterpolator: Transitions.slideFromRight,
+          gestureDirection: "horizontal",
+          cardStyle: { backgroundColor: "transparent" },
+          cardOverlayEnabled: false,
         }}
       />
       <Stack.Screen
         name="Rules"
         component={HowToPlayScreen}
         options={{
-          cardStyleInterpolator: Transitions.fade,
+          cardStyleInterpolator: Transitions.slideFromRight,
+          gestureDirection: "horizontal",
+          cardStyle: { backgroundColor: "transparent" },
+          cardOverlayEnabled: false,
         }}
       />
+      {__DEV__ && (
+        <Stack.Screen
+          name="DevMultiplayerLab"
+          component={DevMultiplayerLabScreen}
+          options={{
+            cardStyleInterpolator: Transitions.slideFromTop,
+          }}
+        />
+      )}
     </Stack.Navigator>
   );
 }

@@ -3,6 +3,8 @@ import {
   Pressable,
   TouchableOpacity,
   Animated,
+  ScrollView,
+  StyleSheet,
 } from "react-native";
 import { Image } from "expo-image";
 import AppImage from "../components/AppImage";
@@ -13,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { backgrounds } from "../../assets/backgrounds";
 import CustomText from "../components/common/CustomText";
 import { useTranslation } from "react-i18next";
-import { CommonActions, useNavigation } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { useMemo, useState } from "react";
 import CustomButton from "../components/common/CustomButton";
@@ -21,11 +23,15 @@ import { CreateGameStackParamList } from "../navigation/types";
 import { useGameStore } from "../store/useGameStore";
 import { FontAwesome } from "@expo/vector-icons";
 import GameSettingsModal from "../components/modals/GameSettingsModal";
+import ScreenTopBar from "../components/common/ScreenTopBar";
+import AnimatedLogoHero from "../components/AnimatedLogoHero";
 import AudioManager from "../utils/audioManager";
 import { game_images } from "../../assets/images";
 import { useAuthStore } from "../store/useUserStore";
 import { useRef } from "react";
 import { trackPlayerSessionStarted } from "../api/analytics";
+import { getPlayerCountPanelSize, useResponsive } from "../utils/responsive";
+import { goBackFromCreateGameToMenu } from "../navigation/goBackFromCreateGameToMenu";
 
 type Nav = StackNavigationProp<CreateGameStackParamList, "PlayersNumber">;
 
@@ -90,7 +96,7 @@ const PlayersNumberScreen = () => {
     }).catch((e) => {
       console.warn(
         "track PLAYER_SESSION_STARTED(players_count_confirmed) failed",
-        e
+        e,
       );
     });
     beginLocalGame(players);
@@ -100,21 +106,7 @@ const PlayersNumberScreen = () => {
   };
 
   const goBackToMenu = () => {
-    const parent = navigation.getParent();
-    parent?.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [
-          {
-            name: "Onboarding",
-            state: {
-              index: 0,
-              routes: [{ name: "MenuPlay" }],
-            },
-          },
-        ],
-      }),
-    );
+    goBackFromCreateGameToMenu(navigation);
   };
 
   /* --------------------------------------------------------------------- */
@@ -159,157 +151,197 @@ const PlayersNumberScreen = () => {
   const minusAnim = usePressAnimation();
   const plusAnim = usePressAnimation();
 
+  const {
+    logo,
+    horizontalPadding: pad,
+    topIconSize,
+    storeIconOverlay: storeOv,
+    logoBlockMarginTop,
+  } = useResponsive();
+  const panel = getPlayerCountPanelSize(logo.width);
+  const s = panel.scale;
+
   return (
-    <SafeAreaView className="flex-1" edges={["right", "left"]}>
-      <ImageBackgroundWithLoadGate
-        source={backgrounds.bg023}
-        style={{ flex: 1 }}
-        resizeMode="cover"
-      >
-        <Pressable
-          onPress={goBackToMenu}
-          className="absolute left-5 top-6 z-20 flex-row items-center gap-2"
+    <View style={styles.root}>
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+        <ImageBackgroundWithLoadGate
+          source={backgrounds.bg024}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
         >
-          <FontAwesome name="chevron-left" size={18} color="white" />
-          <CustomText variant="p">Menu</CustomText>
-        </Pressable>
+          <ScreenTopBar
+            variant="soloBackFromCenter"
+            horizontalPadding={pad}
+            topIconSize={topIconSize}
+            showBack
+            onSettings={() => {}}
+            onProfile={() => {}}
+            onBack={goBackToMenu}
+            backAccessibilityLabel={t("players_back_menu", {
+              defaultValue: "Menu",
+            })}
+          />
 
-        <View className="flex-1 items-center px-4 pt-40">
-          {/* LOGO */}
-          <Pressable className="mt-[80px]" onPress={toggleSound}>
-            <AppImage
-              source={game_images.storeIcon}
-              style={{
-                width: 350,
-                height: 260,
-                position: "absolute",
-                top: -88,
-                left: 0,
-              }}
-              contentFit="contain"
-            />
-            <AppImage
-              source={logoSource}
-              style={{ width: 360, height: 280 }}
-              contentFit="contain"
-            />
-          </Pressable>
-
-          {/* CONTENT */}
-          <View className="w-full items-center px-8">
-            <CustomText variant="label" className="mb-4">
-              {t("players_number_label_text")}
-            </CustomText>
-
-            {/* PLAYER COUNT CONTROL */}
-            <View className="relative">
-              <AppImage
-                source={game_images.pplCountContainer}
-                contentFit="contain"
-                style={{ width: 360, height: 160 }}
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{
+              flexGrow: 1,
+              paddingHorizontal: pad,
+              paddingBottom: 24,
+            }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View className="flex-1 items-center w-full">
+              {/* LOGO */}
+              <AnimatedLogoHero
+                logoSource={logoSource}
+                overlaySource={game_images.playersNumberLogoOverlay}
+                logoWidth={logo.width}
+                logoHeight={logo.height}
+                overlayLayout={storeOv}
+                marginTop={logoBlockMarginTop}
+                onPress={toggleSound}
               />
 
-              {/* MINUS */}
-              <Pressable
-                onPress={decrement}
-                onPressIn={minusAnim.pressIn}
-                onPressOut={minusAnim.pressOut}
-                disabled={players <= MIN_PLAYERS}
-                style={{
-                  position: "absolute",
-                  left: 8,
-                  bottom: 26,
-                  width: 90,
-                  height: 77,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  opacity: players <= MIN_PLAYERS ? 0.5 : 1,
-                }}
-              >
-                <AnimatedImage
-                  source={game_images.btnMinus}
-                  style={[{ width: 90, height: 77 }, minusAnim.style]}
-                  contentFit="contain"
-                />
-              </Pressable>
-
-              {/* COUNT */}
-              <View
-                style={{
-                  position: "absolute",
-                  left: 96,
-                  right: 96,
-                  bottom: 22,
-                  // height: 96,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <CustomText variant="h3" className="text-white" shadow>
-                  {players}
+              {/* CONTENT */}
+              <View className="w-full items-center px-2">
+                <CustomText variant="label" className="mb-4">
+                  {t("players_number_label_text")}
                 </CustomText>
-              </View>
 
-              {/* PLUS */}
-              <Pressable
-                onPress={increment}
-                onPressIn={plusAnim.pressIn}
-                onPressOut={plusAnim.pressOut}
-                disabled={players >= MAX_PLAYERS}
-                style={{
-                  position: "absolute",
-                  right: 8,
-                  bottom: 26,
-                  // width: 96,
-                  // height: 96,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  opacity: players >= MAX_PLAYERS ? 0.5 : 1,
-                }}
-              >
-                <AnimatedImage
-                  source={game_images.btnPlus}
-                  style={[{ width: 90, height: 77 }, plusAnim.style]}
-                  contentFit="contain"
+                {/* PLAYER COUNT CONTROL */}
+                <View className="relative">
+                  <AppImage
+                    source={game_images.pplCountContainer}
+                    contentFit="contain"
+                    style={{ width: panel.width, height: panel.height }}
+                  />
+
+                  {/* MINUS */}
+                  <Pressable
+                    onPress={decrement}
+                    onPressIn={minusAnim.pressIn}
+                    onPressOut={minusAnim.pressOut}
+                    disabled={players <= MIN_PLAYERS}
+                    style={{
+                      position: "absolute",
+                      left: 8 * s,
+                      bottom: 26 * s,
+                      width: 90 * s,
+                      height: 77 * s,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      opacity: players <= MIN_PLAYERS ? 0.5 : 1,
+                    }}
+                  >
+                    <AnimatedImage
+                      source={game_images.btnMinus}
+                      style={[
+                        { width: 80 * s, height: 77 * s },
+                        minusAnim.style,
+                      ]}
+                      contentFit="contain"
+                    />
+                  </Pressable>
+
+                  {/* COUNT */}
+                  <View
+                    style={{
+                      position: "absolute",
+                      left: 96 * s,
+                      right: 96 * s,
+                      bottom: 24 * s,
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    <CustomText
+                      variant="h4"
+                      // className="text-black"
+                      style={{ fontSize: 50, color: "#2f5377" }}
+                    >
+                      {players}
+                    </CustomText>
+                  </View>
+
+                  {/* PLUS */}
+                  <Pressable
+                    onPress={increment}
+                    onPressIn={plusAnim.pressIn}
+                    onPressOut={plusAnim.pressOut}
+                    disabled={players >= MAX_PLAYERS}
+                    style={{
+                      position: "absolute",
+                      right: 8 * s,
+                      bottom: 26 * s,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      opacity: players >= MAX_PLAYERS ? 0.5 : 1,
+                    }}
+                  >
+                    <AnimatedImage
+                      source={game_images.btnPlus}
+                      style={[
+                        { width: 80 * s, height: 77 * s },
+                        plusAnim.style,
+                      ]}
+                      contentFit="contain"
+                    />
+                  </Pressable>
+                </View>
+
+                <CustomText variant="footnote" className="mb-4">
+                  {t("max_characters_players")}
+                </CustomText>
+
+                {/* CONTINUE */}
+                <CustomButton
+                  title={t("continue_btn")}
+                  fullWidth
+                  btnSize="sm"
+                  fontSize="sm"
+                  buttonClassName="mt-2"
+                  onPress={onContinue}
+                  backgroundImage={backgrounds.bg026}
+                  shadowColor="#005f07"
                 />
-              </Pressable>
+
+                {/* SETTINGS */}
+                <TouchableOpacity
+                  className="flex-row items-center gap-2 justify-center mt-4"
+                  onPress={() => {
+                    setGameSettingsVisible(true);
+                    AudioManager.playButtonClick();
+                  }}
+                >
+                  <FontAwesome name="gear" size={20} color="white" />
+                  <CustomText variant="p">{t("game_settings")}</CustomText>
+                </TouchableOpacity>
+              </View>
             </View>
+          </ScrollView>
 
-            <CustomText variant="footnote" className="mb-4">
-              {t("max_characters_players")}
-            </CustomText>
-
-            {/* CONTINUE */}
-            <CustomButton
-              title={t("continue_btn")}
-              fullWidth
-              // btnSize="lg"
-              buttonClassName="mt-2"
-              onPress={onContinue}
-              backgroundImage={backgrounds.bg026}
-              shadowColor="#005f07"
+          {gameSettingsVisible && (
+            <GameSettingsModal
+              setGameSettingsVisible={setGameSettingsVisible}
             />
-
-            {/* SETTINGS */}
-            <TouchableOpacity
-              className="flex-row items-center gap-2 justify-center mt-4"
-              onPress={() => {
-                setGameSettingsVisible(true);
-                AudioManager.playButtonClick();
-              }}
-            >
-              <FontAwesome name="gear" size={20} color="white" />
-              <CustomText variant="p">{t("game_settings")}</CustomText>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {gameSettingsVisible && (
-          <GameSettingsModal setGameSettingsVisible={setGameSettingsVisible} />
-        )}
-      </ImageBackgroundWithLoadGate>
-    </SafeAreaView>
+          )}
+        </ImageBackgroundWithLoadGate>
+      </SafeAreaView>
+    </View>
   );
 };
 
 export default PlayersNumberScreen;
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: "#0a0a0a",
+  },
+  safe: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
+});

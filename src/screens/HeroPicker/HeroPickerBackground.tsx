@@ -2,15 +2,12 @@ import { Animated, View } from "react-native";
 import { createHeroPickerStyles } from "../styles/heroPicker.styles";
 import { ImageBackground } from "react-native";
 import { backgrounds } from "../../../assets/backgrounds";
-import AppImage from "../../components/AppImage";
-import { game_images } from "../../../assets/images";
 
 type Props = {
   children: React.ReactNode;
   showOverlay: boolean;
   overlayOpacity: Animated.Value;
   styles: ReturnType<typeof createHeroPickerStyles>;
-  hideBottomArt?: boolean;
 };
 
 export function HeroPickerBackground({
@@ -18,7 +15,6 @@ export function HeroPickerBackground({
   showOverlay,
   overlayOpacity,
   styles,
-  hideBottomArt,
 }: Props) {
   return (
     <ImageBackground
@@ -42,26 +38,6 @@ export function HeroPickerBackground({
       )}
 
       <View style={styles.contentLayer}>
-        <View
-          style={{
-            position: "absolute",
-            bottom: -25,
-            left: 0,
-            width: "100%",
-            height: "100%",
-          }}
-        >
-          <AppImage
-            source={game_images.heroPickerBottom}
-            contentFit="contain"
-            style={{
-              width: "100%",
-              height: "100%",
-              opacity: hideBottomArt ? 0 : 1,
-            }}
-          />
-        </View>
-
         {children}
       </View>
     </ImageBackground>

@@ -11,7 +11,7 @@ export type SupportedLanguage = "en" | "bg" | "fr" | "es";
 const SUPPORTED_LANGUAGES: SupportedLanguage[] = ["en", "bg", "fr", "es"];
 const LANGUAGE_STORAGE_KEY = "app:selected-language";
 
-function normalizeLanguage(value?: string | null): SupportedLanguage | null {
+export function normalizeLanguage(value?: string | null): SupportedLanguage | null {
   if (!value) return null;
   const normalized = value.trim().toLowerCase();
   if (!normalized) return null;

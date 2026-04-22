@@ -1,3 +1,5 @@
+import type { NavigatorScreenParams } from "@react-navigation/native";
+
 export type OnboardingStackParamList = {
   Welcome: { skipCurtain?: boolean } | undefined;
   Menu: undefined;
@@ -7,6 +9,8 @@ export type OnboardingStackParamList = {
   Referral: undefined;
   Settings: undefined;
   Rules: undefined;
+  /** __DEV__ only — open seeded Game screens without a real multiplayer session. */
+  DevMultiplayerLab: undefined;
 };
 
 export type CreateGameStackParamList = {
@@ -16,6 +20,10 @@ export type CreateGameStackParamList = {
   Settings: undefined;
   PassDevice: { index: number };
   Lobby: undefined;
+  /** Online: host creates room, share join code (API + WebSocket). */
+  OnlineHost: undefined;
+  /** Online: join with room code. */
+  OnlineJoin: undefined;
 };
 
 export type GameStackParamList = {
@@ -29,13 +37,18 @@ export type GameStackParamList = {
   PreReveal: undefined;
   Reveal: undefined;
   LivesReveal: undefined;
+  /** Multiplayer elimination cinematic; `gameOver` → then Winner. */
+  PlayerDeath: {
+    variant: "continue" | "gameOver";
+    deadPlayerId: string;
+  };
   Winner: undefined;
   Round: undefined;
   Standings: undefined;
 };
 
 export type RootStackParamList = {
-  Onboarding: undefined;
-  CreateGame: undefined;
-  Game: undefined;
+  Onboarding: NavigatorScreenParams<OnboardingStackParamList> | undefined;
+  CreateGame: NavigatorScreenParams<CreateGameStackParamList> | undefined;
+  Game: NavigatorScreenParams<GameStackParamList> | undefined;
 };

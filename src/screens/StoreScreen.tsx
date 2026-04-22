@@ -4,11 +4,12 @@ import {
   View,
   ImageBackground,
   ScrollView,
-  TouchableOpacity,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
+import { navigateBackSafe } from "../navigation/navigateBackSafe";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { useQuery } from "@tanstack/react-query";
 
@@ -24,8 +25,8 @@ import BundleSliderComponent from "../components/store/BundleSliderComponent";
 import { BUNDLES } from "../data/bundles";
 import PackSliderComponent from "../components/store/PackSliderComponent";
 import { PACKS } from "../data/packs";
-import { Entypo } from "@expo/vector-icons";
-import AudioManager from "../utils/audioManager";
+import ScreenTopBar from "../components/common/ScreenTopBar";
+import { useResponsive } from "../utils/responsive";
 import { useHeroesStore } from "../store/useHeroesStore";
 import { fetchCatalogCharacterProducts } from "../api/catalog";
 import { queryKeys } from "../api/queryKeys";
@@ -45,6 +46,7 @@ export type StoreHeroItem = ICharacter & {
 const StoreScreen = () => {
   const navigation = useNavigation<Nav>();
   const { t } = useTranslation();
+  const { horizontalPadding, topIconSize } = useResponsive();
   const userId = useAuthStore((s) => s.user.id);
 
   const [loading, setLoading] = useState(false);
@@ -152,26 +154,25 @@ const StoreScreen = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1" edges={["right", "left"]}>
-      <ImageBackground
-        source={backgrounds.bg023}
-        style={{ flex: 1, width: "100%", height: "100%", position: "relative" }}
-        resizeMode="cover"
-      >
-        <ScrollView contentContainerStyle={{ paddingVertical: 64 }}>
-          <View className="px-8 w-full">
-            <TouchableOpacity
-              onPress={() => {
-                AudioManager.playButtonClick();
-                navigation.goBack();
-              }}
-              className="flex flex-row gap-2 items-center"
-            >
-              <Entypo name="arrow-with-circle-left" size={48} color="white" />
-            </TouchableOpacity>
-          </View>
-
-          <View className="items-center w-full justify-center px-4 mt-[40px]">
+    <View style={styles.root}>
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+        <ImageBackground
+          source={backgrounds.bg023}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        >
+          <ScreenTopBar
+            variant="soloBackFromCenter"
+            horizontalPadding={horizontalPadding}
+            topIconSize={topIconSize}
+            showBack
+            onSettings={() => {}}
+            onProfile={() => {}}
+            onBack={() => navigateBackSafe(navigation)}
+            backAccessibilityLabel={t("back_btn")}
+          />
+        <ScrollView contentContainerStyle={{ paddingTop: 72, paddingBottom: 48 }}>
+          <View className="items-center w-full justify-center px-4 mt-2">
             <CustomText variant="h3-headline" className="text-center w-full">
               {t("menu_store_heading_01")}
             </CustomText>
@@ -210,8 +211,14 @@ const StoreScreen = () => {
           />
         )}
       </ImageBackground>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#0a0a0a" },
+  safe: { flex: 1, backgroundColor: "transparent" },
+});
 
 export default StoreScreen;

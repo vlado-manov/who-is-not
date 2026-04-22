@@ -4,29 +4,33 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  StyleSheet,
+  Share,
 } from "react-native";
 import ImageBackgroundWithLoadGate from "../components/ImageBackgroundWithLoadGate";
 import React from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { backgrounds } from "../../assets/backgrounds";
-import { Entypo } from "@expo/vector-icons";
 import CustomText from "../components/common/CustomText";
+import ScreenTopBar from "../components/common/ScreenTopBar";
 import { useNavigation } from "@react-navigation/native";
+import { navigateBackSafe } from "../navigation/navigateBackSafe";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { OnboardingStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/useUserStore";
 import AudioManager from "../utils/audioManager";
 import * as Clipboard from "expo-clipboard";
-import { Share } from "react-native";
 import { getReferralMe } from "../api/referral";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { useResponsive } from "../utils/responsive";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Referral">;
 
 const ReferralScreen = () => {
   const navigation = useNavigation<Nav>();
   const { t } = useTranslation();
+  const { horizontalPadding, topIconSize } = useResponsive();
   const user = useAuthStore((s) => s.user);
 
   const { data, isLoading, error, refetch } = useQuery({
@@ -60,32 +64,30 @@ const ReferralScreen = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1" edges={["right", "left"]}>
-      <ImageBackgroundWithLoadGate
-        source={backgrounds.bg023}
-        style={{ flex: 1, width: "100%", height: "100%", position: "relative" }}
-        resizeMode="cover"
-      >
+    <View style={styles.root}>
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+        <ImageBackgroundWithLoadGate
+          source={backgrounds.bg023}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        >
+          <ScreenTopBar
+            horizontalPadding={horizontalPadding}
+            topIconSize={topIconSize}
+            showBack
+            onSettings={() => navigation.navigate("Settings")}
+            onProfile={() => navigation.navigate("Profile")}
+            onBack={() => navigateBackSafe(navigation)}
+            backAccessibilityLabel={t("back_btn")}
+          />
         <ScrollView
           contentContainerStyle={{
-            paddingVertical: 48,
+            paddingTop: 72,
+            paddingBottom: 48,
             flexGrow: 1,
             paddingHorizontal: 24,
           }}
         >
-          <View className="px-4">
-            <TouchableOpacity
-              onPress={() => {
-                AudioManager.playButtonClick();
-                navigation.goBack();
-              }}
-              className="flex flex-row gap-2 items-center mb-6"
-            >
-              <Entypo name="arrow-with-circle-left" size={40} color="white" />
-              <CustomText className="text-white">{t("back_btn")}</CustomText>
-            </TouchableOpacity>
-          </View>
-
           <View className="items-center mb-8">
             <CustomText variant="h3-headline" className="text-center text-white">
               {t("referral_invite")}
@@ -186,8 +188,14 @@ const ReferralScreen = () => {
           )}
         </ScrollView>
       </ImageBackgroundWithLoadGate>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#0a0a0a" },
+  safe: { flex: 1, backgroundColor: "transparent" },
+});
 
 export default ReferralScreen;

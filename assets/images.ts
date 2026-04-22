@@ -9,8 +9,12 @@ const g = (id: string, file: string) => ({
 });
 
 export const images = {
-  curtainTop: cdn("images/gallery/0dc9c386-810b-456a-b982-d940950ae855-curtainTop"),
-  curtainBottom: cdn("images/gallery/e0a83a0a-c4cc-45ad-88a7-4b9e026e236d-curtainBottom"),
+  curtainTop: cdn(
+    "images/gallery/0dc9c386-810b-456a-b982-d940950ae855-curtainTop",
+  ),
+  curtainBottom: cdn(
+    "images/gallery/e0a83a0a-c4cc-45ad-88a7-4b9e026e236d-curtainBottom",
+  ),
   loader: g("c8f07632-e624-4445-a78d-967fe0b5570e", "loader"),
   googleIcon: g("dbd21784-b5c1-4e80-b440-531ce451635c", "googleIcon"),
   webtzarLogo: g("6692a4ad-7c22-49ec-bc60-af99788a1ea0", "webtzar-logo"),
@@ -28,14 +32,33 @@ export const game_images = {
   logoBgMusicOff: g("eb3fecd0-267d-48f5-96a5-f98c107c00e8", "logoBgMusicOff"),
   settingsIcon: g("9cf23d6c-aafc-45e7-882e-1a4b752d1a43", "settingsIcon"),
   userIcon: g("81c0ee3f-6afc-4f58-acb1-cd8fb4b9071a", "userIcon"),
-  storeIcon: g("29581ca9-6c61-4995-a98f-97e775703da9", "storeIcon"),
+  storeIcon: g("7a74e742-d530-4081-bd93-3bd6366b1280", "storeIcon"),
+  /** Above-logo overlay on PlayersNumber only (legacy store art). */
+  playersNumberLogoOverlay: g(
+    "29581ca9-6c61-4995-a98f-97e775703da9",
+    "storeIcon",
+  ),
+  /** Above-logo decorative (MenuPlay); same slot as htpIcon on Welcome. */
+  menuPlayIcon: g("ad49cffc-d3e4-43ef-8621-589ad725360e", "menuPlayIcon"),
+  playIcon: g("aa8f664e-6e4d-443a-9944-9fe83fb7b8c7", "playIcon"),
+  rulebookIcon: g("3fb4f6ec-cea3-4670-8e28-86a02180dfbf", "rulebookIcon"),
+  partyModeIcon: g("44351579-fd64-4a72-9f46-ecbf8750967c", "partyModeIcon"),
+  hostGameIcon: g("c1ff22a6-a271-474e-9a17-b9c5d5a9c8af", "hostGameICon"),
+  joinGameIcon: g("3503d012-2206-4eac-9172-392ef3ae2201", "joinGameIcon"),
+  spectateGameIcon: g(
+    "d4cb540f-2e15-4d93-acc9-509140d41abb",
+    "spectateGameIcon",
+  ),
+  leaveGameIcon: g("d3ce0a3d-7eef-4022-8235-5bdd8de4a724", "leaveGameIcon"),
   htpIcon: g("b8300793-c232-47ff-9332-48047dd5ff78", "htpIcon"),
   btnMinus: g("09ff9060-48c0-4c0b-a3a0-8dfa725893fb", "btnMinus"),
   btnPlus: g("431055a5-400c-4912-82bc-20f323fe5f9a", "btnPlus"),
-  pplCountContainer: g("09ab591f-5c5a-4cb6-a2bf-e2ba51cc1d80", "calcPpl"),
+  pplCountContainer: g("d7566b2a-d7d6-4666-98a9-af56656d0bf8", "calcPpl3"),
   leftArrow: g("189c0167-2f86-4f03-8fc4-e21aa01c03c2", "arrowLeft"),
   rightArrow: g("601f3287-867f-4966-b5da-e92d6cbc29a6", "arrowRight"),
-  heroPickerBottom: g("107a0ffc-d5fe-4ab3-9f92-b537ae121453", "HeroPickerBottom"),
+  heroPickerBottom: {
+    uri: "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/36b4316a-0616-4c54-be62-76f615407c80-heroPickerSceneBottom.webp",
+  },
   lock: g("d538ff35-2e20-4ce5-b579-de2b51cb8bf8", "lock01"),
   lock2: g("609a50bf-5e6d-44f9-b14a-9a021a9c9ca4", "lock02"),
   lock3: g("89ca29b8-17ff-4026-ace2-0ae9d053093d", "lock03"),
@@ -64,4 +87,3 @@ export const htp_images = {
   htp08: g("267e8cf5-afbb-4838-bdbd-1a769d58f5c2", "htp08"),
   htp09: g("2f9f88e2-f593-4960-8084-9f05f470ead0", "htp09"),
 };
-

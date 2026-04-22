@@ -1,17 +1,34 @@
 // src/screens/Game/QuestionScreen.tsx
-import React, { useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   View,
+  Text,
+  Image,
   Pressable,
   ImageBackground,
   StyleSheet,
   Animated,
   Easing,
+  ActivityIndicator,
+  Platform,
+  KeyboardAvoidingView,
+  Keyboard,
+  useWindowDimensions,
 } from "react-native";
 import AppImage from "../../components/AppImage";
 import ImageBackgroundWithLoadGate from "../../components/ImageBackgroundWithLoadGate";
 import { ScrollView } from "react-native-gesture-handler";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 
@@ -29,11 +46,23 @@ import { LinearGradient } from "expo-linear-gradient";
 import AudioManager from "../../utils/audioManager";
 import { useHeroesStore } from "../../store/useHeroesStore";
 import { usePreventBack } from "../../hooks/usePreventBack";
+import { useMultiplayerPhaseGate } from "../../hooks/useMultiplayerPhaseGate";
 import { useTranslation } from "react-i18next";
 import { formatQuestionWithName } from "../../utils/formatQuestionText";
+import { GameMode } from "../../api/analytics";
+import { sendPlayerReady } from "../../api/multiplayerSync";
+import { sendMultiplayerRelay } from "../../api/multiplayerRelay";
+import {
+  ANSWER_CAST_MESSAGE_TYPE,
+  mpPhaseAnswers,
+} from "../../constants/onlineLobby";
+import OnlineWaitPlayersOverlay from "../../components/online/OnlineWaitPlayersOverlay";
 
 type Nav = StackNavigationProp<GameStackParamList, "Question">;
 type R = RouteProp<GameStackParamList, "Question">;
+
+const OPEN_INPUT_MAX_LEN = 20;
+const OPEN_INPUT_MIN_FONT = 12;
 
 const INPUT_BACKGROUND = {
   uri: "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/efba9ddd-bff8-436b-8c3e-946f53c01a3b-input.webp",
@@ -49,6 +78,10 @@ type AvatarPickButtonProps = {
   color: string;
   selected?: boolean;
   onPress: () => void;
+  /** Defaults scale with screen when omitted (see QuestionScreen pick layout). */
+  avatarDiameter?: number;
+  buttonWidth?: number;
+  titleFontSizePx?: number;
 };
 
 const AvatarPickButton = ({
@@ -57,6 +90,9 @@ const AvatarPickButton = ({
   color,
   selected,
   onPress,
+  avatarDiameter = 164,
+  buttonWidth,
+  titleFontSizePx,
 }: AvatarPickButtonProps) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -94,7 +130,7 @@ const AvatarPickButton = ({
         duration: 3000,
         easing: Easing.linear,
         useNativeDriver: true,
-      })
+      }),
     ).start();
   };
 
@@ -152,6 +188,8 @@ const AvatarPickButton = ({
       <Animated.View
         style={{
           alignItems: "center",
+          width: buttonWidth,
+          maxWidth: "100%",
           transform: [{ scale: scaleAnim }],
         }}
       >
@@ -161,7 +199,6 @@ const AvatarPickButton = ({
             style={[
               styles.avatarCircle,
               {
-                borderColor: selected ? "#fff" : color,
                 shadowColor: color,
                 shadowOpacity: selected ? 0.9 : 0.4,
                 shadowRadius: selected ? 14 : 6,
@@ -171,7 +208,11 @@ const AvatarPickButton = ({
             {avatar && (
               <AppImage
                 source={avatar}
-                style={styles.avatarImage}
+                style={{
+                  width: avatarDiameter,
+                  height: avatarDiameter,
+                  marginBottom: -20,
+                }}
                 contentFit="contain"
               />
             )}
@@ -184,6 +225,7 @@ const AvatarPickButton = ({
           appearance="tertiary"
           btnSize="xs"
           fontSize="sm"
+          fontSizePx={titleFontSizePx}
           backgroundImage={backgrounds.bg018}
           glow
           fullWidth
@@ -200,11 +242,59 @@ const AvatarPickButton = ({
 
 const QuestionScreen = () => {
   const { t } = useTranslation();
+  const { width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const scrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const navigation = useNavigation<Nav>();
   usePreventBack();
   const { playerIndex } = useRoute<R>().params;
 
-  const round = useGameStore((s) => s.round) || 1;
+  /** Pick row: `px-6` + `cell` horizontal padding — avatar + label scale to fit. */
+  const pickLayout = useMemo(() => {
+    const outerPad = 0;
+    const cellPadH = 4;
+    const rowWidth = Math.max(0, windowWidth - outerPad * 2);
+    const cellWidth = rowWidth / 2;
+    const innerWidth = Math.max(40, cellWidth - cellPadH * 2);
+    const target = Math.round(Math.min(164, Math.max(48, innerWidth * 0.88)));
+    const avatarDiameter = Math.min(
+      target,
+      Math.max(32, Math.floor(innerWidth - 2)),
+    );
+    const titleFontPx = Math.round(
+      Math.min(18, Math.max(11, innerWidth / 8.2)),
+    );
+    return { avatarDiameter, buttonWidth: innerWidth, titleFontPx };
+  }, [windowWidth]);
+
+  /** Scales with screen; slot position uses % of hero so layout stays aligned on all sizes. */
+  const numberFieldFontSize = useMemo(
+    () => Math.round(Math.min(40, Math.max(22, windowWidth * 0.085))),
+    [windowWidth],
+  );
+
+  /** Same formula as CustomText variant="h5" (question body). */
+  const openInputFontSize = useMemo(
+    () => Math.round(28 * Math.min(1, windowWidth / 390)),
+    [windowWidth],
+  );
+  const openInputRowMinHeight = useMemo(
+    () => Math.max(48, Math.round(openInputFontSize * 1.35)),
+    [openInputFontSize],
+  );
+  const openInputCardMinHeight = useMemo(
+    () => 28 + openInputRowMinHeight,
+    [openInputRowMinHeight],
+  );
+
+  const completedRounds = useGameStore((s) => s.round);
+  const activeRoundNumber = (completedRounds ?? 0) + 1;
+  const mode = useGameStore((s) => s.mode) as GameMode;
+  const onlineIsHost = useGameStore((s) => s.onlineIsHost);
+  const onlinePlayerId = useGameStore((s) => s.onlinePlayerId);
+  const onlineSpectating = useGameStore((s) => s.onlineSpectating);
+  const lives = useGameStore((s) => s.lives);
   const players = useGameStore((s) => s.players);
   const heroes = useHeroesStore((s) => s.heroes);
   const oddOneId = useGameStore((s) => s.oddOneId);
@@ -223,11 +313,53 @@ const QuestionScreen = () => {
   const currentPlayer = players[playerIndex];
 
   const [numberAnswer, setNumberAnswer] = useState("");
+  const [openAnswer, setOpenAnswer] = useState("");
+  /** Android: shrink to stay on one line (iOS uses adjustsFontSizeToFit on TextInput). */
+  const [openInputRowWidth, setOpenInputRowWidth] = useState(0);
+  const [androidOpenFitFontSize, setAndroidOpenFitFontSize] =
+    useState(openInputFontSize);
+
+  useLayoutEffect(() => {
+    if (Platform.OS !== "android") return;
+    setAndroidOpenFitFontSize(openInputFontSize);
+  }, [openAnswer, openInputFontSize, openInputRowWidth]);
+
+  const openInputMeasureWidth = Math.max(0, openInputRowWidth - 16);
+
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const numberInputRef = useRef<any>(null);
   const [rateSliderValue, setRateSliderValue] = useState(1);
   const sliderGestureRef = useRef(null);
   const numberHeroScale = useRef(new Animated.Value(1)).current;
+  const [waitingAnswersSync, setWaitingAnswersSync] = useState(false);
+
+  const answersPhase = mpPhaseAnswers(activeRoundNumber);
+
+  const isEliminatedSpectator =
+    mode === "ONLINE" &&
+    onlinePlayerId != null &&
+    (onlineSpectating || (lives[onlinePlayerId] ?? 0) <= 0);
+
+  const specAnswerReadyRef = useRef(false);
+  useEffect(() => {
+    specAnswerReadyRef.current = false;
+  }, [answersPhase]);
+
+  useEffect(() => {
+    if (!isEliminatedSpectator || specAnswerReadyRef.current) return;
+    specAnswerReadyRef.current = true;
+    setWaitingAnswersSync(true);
+    sendPlayerReady(answersPhase);
+  }, [answersPhase, isEliminatedSpectator]);
+
+  useMultiplayerPhaseGate({
+    enabled: mode === "ONLINE" && waitingAnswersSync,
+    phase: answersPhase,
+    onReady: () => {
+      setWaitingAnswersSync(false);
+      navigation.navigate("Results");
+    },
+  });
 
   // no extra rate animations – keep rate UX simple
 
@@ -255,8 +387,35 @@ const QuestionScreen = () => {
   }, [currentPlayer, baseQuestionId, oddQuestionId, oddOneId, gameQuestions]);
 
   const isNumber = question?.type === "number";
+  const isInput = question?.type === "input";
   const isRate = question?.type === "rate";
   const isPick = question?.type === "pick";
+
+  useEffect(() => {
+    const show =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hide =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const subShow = Keyboard.addListener(show, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const subHide = Keyboard.addListener(hide, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      subShow.remove();
+      subHide.remove();
+    };
+  }, []);
+
+  const scrollAnswerIntoView = useCallback(() => {
+    const delay = Platform.OS === "ios" ? 120 : 320;
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, delay);
+    });
+  }, []);
 
   React.useEffect(() => {
     Animated.sequence([
@@ -300,7 +459,7 @@ const QuestionScreen = () => {
   }, []);
 
   React.useEffect(() => {
-    if (!isNumber) return;
+    if (!isNumber && !isInput) return;
 
     numberInputScale.setValue(0.8);
     numberInputOpacity.setValue(0);
@@ -318,9 +477,41 @@ const QuestionScreen = () => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [isNumber, numberInputOpacity, numberInputScale]);
+  }, [isNumber, isInput, numberInputOpacity, numberInputScale]);
 
-  if (!currentPlayer || !question) return null;
+  const waitingForHostRound =
+    mode === "ONLINE" &&
+    !onlineIsHost &&
+    (!baseQuestionId || !oddQuestionId || !oddOneId);
+
+  if (!currentPlayer) return null;
+
+  if (waitingForHostRound) {
+    return (
+      <SafeAreaView
+        className="flex-1 bg-primary-700 justify-center items-center"
+        edges={["right", "left"]}
+      >
+        <ActivityIndicator size="large" color="#ffffff" />
+      </SafeAreaView>
+    );
+  }
+
+  if (isEliminatedSpectator) {
+    return (
+      <SafeAreaView
+        className="flex-1 bg-primary-700 justify-center items-center px-6"
+        edges={["right", "left"]}
+      >
+        <CustomText variant="h6-headline" className="text-center text-white">
+          {t("spectator_waiting_phase")}
+        </CustomText>
+        <OnlineWaitPlayersOverlay visible={waitingAnswersSync} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!question) return null;
 
   const questionDisplayText = formatQuestionWithName(question.text, {
     isImpostor: currentPlayer.id === oddOneId,
@@ -329,6 +520,11 @@ const QuestionScreen = () => {
   });
 
   const goToNextStep = () => {
+    if (mode === "ONLINE") {
+      setWaitingAnswersSync(true);
+      sendPlayerReady(answersPhase);
+      return;
+    }
     const isLast = playerIndex >= players.length - 1;
 
     if (!isLast) {
@@ -340,10 +536,28 @@ const QuestionScreen = () => {
     }
   };
 
+  const submitAnswerAndAdvance = (raw: string) => {
+    const value = raw.trim().slice(0, 500);
+    if (!value) return;
+    setAnswer(currentPlayer.id, value);
+    if (mode === "ONLINE") {
+      sendMultiplayerRelay({
+        type: ANSWER_CAST_MESSAGE_TYPE,
+        answer: value,
+      });
+    }
+    goToNextStep();
+  };
+
   const handleSubmitNumber = () => {
     if (!numberAnswer.trim()) return;
-    setAnswer(currentPlayer.id, numberAnswer.trim());
-    goToNextStep();
+    submitAnswerAndAdvance(numberAnswer);
+  };
+
+  const handleSubmitOpen = () => {
+    const text = openAnswer.trim();
+    if (!text) return;
+    submitAnswerAndAdvance(text);
   };
 
   const handleNumberChange = (text: string) => {
@@ -367,14 +581,12 @@ const QuestionScreen = () => {
   };
 
   const handleRateSelect = (value: number) => {
-    setAnswer(currentPlayer.id, String(value));
-    goToNextStep();
+    submitAnswerAndAdvance(String(value));
   };
 
   const handlePickPlayer = (pickedId: string) => {
     setSelectedPlayerId(pickedId);
-    setAnswer(currentPlayer.id, pickedId);
-    goToNextStep();
+    submitAnswerAndAdvance(pickedId);
   };
 
   const getRateImage = ():
@@ -383,12 +595,23 @@ const QuestionScreen = () => {
     const vanessa = heroes.find(
       (h) =>
         h.slug?.toLowerCase().replace(/-/g, "_") === "silent_vanessa" ||
-        h.slug?.toLowerCase().includes("vanessa")
+        h.slug?.toLowerCase().includes("vanessa"),
     );
     if (!currentPlayer?.characterId) return vanessa?.rateImage ?? null;
     const hero = heroes.find((h) => h.id === currentPlayer.characterId);
     return hero?.rateImage ?? vanessa?.rateImage ?? null;
   };
+
+  const needsKeyboardLift = keyboardHeight > 0 && (isInput || isNumber);
+  /** Android: KAV + window resize often fail with edge-to-edge; reserve bottom inset explicitly. */
+  const androidKeyboardPad =
+    Platform.OS === "android" && needsKeyboardLift
+      ? keyboardHeight + insets.bottom
+      : 0;
+  const iosKeyboardScrollPad =
+    Platform.OS === "ios" && needsKeyboardLift
+      ? Math.min(keyboardHeight, 120)
+      : 0;
 
   return (
     <SafeAreaView className="flex-1" edges={["right", "left"]}>
@@ -397,15 +620,35 @@ const QuestionScreen = () => {
         style={{ flex: 1 }}
         resizeMode="cover"
       >
-        <ScrollView
-          waitFor={isRate ? [sliderGestureRef] : undefined}
-          contentContainerStyle={{
-            paddingTop: 96,
-            paddingBottom: isNumber || isRate ? 32 : 96,
-            flexGrow: 1,
-            justifyContent: "space-between",
-          }}
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoiding}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}
         >
+          <View
+            style={[
+              styles.keyboardAvoiding,
+              androidKeyboardPad > 0 && {
+                paddingBottom: androidKeyboardPad,
+              },
+            ]}
+          >
+            <ScrollView
+              ref={scrollRef}
+              style={styles.questionScroll}
+              nestedScrollEnabled
+              waitFor={isRate ? [sliderGestureRef] : undefined}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              contentContainerStyle={{
+                paddingTop: 96,
+                paddingBottom:
+                  (isNumber || isInput || isRate ? 32 : 96) +
+                  iosKeyboardScrollPad,
+                flexGrow: 1,
+                justifyContent: "space-between",
+              }}
+            >
           <Animated.View
             style={{
               transform: [
@@ -447,15 +690,16 @@ const QuestionScreen = () => {
                     className="text-center"
                     textColor="#762a05"
                   >
-                    {t("question_round", { round })}
+                    {t("question_round", { round: activeRoundNumber })}
                   </CustomText>
 
                   <View style={styles.nameDivider} />
 
                   <CustomText
-                    variant="h6-headline"
+                    variant="h5"
                     className="text-center"
                     textColor="#592410"
+                    allowWrap
                   >
                     {questionDisplayText}
                   </CustomText>
@@ -470,6 +714,7 @@ const QuestionScreen = () => {
                     {isPick && t("question_hint_pick")}
                     {isRate && t("question_hint_rate")}
                     {isNumber && t("question_hint_number")}
+                    {isInput && t("question_hint_input")}
                   </CustomText>
                 </ImageBackground>
               </Animated.View>
@@ -481,7 +726,7 @@ const QuestionScreen = () => {
                   <View key={`row-${rowIndex}`} style={styles.row}>
                     {row.map((player) => {
                       const characterData = heroes.find(
-                        (h) => h.id === player.characterId
+                        (h) => h.id === player.characterId,
                       );
 
                       return (
@@ -493,6 +738,9 @@ const QuestionScreen = () => {
                               color={`#${characterData?.color ?? "ffffff"}`}
                               selected={selectedPlayerId === player.id}
                               onPress={() => handlePickPlayer(player.id)}
+                              avatarDiameter={pickLayout.avatarDiameter}
+                              buttonWidth={pickLayout.buttonWidth}
+                              titleFontSizePx={pickLayout.titleFontPx}
                             />
                           </View>
                         </View>
@@ -511,9 +759,9 @@ const QuestionScreen = () => {
                   gestureRef={sliderGestureRef}
                   railFrameImage="https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/b179af07-61f2-46ea-812e-79ed27826ed0-border2.webp"
                 />
-                <View className="mb-16 px-16">
+                <View style={styles.numberButtonWrap}>
                   <CustomButton
-                    title={t("htp_next")}
+                    title={t("question_number_confirm")}
                     onPress={() => handleRateSelect(rateSliderValue)}
                     backgroundImage={backgrounds.bg026}
                     glow
@@ -521,12 +769,133 @@ const QuestionScreen = () => {
                     shadowColor="#005f07"
                     horizontalPadding={48}
                     fullWidth
+                    buttonClassName="-mt-12"
                   />
                 </View>
               </View>
             )}
 
-            {isNumber && !isRate && (
+            {isInput && !isRate && (
+              <View className="px-6" style={{ marginTop: 40 }}>
+                <Animated.View
+                  style={{
+                    opacity: numberInputOpacity,
+                    transform: [{ scale: numberInputScale }],
+                    width: "100%",
+                  }}
+                >
+                  <View style={styles.openInputBlock}>
+                    <View
+                      style={[
+                        styles.openInputCard,
+                        { minHeight: openInputCardMinHeight },
+                      ]}
+                    >
+                      <Image
+                        source={INPUT_BACKGROUND}
+                        resizeMode="stretch"
+                        style={[
+                          StyleSheet.absoluteFillObject,
+                          styles.openInputBgImage,
+                        ]}
+                      />
+                      <View style={styles.openInputCardContent}>
+                        {Platform.OS === "android" &&
+                          openInputMeasureWidth > 0 &&
+                          openAnswer.length > 0 && (
+                            <Text
+                              pointerEvents="none"
+                              style={[
+                                styles.openInputMeasureText,
+                                {
+                                  width: openInputMeasureWidth,
+                                  fontSize: androidOpenFitFontSize,
+                                },
+                              ]}
+                              onTextLayout={(e) => {
+                                if (e.nativeEvent.lines.length > 1) {
+                                  setAndroidOpenFitFontSize((s) =>
+                                    s > OPEN_INPUT_MIN_FONT ? s - 1 : s,
+                                  );
+                                }
+                              }}
+                            >
+                              {openAnswer}
+                            </Text>
+                          )}
+                        <View
+                          style={[
+                            styles.openInputRow,
+                            { minHeight: openInputRowMinHeight },
+                          ]}
+                          onLayout={(e) =>
+                            setOpenInputRowWidth(e.nativeEvent.layout.width)
+                          }
+                        >
+                          <CustomInput
+                            unstyled
+                            value={openAnswer}
+                            onChangeText={setOpenAnswer}
+                            onFocus={scrollAnswerIntoView}
+                            placeholder={t("question_open_placeholder")}
+                            placeholderTextColor="rgba(89,36,16,0.45)"
+                            multiline={false}
+                            maxLength={OPEN_INPUT_MAX_LEN}
+                            {...(Platform.OS === "ios"
+                              ? {
+                                  adjustsFontSizeToFit: true,
+                                  minimumFontScale: Math.min(
+                                    1,
+                                    OPEN_INPUT_MIN_FONT /
+                                      Math.max(1, openInputFontSize),
+                                  ),
+                                }
+                              : {})}
+                            inputStyle={[
+                              styles.openInputField,
+                              Platform.OS === "ios"
+                                ? {
+                                    fontSize: openInputFontSize,
+                                    fontFamily: "SeymourOne-Regular",
+                                    height: Math.round(
+                                      openInputFontSize * 1.35,
+                                    ),
+                                    paddingVertical: 0,
+                                  }
+                                : {
+                                    fontSize: androidOpenFitFontSize,
+                                    lineHeight: Math.round(
+                                      androidOpenFitFontSize * 1.25,
+                                    ),
+                                    fontFamily: "SeymourOne-Regular",
+                                    minHeight: Math.round(
+                                      androidOpenFitFontSize * 1.35,
+                                    ),
+                                  },
+                            ]}
+                            autoCapitalize="sentences"
+                          />
+                        </View>
+                      </View>
+                    </View>
+                    <View style={styles.openInputButtonWrap}>
+                      <CustomButton
+                        title={t("question_open_send")}
+                        onPress={handleSubmitOpen}
+                        backgroundImage={backgrounds.bg026}
+                        glow
+                        glowColor="rgba(41,255,25,0.8)"
+                        shadowColor="#005f07"
+                        horizontalPadding={48}
+                        fullWidth
+                      />
+                    </View>
+                  </View>
+                </Animated.View>
+              </View>
+            )}
+
+            {isNumber && !isRate && !isInput && (
               <View className="px-0" style={{ marginTop: 40 }}>
                 <Animated.View
                   style={{
@@ -570,27 +939,43 @@ const QuestionScreen = () => {
                           ) : null;
                         })()}
                         <View style={styles.numberImageInputOverlay}>
-                          <CustomInput
-                            ref={numberInputRef}
-                            value={numberAnswer}
-                            onChangeText={handleNumberChange}
-                            keyboardType="numeric"
-                            maxLength={4}
-                            placeholder="Type your number"
-                            placeholderTextColor="rgba(89,36,16,0.5)"
-                            unstyled
-                            inputStyle={styles.numberImageHiddenInput}
-                          />
-                          <View
-                            style={styles.numberImageValueDisplay}
-                            pointerEvents="none"
-                          >
-                            <CustomText
-                              variant="h4-headline"
-                              textColor="#592410"
+                          <View style={styles.numberFieldSlot}>
+                            <CustomInput
+                              ref={numberInputRef}
+                              value={numberAnswer}
+                              onChangeText={handleNumberChange}
+                              onFocus={scrollAnswerIntoView}
+                              keyboardType="numeric"
+                              maxLength={4}
+                              placeholder={t("question_number_placeholder")}
+                              placeholderTextColor="rgba(89,36,16,0.5)"
+                              unstyled
+                              inputStyle={[
+                                styles.numberImageHiddenInput,
+                                {
+                                  fontSize: numberFieldFontSize,
+                                  textAlign: "center",
+                                },
+                              ]}
+                            />
+                            <View
+                              style={styles.numberImageValueDisplay}
+                              pointerEvents="none"
                             >
-                              {numberAnswer || "?"}
-                            </CustomText>
+                              <CustomText
+                                variant="h4-headline"
+                                allowWrap
+                                className="text-center"
+                                textColor="#592410"
+                                style={{
+                                  fontSize: numberFieldFontSize,
+                                  width: "100%",
+                                  textAlign: "center",
+                                }}
+                              >
+                                {numberAnswer || "?"}
+                              </CustomText>
+                            </View>
                           </View>
                         </View>
                       </Animated.View>
@@ -598,7 +983,7 @@ const QuestionScreen = () => {
                   </View>
                   <View style={styles.numberButtonWrap}>
                     <CustomButton
-                      title={t("htp_next")}
+                      title={t("question_number_confirm")}
                       onPress={handleSubmitNumber}
                       backgroundImage={backgrounds.bg026}
                       glow
@@ -620,8 +1005,13 @@ const QuestionScreen = () => {
             </CustomText>
           )} */}
           </Animated.View>
-        </ScrollView>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
       </ImageBackgroundWithLoadGate>
+      <OnlineWaitPlayersOverlay
+        visible={mode === "ONLINE" && waitingAnswersSync}
+      />
     </SafeAreaView>
   );
 };
@@ -633,6 +1023,12 @@ export default QuestionScreen;
 /* -------------------------------------------------------------------------- */
 
 const styles = StyleSheet.create({
+  keyboardAvoiding: {
+    flex: 1,
+  },
+  questionScroll: {
+    flex: 1,
+  },
   row: {
     flexDirection: "row",
     // gap: 32,
@@ -654,20 +1050,9 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(89,36,16,0.5)",
   },
   avatarCircle: {
-    // width: 104,
-    // height: 104,
-    // borderRadius: 52,
-    // borderWidth: 4,
-    // backgroundColor: "#1f1f1f",
     justifyContent: "center",
     alignItems: "center",
     shadowOffset: { width: 0, height: 6 },
-  },
-  avatarImage: {
-    width: 164,
-    height: 164,
-    marginBottom: -20,
-    // borderRadius: 39,
   },
   headerContainer: {
     borderWidth: 2,
@@ -799,14 +1184,15 @@ const styles = StyleSheet.create({
   },
   numberImageWrap: {
     width: "100%",
+    maxWidth: 520,
+    alignSelf: "center",
     alignItems: "center",
   },
   numberImagePressable: {
     position: "relative",
-    width: "75%",
+    width: "76%",
     alignSelf: "center",
     aspectRatio: 3 / 4,
-    minHeight: 240,
   },
   numberImageFullWrap: {
     width: "100%",
@@ -817,29 +1203,37 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
+  /** % of hero frame — same visual anchor on phones and tablets */
   numberImageInputOverlay: {
     position: "absolute",
-    top: 4,
-    left: 0,
-    right: 0,
+    top: "12.5%",
+    left: "26%",
+    right: "19%",
     alignItems: "center",
     justifyContent: "center",
   },
+  numberFieldSlot: {
+    width: "100%",
+    minHeight: 44,
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   numberImageHiddenInput: {
-    fontSize: 24,
-    paddingVertical: 0,
+    width: "100%",
+    paddingVertical: 6,
     paddingHorizontal: 0,
     backgroundColor: "transparent",
     color: "#592410",
-    minWidth: 80,
     textAlign: "center",
-    opacity: 0.01,
+    fontWeight: "700",
+    opacity: 0.02,
+    ...(Platform.OS === "android"
+      ? { textAlignVertical: "center" as const, includeFontPadding: false }
+      : {}),
   },
   numberImageValueDisplay: {
-    position: "absolute",
-    top: 56,
-    left: 32,
-    right: 0,
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -847,5 +1241,57 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 24,
     alignItems: "center",
+  },
+  openInputBlock: {
+    width: "100%",
+    alignSelf: "stretch",
+    alignItems: "stretch",
+  },
+  openInputCard: {
+    width: "100%",
+    borderRadius: 18,
+    overflow: "hidden",
+    position: "relative",
+  },
+  openInputBgImage: {
+    borderRadius: 18,
+  },
+  openInputCardContent: {
+    width: "100%",
+    paddingHorizontal: 8,
+    paddingVertical: 64,
+    position: "relative",
+    zIndex: 1,
+  },
+  openInputRow: {
+    width: "100%",
+    justifyContent: "center",
+  },
+  openInputMeasureText: {
+    position: "absolute",
+    opacity: 0,
+    left: 0,
+    top: 0,
+    fontFamily: "SeymourOne-Regular",
+    padding: 0,
+    margin: 0,
+  },
+  openInputButtonWrap: {
+    marginTop: 8,
+    width: "100%",
+    alignSelf: "stretch",
+  },
+  openInputField: {
+    width: "100%",
+    textAlign: "center",
+    color: "#592410",
+    paddingHorizontal: 8,
+    ...(Platform.OS === "android"
+      ? {
+          textAlignVertical: "center" as const,
+          includeFontPadding: false as const,
+          paddingVertical: 0,
+        }
+      : { paddingVertical: 0 }),
   },
 });

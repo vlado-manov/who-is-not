@@ -71,6 +71,12 @@ const CustomInput = forwardRef<CustomInputHandle | TextInput, Props>(
 
     // ---------- UNSTYLED MODE ----------
     if (unstyled) {
+      const {
+        style: restStyle,
+        onFocus: onFocusProp,
+        onBlur: onBlurProp,
+        ...restWithoutStyle
+      } = rest;
       return (
         <TextInput
           ref={inputRef}
@@ -80,16 +86,16 @@ const CustomInput = forwardRef<CustomInputHandle | TextInput, Props>(
           autoCapitalize={rest.autoCapitalize ?? "none"}
           autoCorrect={rest.autoCorrect ?? false}
           className={inputClassName}
-          style={[styles.unstyledInput, inputStyle, rest.style]}
+          style={[styles.unstyledInput, inputStyle, restStyle]}
           onFocus={(e) => {
             setFocused(true);
-            rest.onFocus?.(e);
+            onFocusProp?.(e);
           }}
           onBlur={(e) => {
             setFocused(false);
-            rest.onBlur?.(e);
+            onBlurProp?.(e);
           }}
-          {...rest}
+          {...restWithoutStyle}
         />
       );
     }
@@ -105,6 +111,13 @@ const CustomInput = forwardRef<CustomInputHandle | TextInput, Props>(
       containerStyle,
     ];
 
+    const {
+      style: restStyle,
+      onFocus: onFocusProp,
+      onBlur: onBlurProp,
+      ...restWithoutFocus
+    } = rest;
+
     return (
       <View className={containerClassName} style={dynamicContainer}>
         <TextInput
@@ -115,16 +128,16 @@ const CustomInput = forwardRef<CustomInputHandle | TextInput, Props>(
           autoCapitalize={rest.autoCapitalize ?? "none"}
           autoCorrect={rest.autoCorrect ?? false}
           className={inputClassName}
-          style={[styles.input, inputStyle, rest.style]}
+          style={[styles.input, inputStyle, restStyle]}
           onFocus={(e) => {
             setFocused(true);
-            rest.onFocus?.(e);
+            onFocusProp?.(e);
           }}
           onBlur={(e) => {
             setFocused(false);
-            rest.onBlur?.(e);
+            onBlurProp?.(e);
           }}
-          {...rest}
+          {...restWithoutFocus}
         />
       </View>
     );

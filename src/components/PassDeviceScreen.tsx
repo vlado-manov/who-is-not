@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { View, Pressable, Dimensions } from "react-native";
+import { View, Pressable, useWindowDimensions, ScrollView } from "react-native";
 import AppImage from "./AppImage";
 import ImageBackgroundWithLoadGate from "./ImageBackgroundWithLoadGate";
 import {
@@ -11,7 +11,6 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 
 import CustomText from "./common/CustomText";
-import CustomButton from "./common/CustomButton";
 import { backgrounds } from "../../assets/backgrounds";
 import { game_images } from "../../assets/images";
 import { CreateGameStackParamList } from "../navigation/types";
@@ -20,6 +19,7 @@ import AudioManager from "../utils/audioManager";
 import i18n from "../i18n";
 import { useAuthStore } from "../store/useUserStore";
 import { usePreventBack } from "../hooks/usePreventBack";
+import { useResponsive } from "../utils/responsive";
 
 type R = RouteProp<CreateGameStackParamList, "PassDevice">;
 type Nav = StackNavigationProp<CreateGameStackParamList, "PassDevice">;
@@ -78,14 +78,20 @@ const PassDeviceScreen = () => {
     AudioManager.setSoundEnabled(newVal);
   };
 
+  const { width: windowWidth } = useWindowDimensions();
+  const { logo, horizontalPadding } = useResponsive();
+
   return (
     <SafeAreaView className="flex-1 bg-primary-700" edges={["right", "left"]}>
       <ImageBackgroundWithLoadGate
-        source={backgrounds.bg023}
+        source={backgrounds.bg024}
         style={{ flex: 1 }}
         resizeMode="cover"
       >
-        <View className="absolute top-24 right-8 z-50">
+        <View
+          className="absolute right-4 z-50"
+          style={{ top: insets.top + 12, paddingRight: horizontalPadding }}
+        >
           <Pressable
             onPress={() => {
               if (timeoutRef.current) {
@@ -101,21 +107,26 @@ const PassDeviceScreen = () => {
           </Pressable>
         </View>
 
-        <View
-          className="flex-1 items-center w-full justify-start relative"
-          style={{ overflow: "visible" }}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingHorizontal: horizontalPadding,
+            paddingBottom: insets.bottom + 12,
+          }}
+          showsVerticalScrollIndicator={false}
         >
-          <View className="justify-center items-center w-full absolute top-24">
-            <Pressable className="mt-[40px]" onPress={toggleSound}>
+          <View className="items-center w-full pt-20">
+            <Pressable style={{ marginTop: 8 }} onPress={toggleSound}>
               <AppImage
                 source={logoSource}
-                style={{ width: 360, height: 280 }}
+                style={{ width: logo.width, height: logo.height }}
                 contentFit="contain"
               />
             </Pressable>
             <CustomText
-              variant="h4-headline"
-              className="mt-24 text-center z-50 px-6"
+              variant="h3-headline"
+              className="mt-8 text-center z-50 px-2 text-black"
             >
               {t("pass_device_sub", {
                 defaultValue: "Hand the phone to next player",
@@ -123,28 +134,18 @@ const PassDeviceScreen = () => {
               })}
             </CustomText>
           </View>
-          <View
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              paddingBottom: insets.bottom,
-              width: Dimensions.get("window").width,
-              overflow: "visible",
-            }}
-          >
+          <View style={{ marginTop: 16, width: "100%" }}>
             <AppImage
               source={game_images.passDevice}
               contentFit="cover"
               style={{
-                width: Dimensions.get("window").width,
-                top: "20%",
+                width: windowWidth,
+                alignSelf: "center",
                 aspectRatio: 350 / 320,
               }}
             />
           </View>
-        </View>
+        </ScrollView>
       </ImageBackgroundWithLoadGate>
     </SafeAreaView>
   );

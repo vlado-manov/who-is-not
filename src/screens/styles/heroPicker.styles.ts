@@ -1,12 +1,28 @@
 // src/screens/styles/heroPicker.styles.ts
 import { StyleSheet } from "react-native";
 
-export const createHeroPickerStyles = (HERO_STAGE_HEIGHT: number) =>
-  StyleSheet.create({
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
+
+const getArrowMetrics = (windowWidth: number) => {
+  const t = clamp((windowWidth - 360) / 70, 0, 1);
+  const height = Math.round(48 + t * 8);
+  const width = Math.round(height * 1.0357);
+  const sideOffset = Math.round(14 + t * 10);
+  return { width, height, sideOffset };
+};
+
+export const createHeroPickerStyles = (
+  quoteOverlayTop: number,
+  windowWidth: number,
+) => {
+  const arrow = getArrowMetrics(windowWidth);
+  return StyleSheet.create({
     stage: {
       position: "relative",
       width: "100%",
-      height: HERO_STAGE_HEIGHT,
+      flex: 1,
+      minHeight: 0,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -27,17 +43,21 @@ export const createHeroPickerStyles = (HERO_STAGE_HEIGHT: number) =>
     },
     arrowLeft: {
       position: "absolute",
-      left: 24,
+      left: arrow.sideOffset,
       top: "50%",
-      transform: [{ translateY: -62 }],
+      transform: [{ translateY: -arrow.height / 2 }],
       zIndex: 50,
     },
     arrowRight: {
       position: "absolute",
-      right: 24,
+      right: arrow.sideOffset,
       top: "50%",
-      transform: [{ translateY: -62 }],
+      transform: [{ translateY: -arrow.height / 2 }],
       zIndex: 50,
+    },
+    arrowIcon: {
+      width: arrow.width,
+      height: arrow.height,
     },
     lockOverlay: {
       alignItems: "center",
@@ -61,6 +81,7 @@ export const createHeroPickerStyles = (HERO_STAGE_HEIGHT: number) =>
       minWidth: "92%",
       maxWidth: "92%",
       alignSelf: "center",
+      flexShrink: 1,
     },
     quoteBubbleShadow: {
       shadowColor: "#000",
@@ -89,7 +110,7 @@ export const createHeroPickerStyles = (HERO_STAGE_HEIGHT: number) =>
       width: "100%",
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: 24,
+      marginBottom: 0,
     },
     namePlateShadow: {
       shadowColor: "#642200",
@@ -100,7 +121,7 @@ export const createHeroPickerStyles = (HERO_STAGE_HEIGHT: number) =>
     },
     quoteOverlay: {
       position: "absolute",
-      top: 80,
+      top: quoteOverlayTop,
       left: 0,
       right: 0,
       alignItems: "center",
@@ -180,3 +201,4 @@ export const createHeroPickerStyles = (HERO_STAGE_HEIGHT: number) =>
       ],
     },
   });
+};

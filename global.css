@@ -1,3 +1,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Expo + react-native-web: root must fill the viewport or flex:1 children have 0 height */
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+#root {
+  display: flex;
+  height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
+  width: 100%;
+}

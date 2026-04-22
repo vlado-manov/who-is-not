@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Animated } from "react-native";
+import { View, Animated, ScrollView, useWindowDimensions } from "react-native";
 import CustomText from "../../components/common/CustomText";
 
 type Props = {
@@ -19,6 +19,9 @@ export function QuoteBubble({
   scale,
   styles,
 }: Props) {
+  const { height: windowHeight } = useWindowDimensions();
+  const quoteMaxHeight = Math.min(Math.round(windowHeight * 0.28), 260);
+
   if (!visible) return null;
 
   return (
@@ -33,13 +36,21 @@ export function QuoteBubble({
       ]}
     >
       <View style={[styles.quoteBubble, styles.quoteBubbleShadow]}>
-        <CustomText
-          variant="quote"
-          className="text-center"
-          textColor="text-customBlack-500"
+        <ScrollView
+          style={{ maxHeight: quoteMaxHeight }}
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
         >
-          {text}
-        </CustomText>
+          <CustomText
+            variant="quote"
+            className="text-center"
+            textColor="text-customBlack-500"
+          >
+            {text}
+          </CustomText>
+        </ScrollView>
 
         <View style={styles.quoteBubbleTailWrap}>
           <View style={styles.quoteBubbleTail} />

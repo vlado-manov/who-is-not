@@ -1,5 +1,5 @@
 // src/components/VoteScreen.tsx
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   ImageBackground,
@@ -20,7 +20,13 @@ import CustomText from "../../components/common/CustomText";
 import CustomButton from "../../components/common/CustomButton";
 import { useHeroesStore } from "../../store/useHeroesStore";
 import { usePreventBack } from "../../hooks/usePreventBack";
+import { useMultiplayerPhaseGate } from "../../hooks/useMultiplayerPhaseGate";
 import { useTranslation } from "react-i18next";
+import { GameMode } from "../../api/analytics";
+import { sendPlayerReady } from "../../api/multiplayerSync";
+import { sendMultiplayerRelay } from "../../api/multiplayerRelay";
+import { mpPhaseVotes, VOTE_CAST_MESSAGE_TYPE } from "../../constants/onlineLobby";
+import OnlineWaitPlayersOverlay from "../../components/online/OnlineWaitPlayersOverlay";
 
 type R = RouteProp<GameStackParamList, "Vote">;
 type Nav = StackNavigationProp<GameStackParamList, "Vote">;
@@ -32,15 +38,69 @@ const VoteScreen = () => {
   usePreventBack();
 
   const players = useGameStore((s) => s.players);
+  const oddOneId = useGameStore((s) => s.oddOneId);
+  const round = useGameStore((s) => s.round);
+  const mode = useGameStore((s) => s.mode) as GameMode;
+  const onlinePlayerId = useGameStore((s) => s.onlinePlayerId);
+  const onlineSpectating = useGameStore((s) => s.onlineSpectating);
+  const lives = useGameStore((s) => s.lives);
+  const activeRoundNumber = (round ?? 0) + 1;
+  const votesPhase = mpPhaseVotes(activeRoundNumber);
   const heroes = useHeroesStore((s) => s.heroes);
   const setVote = useGameStore((s) => s.setVote);
+  const [waitingVotesSync, setWaitingVotesSync] = useState(false);
+
+  useMultiplayerPhaseGate({
+    enabled: mode === "ONLINE" && waitingVotesSync,
+    phase: votesPhase,
+    onReady: () => {
+      setWaitingVotesSync(false);
+      // Let last vote_cast reach all devices before reveal (relay order vs phase_ready).
+      setTimeout(() => navigation.navigate("PreReveal"), 100);
+    },
+  });
 
   const voter = players[voterIndex];
+  const isImposterVoter = Boolean(voter && oddOneId && voter.id === oddOneId);
 
   const otherPlayers = useMemo(
     () => (voter ? players.filter((p) => p.id !== voter.id) : []),
     [players, voter?.id]
   );
+
+  const isEliminatedSpectator =
+    mode === "ONLINE" &&
+    onlinePlayerId != null &&
+    (onlineSpectating || (lives[onlinePlayerId] ?? 0) <= 0);
+
+  const specVoteReadyRef = useRef(false);
+  useEffect(() => {
+    specVoteReadyRef.current = false;
+  }, [votesPhase]);
+
+  useEffect(() => {
+    if (!isEliminatedSpectator || !voter || specVoteReadyRef.current) return;
+    specVoteReadyRef.current = true;
+    const targetId =
+      voter.id === oddOneId
+        ? otherPlayers[0]?.id ??
+          players.find((p) => p.id !== voter.id)?.id ??
+          oddOneId ??
+          voter.id
+        : oddOneId ?? voter.id;
+    setVote(voter.id, targetId);
+    sendMultiplayerRelay({ type: VOTE_CAST_MESSAGE_TYPE, targetId });
+    setWaitingVotesSync(true);
+    sendPlayerReady(votesPhase);
+  }, [
+    isEliminatedSpectator,
+    oddOneId,
+    otherPlayers,
+    players,
+    setVote,
+    voter,
+    votesPhase,
+  ]);
 
   const playerRows = useMemo<Player[][]>(() => {
     const rows: Player[][] = [];
@@ -51,17 +111,48 @@ const VoteScreen = () => {
   }, [otherPlayers]);
 
   useEffect(() => {
+    if (mode === "ONLINE") return;
     if (!voter) {
       navigation.navigate("PreReveal" as never);
     }
-  }, [voter, navigation]);
+  }, [voter, navigation, mode]);
 
   if (!voter) {
     return null;
   }
 
+  if (isEliminatedSpectator) {
+    return (
+      <SafeAreaView className="flex-1" edges={["right", "left"]}>
+        <ImageBackgroundWithLoadGate
+          source={backgrounds.bg023}
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+          resizeMode="cover"
+        >
+          <CustomText
+            variant="h6-headline"
+            className="text-center px-6"
+            textColor="#fff7ec"
+          >
+            {t("spectator_waiting_phase")}
+          </CustomText>
+        </ImageBackgroundWithLoadGate>
+        <OnlineWaitPlayersOverlay
+          visible={mode === "ONLINE" && waitingVotesSync}
+        />
+      </SafeAreaView>
+    );
+  }
+
   const handleVote = (targetId: string) => {
     setVote(voter.id, targetId);
+
+    if (mode === "ONLINE") {
+      sendMultiplayerRelay({ type: VOTE_CAST_MESSAGE_TYPE, targetId });
+      setWaitingVotesSync(true);
+      sendPlayerReady(votesPhase);
+      return;
+    }
 
     const isLast = voterIndex >= players.length - 1;
     if (!isLast) {
@@ -100,9 +191,11 @@ const VoteScreen = () => {
                 <CustomText
                   variant="p"
                   className="text-center"
-                  textColor="#762a05"
+                  textColor={isImposterVoter ? "#b91c1c" : "#762a05"}
                 >
-                  {t("vote_cast_your_vote")}
+                  {isImposterVoter
+                    ? t("vote_imposter_blend_cast")
+                    : t("vote_cast_your_vote")}
                 </CustomText>
 
                 <View style={styles.nameDivider} />
@@ -110,9 +203,11 @@ const VoteScreen = () => {
                 <CustomText
                   variant="h6-headline"
                   className="text-center"
-                  textColor="#592410"
+                  textColor={isImposterVoter ? "#b91c1c" : "#592410"}
                 >
-                  {t("vote_who_is_not")}
+                  {isImposterVoter
+                    ? t("vote_imposter_blend_headline")
+                    : t("vote_who_is_not")}
                 </CustomText>
 
                 <View style={styles.nameDivider} />
@@ -120,9 +215,11 @@ const VoteScreen = () => {
                 <CustomText
                   variant="p-small"
                   className="text-center"
-                  textColor="#762a05"
+                  textColor={isImposterVoter ? "#c62828" : "#762a05"}
                 >
-                  {t("vote_pick_imposter")}
+                  {isImposterVoter
+                    ? t("vote_imposter_blend_hint")
+                    : t("vote_pick_imposter")}
                 </CustomText>
               </ImageBackground>
             </View>
@@ -181,6 +278,9 @@ const VoteScreen = () => {
           </View>
         </ScrollView>
       </ImageBackgroundWithLoadGate>
+      <OnlineWaitPlayersOverlay
+        visible={mode === "ONLINE" && waitingVotesSync}
+      />
     </SafeAreaView>
   );
 };

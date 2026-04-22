@@ -14,6 +14,10 @@ export type Settings = {
   soundEnabled: boolean;
   musicLevel: number;
   sfxLevel: number;
+  /** After any completed game — used so Round tutorial only shows for first-time players. */
+  hasCompletedAnyGame?: boolean;
+  /** User dismissed the Round screen tutorial overlay. */
+  hasSeenRoundTutorial?: boolean;
 };
 
 const DEFAULT_AVATAR_ID = "silent_vanessa" as AvatarId;
@@ -96,6 +100,8 @@ const DEFAULT_SETTINGS: Settings = {
   soundEnabled: true,
   musicLevel: 0.7,
   sfxLevel: 0.8,
+  hasCompletedAnyGame: false,
+  hasSeenRoundTutorial: false,
 };
 
 export const useAuthStore = create<AuthStore>()(

@@ -1,4 +1,4 @@
-﻿// src/screens/Game/LivesRevealScreen.tsx
+// src/screens/Game/LivesRevealScreen.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -137,6 +137,8 @@ const LivesRevealScreen = () => {
   const heroes = useHeroesStore((s) => s.heroes);
   const votes = useGameStore((s) => s.votes);
   const oddOneId = useGameStore((s) => s.oddOneId);
+  const mode = useGameStore((s) => s.mode);
+  const onlinePlayerId = useGameStore((s) => s.onlinePlayerId);
   const lives = useGameStore((s) => s.lives);
   const gameSettings = useGameStore((s) => s.gameSettings);
   const applyRoundLives = useGameStore((s) => s.applyRoundLives);
@@ -176,8 +178,10 @@ const LivesRevealScreen = () => {
   >(null);
 
   const [phase, setPhase] = useState<Phase>("focus");
+  const initialCenterId =
+    mode === "ONLINE" && onlinePlayerId ? onlinePlayerId : oddOneId ?? null;
   const [activeCenterId, setActiveCenterId] = useState<string | null>(
-    oddOneId ?? null
+    initialCenterId
   );
   const [displayLives, setDisplayLives] = useState<Record<string, number>>({});
   const displayLivesRef = useRef<Record<string, number>>({});
@@ -952,9 +956,18 @@ const LivesRevealScreen = () => {
     setDisplayLives(before);
     displayLivesRef.current = before;
 
-    if (oddOneId) setActiveCenterId(oddOneId);
+    if (oddOneId) {
+      if (mode === "ONLINE" && onlinePlayerId) {
+        setActiveCenterId(onlinePlayerId);
+      } else {
+        setActiveCenterId(oddOneId);
+      }
+    }
 
     applyRoundLives();
+
+    const isOnlineSpotlight =
+      mode === "ONLINE" && typeof onlinePlayerId === "string";
 
     const run = async () => {
       if (!oddOneId) {
@@ -964,10 +977,36 @@ const LivesRevealScreen = () => {
       }
 
       if (impostorLost) {
+        if (
+          isOnlineSpotlight &&
+          onlinePlayerId &&
+          onlinePlayerId !== oddOneId
+        ) {
+          await happyJumpDiagonal();
+          await switchCenterTo(oddOneId);
+        }
         await animateLifeLoss(oddOneId, true);
         if ((displayLivesRef.current[oddOneId] ?? 0) <= 0) {
           await animateDeadPlayerInCenter(oddOneId);
         }
+      } else if (isOnlineSpotlight && onlinePlayerId) {
+        const orderedLosingIds = losingIds.includes(onlinePlayerId)
+          ? [
+              onlinePlayerId,
+              ...losingIds.filter((id) => id !== onlinePlayerId),
+            ]
+          : losingIds;
+
+        await switchCenterTo(onlinePlayerId);
+        await happyJumpDiagonal();
+        for (const id of orderedLosingIds) {
+          await switchCenterTo(id);
+          await animateLifeLoss(id, true);
+          if ((displayLivesRef.current[id] ?? 0) <= 0) {
+            await animateDeadPlayerInCenter(id);
+          }
+        }
+        await switchCenterTo(oddOneId);
       } else {
         await happyJumpDiagonal();
         for (const id of losingIds) {
@@ -1002,6 +1041,32 @@ const LivesRevealScreen = () => {
       const aliveCount = players.filter(
         (p) => (roundOutcome.nextLives[p.id] ?? 0) > 0
       ).length;
+
+      const localDiedThisRound =
+        mode === "ONLINE" &&
+        typeof onlinePlayerId === "string" &&
+        deadThisRound.includes(onlinePlayerId);
+
+      if (localDiedThisRound) {
+        await startAnim(Animated.delay(350));
+        const variant = aliveCount <= 2 ? "gameOver" : "continue";
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [
+              {
+                name: "PlayerDeath",
+                params: {
+                  variant,
+                  deadPlayerId: onlinePlayerId,
+                },
+              },
+            ],
+          })
+        );
+        return;
+      }
+
       if (aliveCount <= 2) {
         await startAnim(Animated.delay(350));
         navigation.dispatch(
@@ -1022,26 +1087,36 @@ const LivesRevealScreen = () => {
     impostorLost,
     lives,
     losingIds,
+    mode,
     oddOneId,
+    onlinePlayerId,
     playersUi,
     roundOutcome.nextLives,
     maxLives,
     players,
+    navigation,
   ]);
 
   const goNextRound = () => {
     const livesAfterRound = displayLivesRef.current;
-    const alivePlayers = players.filter(
-      (p) => (livesAfterRound[p.id] ?? 0) > 0
-    );
-    const aliveLives: Record<string, number> = {};
-    alivePlayers.forEach((p) => {
-      aliveLives[p.id] = livesAfterRound[p.id] ?? 0;
-    });
-    setGameState({
-      players: alivePlayers,
-      lives: aliveLives,
-    });
+    if (mode === "ONLINE") {
+      setGameState({
+        players,
+        lives: { ...livesAfterRound },
+      });
+    } else {
+      const alivePlayers = players.filter(
+        (p) => (livesAfterRound[p.id] ?? 0) > 0
+      );
+      const aliveLives: Record<string, number> = {};
+      alivePlayers.forEach((p) => {
+        aliveLives[p.id] = livesAfterRound[p.id] ?? 0;
+      });
+      setGameState({
+        players: alivePlayers,
+        lives: aliveLives,
+      });
+    }
     goToNextRound();
     navigation.dispatch(
       CommonActions.reset({

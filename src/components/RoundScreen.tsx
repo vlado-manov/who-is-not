@@ -1,6 +1,6 @@
 // src/components/RoundScreen.tsx
-import React, { useState } from "react";
-import { View, ImageBackground, Dimensions } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { View, ImageBackground, Dimensions, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
@@ -16,6 +16,7 @@ import AudioManager from "../utils/audioManager";
 import { useAuthStore } from "../store/useUserStore";
 import { useTrackRoundStartedMutation } from "../api/hooks/useAnalyticsMutations";
 import { usePreventBack } from "../hooks/usePreventBack";
+import { getOnlinePlayerIndex } from "../utils/onlinePlayerIndex";
 
 type Nav = StackNavigationProp<GameStackParamList, "Round">;
 
@@ -32,9 +33,10 @@ function BonusRoundOverlay({
   if (!visible) return null;
 
   return (
-    <View className="absolute inset-0 z-[99] items-center justify-center px-6">
-      <View className="inset-0 absolute bg-[rgba(0,0,0,0.88)] w-full h-full" />
-      <View className="bg-white rounded-2xl p-6 max-w-md z-[100]">
+    <View style={styles.bonusOverlayRoot} pointerEvents="box-none">
+      <View style={styles.bonusOverlayBackdrop} />
+      <View style={styles.bonusOverlayContentWrap}>
+        <View style={styles.bonusOverlayCard}>
         <CustomText variant="h5" textColor="black" className="text-center mb-2">
           {t("bonus_round_title")}
         </CustomText>
@@ -53,6 +55,7 @@ function BonusRoundOverlay({
           shadowColor="#005f07"
           horizontalPadding={48}
         />
+        </View>
       </View>
     </View>
   );
@@ -68,8 +71,11 @@ const RoundScreen = () => {
   const mode = useGameStore((s) => s.mode);
   const setCurrentRoundId = useGameStore((s) => s.setCurrentRoundId);
   const players = useGameStore((s) => s.players);
+  const onlinePlayerId = useGameStore((s) => s.onlinePlayerId);
   const firstPlayerName = players?.[0]?.name;
   const userId = useAuthStore((s) => s.user.id);
+  const settings = useAuthStore((s) => s.settings);
+  const updateSettings = useAuthStore((s) => s.updateSettings);
   const trackRoundStartedMutation = useTrackRoundStartedMutation();
 
   const startRound = useGameStore((s) => s.startRound);
@@ -77,11 +83,16 @@ const RoundScreen = () => {
   const displayRound = (round || 0) + 1;
   const isBonusRound = displayRound === 5;
 
+  /** Първи екран „Рунд X“ в играта (рунд 2); само за играчи без завършена игра преди това. */
+  const shouldShowRoundTutorial =
+    displayRound === 2 &&
+    !settings.hasCompletedAnyGame &&
+    !settings.hasSeenRoundTutorial;
+
   // RoundScreen е само за Round 2+; Round 1 е в HeroPicker
-  const [showTutorial, setShowTutorial] = useState(false);
   const [showBonusTutorial, setShowBonusTutorial] = useState(isBonusRound);
 
-  const onContinue = async () => {
+  const runRoundStart = useCallback(async () => {
     if (!players.length) return;
 
     const roundIndex = (round || 0) + 1;
@@ -103,21 +114,58 @@ const RoundScreen = () => {
     }
 
     startRound();
-    // вече сме в GameStack, навигираме директно
+  }, [
+    players.length,
+    round,
+    gameId,
+    mode,
+    userId,
+    setCurrentRoundId,
+    startRound,
+    trackRoundStartedMutation,
+  ]);
+
+  const onContinue = async () => {
+    await runRoundStart();
     navigation.navigate("PassDeviceGameplay", {
       playerIndex: 0,
     } as never);
   };
 
+  const onlineRoundNavigatedRef = useRef(false);
+
+  const onContinueOnline = useCallback(async () => {
+    if (onlineRoundNavigatedRef.current) return;
+    onlineRoundNavigatedRef.current = true;
+    await runRoundStart();
+    const idx = getOnlinePlayerIndex(players, onlinePlayerId);
+    navigation.navigate("Question", { playerIndex: idx } as never);
+  }, [runRoundStart, players, onlinePlayerId, navigation]);
+
   const bonusTutorialVisible = isBonusRound && showBonusTutorial;
+
+  useEffect(() => {
+    if (mode !== "ONLINE") return;
+    if (bonusTutorialVisible) return;
+    if (shouldShowRoundTutorial) return;
+    const id = setTimeout(() => {
+      void onContinueOnline();
+    }, 600);
+    return () => clearTimeout(id);
+  }, [mode, bonusTutorialVisible, shouldShowRoundTutorial, onContinueOnline]);
+
   const tutorialSteps = React.useMemo(() => getTutorialSteps(t), [t]);
 
   return (
     <SafeAreaView className="flex-1 bg-primary-700" edges={["right", "left"]}>
       <TutorialOverlay
-        visible={showTutorial}
-        onSkipAll={() => setShowTutorial(false)}
-        onDoneAll={() => setShowTutorial(false)}
+        visible={shouldShowRoundTutorial}
+        onSkipAll={() =>
+          updateSettings({ hasSeenRoundTutorial: true })
+        }
+        onDoneAll={() =>
+          updateSettings({ hasSeenRoundTutorial: true })
+        }
         steps={tutorialSteps}
       />
       {isBonusRound && (
@@ -140,24 +188,26 @@ const RoundScreen = () => {
               {displayRound}
             </CustomText>
           </View>
-          <View className="mb-16 px-16 absolute bottom-0 left-0 right-0">
-            <CustomText className="text-center mb-4">
-              <CustomText className="underline">{firstPlayerName}</CustomText>,
-              <CustomText>
-                {" "}{t("round_start_hint")}
+          {mode !== "ONLINE" ? (
+            <View className="mb-16 px-16 absolute bottom-0 left-0 right-0">
+              <CustomText className="text-center mb-4">
+                <CustomText className="underline">{firstPlayerName}</CustomText>,
+                <CustomText>
+                  {" "}{t("round_start_hint")}
+                </CustomText>
               </CustomText>
-            </CustomText>
-            <CustomButton
-              title={t("start_btn")}
-              backgroundImage={backgrounds.bg026}
-              glow
-              glowColor="rgba(41,255,25,0.8)"
-              shadowColor="#005f07"
-              horizontalPadding={48}
-              fullWidth
-              onPress={onContinue}
-            />
-          </View>
+              <CustomButton
+                title={t("start_btn")}
+                backgroundImage={backgrounds.bg026}
+                glow
+                glowColor="rgba(41,255,25,0.8)"
+                shadowColor="#005f07"
+                horizontalPadding={48}
+                fullWidth
+                onPress={onContinue}
+              />
+            </View>
+          ) : null}
         </View>
       </ImageBackground>
     </SafeAreaView>
@@ -165,3 +215,28 @@ const RoundScreen = () => {
 };
 
 export default RoundScreen;
+
+const styles = StyleSheet.create({
+  bonusOverlayRoot: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 99,
+  },
+  bonusOverlayBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.88)",
+  },
+  bonusOverlayContentWrap: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  bonusOverlayCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 24,
+    maxWidth: 448,
+    width: "100%",
+    zIndex: 100,
+  },
+});

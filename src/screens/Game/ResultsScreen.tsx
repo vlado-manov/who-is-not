@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   View,
   ImageBackground,
@@ -30,6 +36,22 @@ import AudioManager from "../../utils/audioManager";
 import { useHeroesStore } from "../../store/useHeroesStore";
 import { useTranslation } from "react-i18next";
 import { usePreventBack } from "../../hooks/usePreventBack";
+import { useMultiplayerPhaseGate } from "../../hooks/useMultiplayerPhaseGate";
+import { GameMode } from "../../api/analytics";
+import { sendPlayerReady } from "../../api/multiplayerSync";
+import {
+  sendMultiplayerRelay,
+  subscribeMultiplayerRelay,
+} from "../../api/multiplayerRelay";
+import {
+  DISCUSSION_CHAT_MESSAGE_TYPE,
+  mpPhasePreVote,
+} from "../../constants/onlineLobby";
+import OnlineWaitPlayersOverlay from "../../components/online/OnlineWaitPlayersOverlay";
+import FloatingChatDock, {
+  type ChatLine,
+} from "../../components/discussion/FloatingChatDock";
+import { getOnlinePlayerIndex } from "../../utils/onlinePlayerIndex";
 
 type Nav = StackNavigationProp<GameStackParamList, "Results">;
 
@@ -48,6 +70,7 @@ const ResultsScreen = () => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const players = useGameStore((s) => s.players);
+  const onlinePlayerId = useGameStore((s) => s.onlinePlayerId);
   const heroes = useHeroesStore((s) => s.heroes);
   const questionType = useGameStore((s) => s.questionType);
   const answers = useGameStore((s) => s.answers);
@@ -55,12 +78,17 @@ const ResultsScreen = () => {
   const gameQuestions = useGameStore((s) => s.gameQuestions);
   const isBonusRound = useGameStore((s) => s.isBonusRound);
   const round = useGameStore((s) => s.round);
+  const mode = useGameStore((s) => s.mode) as GameMode;
+  const activeRoundNumber = (round ?? 0) + 1;
+  const preVotePhase = mpPhasePreVote(activeRoundNumber);
+  const [waitingPreVoteSync, setWaitingPreVoteSync] = useState(false);
   const discussionSeconds = useGameStore(
     (s) => s.gameSettings.discussionSeconds
   );
   useSyncHeroesStore();
 
   const [secondsLeft, setSecondsLeft] = useState(discussionSeconds);
+  const [discussionMessages, setDiscussionMessages] = useState<ChatLine[]>([]);
   const tensionStartedRef = useRef(false);
   const hasFinishedRef = useRef(false);
 
@@ -73,6 +101,46 @@ const ResultsScreen = () => {
   }, []);
 
   useEffect(() => {
+    return () => {
+      setDiscussionMessages([]);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (mode !== "ONLINE") return;
+    const unsub = subscribeMultiplayerRelay((raw) => {
+      const d = raw as {
+        type?: string;
+        fromPlayerId?: string;
+        text?: string;
+        ts?: number;
+      };
+      if (d.type !== DISCUSSION_CHAT_MESSAGE_TYPE) return;
+      if (typeof d.fromPlayerId !== "string" || typeof d.text !== "string") {
+        return;
+      }
+      const fromId = d.fromPlayerId;
+      const bodyText = d.text;
+      const st = useGameStore.getState();
+      const name = st.players.find((p) => p.id === fromId)?.name ?? "?";
+      const mine = fromId === st.onlinePlayerId;
+      const id = `${d.ts ?? Date.now()}-${fromId}-${Math.random().toString(36).slice(2, 9)}`;
+      setDiscussionMessages((prev) => [
+        ...prev,
+        {
+          id,
+          playerId: fromId,
+          name,
+          text: bodyText,
+          ts: typeof d.ts === "number" ? d.ts : Date.now(),
+          mine,
+        },
+      ]);
+    });
+    return () => unsub();
+  }, [mode]);
+
+  useEffect(() => {
     if (secondsLeft <= 20 && secondsLeft > 0 && !tensionStartedRef.current) {
       tensionStartedRef.current = true;
       AudioManager.stopBackground();
@@ -81,7 +149,11 @@ const ResultsScreen = () => {
   }, [secondsLeft]);
 
   useEffect(() => {
-    if (questionType === "rate" || questionType === "number") {
+    if (
+      questionType === "rate" ||
+      questionType === "number" ||
+      questionType === "input"
+    ) {
       queryClient.invalidateQueries({ queryKey: queryKeys.characters });
     }
   }, [questionType, queryClient]);
@@ -141,10 +213,16 @@ const ResultsScreen = () => {
   }, [answers, players, questionType]);
 
   /**
-   * For rate/number: list of { player, answer } to show who answered what.
+   * For rate/number/input: list of { player, answer } to show who answered what.
    */
   const answerEntries = useMemo(() => {
-    if (questionType !== "rate" && questionType !== "number") return [];
+    if (
+      questionType !== "rate" &&
+      questionType !== "number" &&
+      questionType !== "input"
+    ) {
+      return [];
+    }
 
     return players
       .map((player) => {
@@ -172,6 +250,21 @@ const ResultsScreen = () => {
     setSecondsLeft(discussionSeconds);
   }, [discussionSeconds]);
 
+  const navigateToVote = useCallback(() => {
+    const voterIndex =
+      mode === "ONLINE" ? getOnlinePlayerIndex(players, onlinePlayerId) : 0;
+    navigation.navigate("Vote", { voterIndex });
+  }, [mode, navigation, players, onlinePlayerId]);
+
+  useMultiplayerPhaseGate({
+    enabled: mode === "ONLINE" && waitingPreVoteSync,
+    phase: preVotePhase,
+    onReady: () => {
+      setWaitingPreVoteSync(false);
+      navigateToVote();
+    },
+  });
+
   useEffect(() => {
     if (secondsLeft <= 0) return;
     const id = setInterval(() => {
@@ -186,9 +279,14 @@ const ResultsScreen = () => {
     if (secondsLeft === 0 && !hasFinishedRef.current) {
       hasFinishedRef.current = true;
       AudioManager.stopTensionLoop();
-      navigation.navigate("VoteNow");
+      if (mode === "ONLINE") {
+        setWaitingPreVoteSync(true);
+        sendPlayerReady(preVotePhase);
+      } else {
+        navigateToVote();
+      }
     }
-  }, [secondsLeft, navigation]);
+  }, [secondsLeft, navigation, mode, preVotePhase, navigateToVote]);
 
   const handleNext = () => {
     if (hasFinishedRef.current) return;
@@ -196,7 +294,12 @@ const ResultsScreen = () => {
     tensionStartedRef.current = true;
     AudioManager.stopTensionLoop();
     setSecondsLeft(0);
-    navigation.navigate("VoteNow");
+    if (mode === "ONLINE") {
+      setWaitingPreVoteSync(true);
+      sendPlayerReady(preVotePhase);
+    } else {
+      navigateToVote();
+    }
   };
 
   const scaleUp = () => {
@@ -215,6 +318,15 @@ const ResultsScreen = () => {
       speed: 20,
       bounciness: 6,
     }).start();
+  };
+
+  const sendDiscussionChat = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || mode !== "ONLINE") return;
+    sendMultiplayerRelay({
+      type: DISCUSSION_CHAT_MESSAGE_TYPE,
+      text: trimmed.slice(0, 500),
+    });
   };
 
   /* -------------------------------------------------------------------------- */
@@ -290,9 +402,10 @@ const ResultsScreen = () => {
                     <View style={styles.nameDivider} />
 
                     <CustomText
-                      variant="h6-headline"
+                      variant="h5"
                       className="text-center"
                       textColor="#592410"
+                      allowWrap
                     >
                       {baseQuestion?.text}
                     </CustomText>
@@ -411,13 +524,14 @@ const ResultsScreen = () => {
             </View>
           )}
 
-          {/* RATE / NUMBER: who answered what – 2 per row, rate image + number overlay */}
+          {/* RATE / NUMBER / INPUT: who answered what – 2 per row, rate image + answer overlay */}
           {(questionType === "rate" || questionType === "number") && (
             <View className="px-6" style={styles.rateNumberContainer}>
               {answerRows.map((row, rowIdx) => (
                 <View key={`row-${rowIdx}`} style={styles.rateNumberRow}>
                   {row.map(({ player, answer }) => {
                     const rateImg = getRateImage(player);
+                    const isLongText = false;
                     return (
                       <View key={player.id} style={styles.rateNumberCell}>
                         <View style={styles.rateNumberImageWrap}>
@@ -430,9 +544,12 @@ const ResultsScreen = () => {
                           )}
                           <View style={styles.rateNumberOverlay}>
                             <CustomText
-                              variant="h4-headline"
+                              variant={isLongText ? "p-small" : "h4-headline"}
                               // textColor="#000000"
-                              style={styles.rateNumberValue}
+                              style={[
+                                styles.rateNumberValue,
+                                isLongText && styles.rateNumberValueLong,
+                              ]}
                             >
                               {answer}
                             </CustomText>
@@ -458,6 +575,56 @@ const ResultsScreen = () => {
               ))}
             </View>
           )}
+
+          {questionType === "input" && (
+            <View className="px-6" style={styles.inputAnswersContainer}>
+              {answerEntries.map(({ player, answer }) => {
+                const avatar = getAvatar(player);
+                return (
+                  <View key={player.id} style={styles.inputAnswerRow}>
+                    <View style={styles.inputAnswerPlayer}>
+                      {avatar && (
+                        <AppImage
+                          source={avatar}
+                          style={styles.inputAnswerAvatar}
+                          contentFit="contain"
+                        />
+                      )}
+                      <CustomButton
+                        title={player.name}
+                        appearance="tertiary"
+                        btnSize="xs"
+                        fontSize="xs"
+                        backgroundImage={backgrounds.bg018}
+                        glow
+                        fullWidth
+                        glowColor="rgba(255,204,0,1)"
+                        shadowColor="#834400"
+                        buttonClassName="-mt-4"
+                      />
+                    </View>
+
+                    <View style={styles.inputAnswerPlateShadow}>
+                      <ImageBackground
+                        source={backgrounds.bg005}
+                        resizeMode="stretch"
+                        imageStyle={{ borderRadius: 18 }}
+                        style={styles.inputAnswerPlate}
+                      >
+                        <CustomText
+                          variant="p"
+                          textColor="#592410"
+                          style={styles.inputAnswerText}
+                        >
+                          {answer}
+                        </CustomText>
+                      </ImageBackground>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </ScrollView>
 
         {/* CTA */}
@@ -468,6 +635,18 @@ const ResultsScreen = () => {
           />
         </View> */}
       </ImageBackgroundWithLoadGate>
+      <OnlineWaitPlayersOverlay
+        visible={mode === "ONLINE" && waitingPreVoteSync}
+      />
+      {mode === "ONLINE" && (
+        <FloatingChatDock
+          messages={discussionMessages}
+          onSend={sendDiscussionChat}
+          translationKeyTitle="discussion_chat_title"
+          translationKeyPlaceholder="discussion_chat_placeholder"
+          translationKeyEmpty="discussion_chat_empty"
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -612,6 +791,68 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(255,255,255,0.9)",
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
+  },
+  rateNumberValueLong: {
+    paddingLeft: 8,
+    paddingRight: 8,
+    marginTop: 12,
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: "center",
+  },
+  inputAnswersContainer: {
+    gap: 16,
+  },
+  inputAnswerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+  },
+  inputAnswerPlayer: {
+    width: 140,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+  },
+  inputAnswerAvatar: {
+    width: 106,
+    height: 106,
+  },
+  inputAnswerPlateShadow: {
+    flex: 1,
+    shadowColor: "#fff",
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 14,
+  },
+  inputAnswerPlate: {
+    minHeight: 64,
+    marginLeft: -40,
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
+    borderTopRightRadius: 20,
+    borderBottomRightRadius: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    justifyContent: "center",
+    shadowColor: "#ffd800",
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 14,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(251,192,32,1)",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(160,110,60,0.7)",
+  },
+  inputAnswerText: {
+    textAlign: "left",
+    fontSize: 22,
+    lineHeight: 26,
+    fontWeight: "900",
+    fontFamily: "OpenSans-Bold",
+    color: "#592410",
   },
   bottomCta: {
     position: "absolute",

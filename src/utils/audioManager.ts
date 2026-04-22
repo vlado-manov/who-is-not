@@ -1,11 +1,16 @@
 // src/utils/audioManager.ts
 
 import { Audio, AVPlaybackSource } from "expo-av";
+import { Platform } from "react-native";
 
 type OneShotOptions = {
   volume?: number;
 };
 
+/**
+ * Android ExoPlayer (expo-av) throws if multiple loads/plays/stops interleave
+ * ("player is accessed on the wrong thread"). Serialize native audio work on Android.
+ */
 class AudioManager {
   private static bgSound: Audio.Sound | null = null;
   private static curtainSound: Audio.Sound | null = null;
@@ -16,11 +21,25 @@ class AudioManager {
   private static sfxLevel = 0.8;
   private static keyboardSound: Audio.Sound | null = null;
 
+  private static androidAudioChain: Promise<void> = Promise.resolve();
+
+  private static enqueue<T>(fn: () => Promise<T>): Promise<T> {
+    if (Platform.OS !== "android") {
+      return fn();
+    }
+    const next = this.androidAudioChain.then(() => fn());
+    this.androidAudioChain = next.then(
+      () => undefined,
+      () => undefined
+    );
+    return next;
+  }
+
   /** Sync enabled/music from store without starting or stopping playback (e.g. on app init). */
   static applySettingsFromStore(enabled: boolean, musicEnabled = true) {
     this.enabled = enabled;
     this.musicEnabled = musicEnabled;
-    if (!enabled) this.stopBackground();
+    if (!enabled) void this.stopBackground();
   }
 
   /**
@@ -29,13 +48,13 @@ class AudioManager {
   static setSoundEnabled(enabled: boolean, useGameMusic = false) {
     this.enabled = enabled;
     if (!enabled) {
-      this.stopBackground();
-      this.stopTensionLoop();
+      void this.stopBackground();
+      void this.stopTensionLoop();
     } else {
       if (useGameMusic) {
-        this.playBackgroundGameFromStart();
+        void this.playBackgroundGameFromStart();
       } else {
-        this.playBackgroundFromStart();
+        void this.playBackgroundFromStart();
       }
     }
   }
@@ -44,7 +63,7 @@ class AudioManager {
     this.musicEnabled = enabled;
     this.musicLevel = Math.max(0, Math.min(level, 1));
     if (!enabled) {
-      this.stopBackground();
+      void this.stopBackground();
     }
   }
 
@@ -52,51 +71,61 @@ class AudioManager {
     this.sfxEnabled = enabled;
     this.sfxLevel = Math.max(0, Math.min(level, 1));
   }
+
   static async duckBackground(volume = 0.05) {
-    if (!this.bgSound) return;
-    try {
-      await this.bgSound.setVolumeAsync(volume);
-    } catch {}
+    return this.enqueue(async () => {
+      if (!this.bgSound) return;
+      try {
+        await this.bgSound.setVolumeAsync(volume);
+      } catch {}
+    });
   }
 
   static async restoreBackground(volume = 0.35) {
-    if (!this.bgSound) return;
-    try {
-      await this.bgSound.setVolumeAsync(volume);
-    } catch {}
+    return this.enqueue(async () => {
+      if (!this.bgSound) return;
+      try {
+        await this.bgSound.setVolumeAsync(volume);
+      } catch {}
+    });
   }
+
   private static tensionSound: Audio.Sound | null = null;
 
   // -----------------------
   // Tension countdown music
   // -----------------------
   static async playTensionLoop() {
-    if (!this.enabled || !this.musicEnabled) return;
-    if (this.tensionSound) return;
+    return this.enqueue(async () => {
+      if (!this.enabled || !this.musicEnabled) return;
+      if (this.tensionSound) return;
 
-    try {
-      this.tensionSound = new Audio.Sound();
-      await this.tensionSound.loadAsync(
-        require("../../assets/audio/maybe/A_short_sound.wav")
-      );
-      await this.tensionSound.setIsLoopingAsync(true);
-      await this.tensionSound.setVolumeAsync(0.7 * this.musicLevel);
-      await this.tensionSound.playAsync();
-    } catch (error) {
-      console.warn("Error playing tension music", error);
-    }
+      try {
+        this.tensionSound = new Audio.Sound();
+        await this.tensionSound.loadAsync(
+          require("../../assets/audio/maybe/A_short_sound.wav")
+        );
+        await this.tensionSound.setIsLoopingAsync(true);
+        await this.tensionSound.setVolumeAsync(0.7 * this.musicLevel);
+        await this.tensionSound.playAsync();
+      } catch (error) {
+        console.warn("Error playing tension music", error);
+      }
+    });
   }
 
   static async stopTensionLoop() {
-    if (!this.tensionSound) return;
-    try {
-      await this.tensionSound.stopAsync();
-      await this.tensionSound.unloadAsync();
-    } catch (e) {
-      console.warn("Error stopping tension music", e);
-    } finally {
-      this.tensionSound = null;
-    }
+    return this.enqueue(async () => {
+      if (!this.tensionSound) return;
+      try {
+        await this.tensionSound.stopAsync();
+        await this.tensionSound.unloadAsync();
+      } catch (e) {
+        console.warn("Error stopping tension music", e);
+      } finally {
+        this.tensionSound = null;
+      }
+    });
   }
 
   // ---------------------------
@@ -106,130 +135,145 @@ class AudioManager {
     source: AVPlaybackSource,
     opts: OneShotOptions = {}
   ) {
-    if (!this.enabled || !this.sfxEnabled) return;
+    return this.enqueue(async () => {
+      if (!this.enabled || !this.sfxEnabled) return;
 
-    const volume = (opts.volume ?? 1) * this.sfxLevel;
-    const sound = new Audio.Sound();
+      const volume = (opts.volume ?? 1) * this.sfxLevel;
+      const sound = new Audio.Sound();
 
-    try {
-      await sound.loadAsync(source);
-      await sound.setVolumeAsync(volume);
-      await sound.playAsync();
-
-      await new Promise<void>((resolve) => {
-        sound.setOnPlaybackStatusUpdate((status: any) => {
-          if (status?.didJustFinish) resolve();
-        });
-      });
-    } catch (error) {
-      console.warn("Error playOneShot", error);
-    } finally {
       try {
-        await sound.unloadAsync();
-      } catch {}
-    }
+        await sound.loadAsync(source);
+        await sound.setVolumeAsync(volume);
+        await sound.playAsync();
+
+        await new Promise<void>((resolve) => {
+          sound.setOnPlaybackStatusUpdate((status: any) => {
+            if (status?.didJustFinish) resolve();
+          });
+        });
+      } catch (error) {
+        console.warn("Error playOneShot", error);
+      } finally {
+        try {
+          await sound.unloadAsync();
+        } catch {}
+      }
+    });
   }
 
   // -----------------------
   // Keyboard typing sound
   // -----------------------
   static async startKeyboardLoop() {
-    if (!this.enabled || !this.sfxEnabled) return;
-    if (this.keyboardSound) return;
+    return this.enqueue(async () => {
+      if (!this.enabled || !this.sfxEnabled) return;
+      if (this.keyboardSound) return;
 
-    try {
-      this.keyboardSound = new Audio.Sound();
-      await this.keyboardSound.loadAsync(
-        require("../../assets/audio/keyboard3.wav")
-      );
-      await this.keyboardSound.setIsLoopingAsync(true);
-      await this.keyboardSound.setVolumeAsync(1 * this.sfxLevel);
-      await this.keyboardSound.playAsync();
-    } catch (e) {
-      console.warn("Error starting keyboard sound", e);
-    }
+      try {
+        this.keyboardSound = new Audio.Sound();
+        await this.keyboardSound.loadAsync(
+          require("../../assets/audio/keyboard3.wav")
+        );
+        await this.keyboardSound.setIsLoopingAsync(true);
+        await this.keyboardSound.setVolumeAsync(1 * this.sfxLevel);
+        await this.keyboardSound.playAsync();
+      } catch (e) {
+        console.warn("Error starting keyboard sound", e);
+      }
+    });
   }
 
   static async stopKeyboardLoop() {
-    if (!this.keyboardSound) return;
-    try {
-      await this.keyboardSound.stopAsync();
-      await this.keyboardSound.unloadAsync();
-    } catch {
-    } finally {
-      this.keyboardSound = null;
-    }
+    return this.enqueue(async () => {
+      if (!this.keyboardSound) return;
+      try {
+        await this.keyboardSound.stopAsync();
+        await this.keyboardSound.unloadAsync();
+      } catch {
+      } finally {
+        this.keyboardSound = null;
+      }
+    });
   }
 
   // ----------
   // Background
   // ----------
   static async playBackgroundFromStart() {
-    if (!this.enabled || !this.musicEnabled) return;
-    try {
-      await this.stopBackground();
-      await this.stopTensionLoop();
-      const sound = new Audio.Sound();
-      await sound.loadAsync(require("../../assets/audio/audio01.wav"));
-      await sound.setIsLoopingAsync(true);
-      await sound.setVolumeAsync(0.35 * this.musicLevel);
-      await sound.playAsync();
-      this.bgSound = sound;
-    } catch (error) {
-      console.warn("Error playBackgroundFromStart", error);
-    }
+    return this.enqueue(async () => {
+      if (!this.enabled || !this.musicEnabled) return;
+      try {
+        await AudioManager.stopBackgroundInner();
+        await AudioManager.stopTensionLoopInner();
+        const sound = new Audio.Sound();
+        await sound.loadAsync(require("../../assets/audio/audio01.wav"));
+        await sound.setIsLoopingAsync(true);
+        await sound.setVolumeAsync(0.35 * this.musicLevel);
+        await sound.playAsync();
+        this.bgSound = sound;
+      } catch (error) {
+        console.warn("Error playBackgroundFromStart", error);
+      }
+    });
   }
 
   static async playBackground() {
-    if (!this.enabled || !this.musicEnabled) return;
-    if (this.bgSound) return;
-    try {
-      this.bgSound = new Audio.Sound();
-      await this.bgSound.loadAsync(require("../../assets/audio/audio01.wav"));
-      await this.bgSound.setIsLoopingAsync(true);
-      await this.bgSound.setVolumeAsync(0.35 * this.musicLevel);
-      await this.bgSound.playAsync();
-    } catch (error) {
-      console.warn("Error playing bg music", error);
-    }
+    return this.enqueue(async () => {
+      if (!this.enabled || !this.musicEnabled) return;
+      if (this.bgSound) return;
+      try {
+        this.bgSound = new Audio.Sound();
+        await this.bgSound.loadAsync(require("../../assets/audio/audio01.wav"));
+        await this.bgSound.setIsLoopingAsync(true);
+        await this.bgSound.setVolumeAsync(0.35 * this.musicLevel);
+        await this.bgSound.playAsync();
+      } catch (error) {
+        console.warn("Error playing bg music", error);
+      }
+    });
   }
 
   static async playBackgroundGame() {
-    if (!this.enabled || !this.musicEnabled) return;
-    if (this.bgSound) return;
-    try {
-      this.bgSound = new Audio.Sound();
-      await this.bgSound.loadAsync(
-        require("../../assets/audio/gameplayMusic.wav")
-      );
-      await this.bgSound.setIsLoopingAsync(true);
-      await this.bgSound.setVolumeAsync(0.75 * this.musicLevel);
-      await this.bgSound.playAsync();
-    } catch (error) {
-      console.warn("Error playing bg music", error);
-    }
+    return this.enqueue(async () => {
+      if (!this.enabled || !this.musicEnabled) return;
+      if (this.bgSound) return;
+      try {
+        this.bgSound = new Audio.Sound();
+        await this.bgSound.loadAsync(
+          require("../../assets/audio/gameplayMusic.wav")
+        );
+        await this.bgSound.setIsLoopingAsync(true);
+        await this.bgSound.setVolumeAsync(0.75 * this.musicLevel);
+        await this.bgSound.playAsync();
+      } catch (error) {
+        console.warn("Error playing bg music", error);
+      }
+    });
   }
 
   /** Спира текущата музика и пуска gameplay музиката от начало. */
   static async playBackgroundGameFromStart() {
-    if (!this.enabled || !this.musicEnabled) return;
-    try {
-      await this.stopBackground();
-      await this.stopTensionLoop();
-      const sound = new Audio.Sound();
-      await sound.loadAsync(
-        require("../../assets/audio/gameplayMusic.wav")
-      );
-      await sound.setIsLoopingAsync(true);
-      await sound.setVolumeAsync(0.75 * this.musicLevel);
-      await sound.playAsync();
-      this.bgSound = sound;
-    } catch (error) {
-      console.warn("Error playBackgroundGameFromStart", error);
-    }
+    return this.enqueue(async () => {
+      if (!this.enabled || !this.musicEnabled) return;
+      try {
+        await AudioManager.stopBackgroundInner();
+        await AudioManager.stopTensionLoopInner();
+        const sound = new Audio.Sound();
+        await sound.loadAsync(
+          require("../../assets/audio/gameplayMusic.wav")
+        );
+        await sound.setIsLoopingAsync(true);
+        await sound.setVolumeAsync(0.75 * this.musicLevel);
+        await sound.playAsync();
+        this.bgSound = sound;
+      } catch (error) {
+        console.warn("Error playBackgroundGameFromStart", error);
+      }
+    });
   }
 
-  static async stopBackground() {
+  /** Raw stop — only call from inside {@link enqueue} or other Inner helpers. */
+  private static async stopBackgroundInner() {
     if (!this.bgSound) return;
     const sound = this.bgSound;
     this.bgSound = null;
@@ -244,39 +288,59 @@ class AudioManager {
     }
   }
 
+  private static async stopTensionLoopInner() {
+    if (!this.tensionSound) return;
+    try {
+      await this.tensionSound.stopAsync();
+      await this.tensionSound.unloadAsync();
+    } catch (e) {
+      console.warn("Error stopping tension music", e);
+    } finally {
+      this.tensionSound = null;
+    }
+  }
+
+  static async stopBackground() {
+    return this.enqueue(() => this.stopBackgroundInner());
+  }
+
   // -----------------------
   // Existing curtain / misc sounds (kept)
   // -----------------------
   static async playCurtainSound() {
-    if (!this.enabled) return;
-    try {
-      await this.stopCurtainSound();
-      this.curtainSound = new Audio.Sound();
-      await this.curtainSound.loadAsync(
-        require("../../assets/audio/audioCurtains.wav")
-      );
-      await this.curtainSound.setVolumeAsync(0.7 * this.sfxLevel);
-      await this.curtainSound.playAsync();
-    } catch (error) {
-      console.warn("Error playing curtain sound", error);
-    }
+    return this.enqueue(async () => {
+      if (!this.enabled) return;
+      try {
+        await this.stopCurtainSoundInner();
+        this.curtainSound = new Audio.Sound();
+        await this.curtainSound.loadAsync(
+          require("../../assets/audio/audioCurtains.wav")
+        );
+        await this.curtainSound.setVolumeAsync(0.7 * this.sfxLevel);
+        await this.curtainSound.playAsync();
+      } catch (error) {
+        console.warn("Error playing curtain sound", error);
+      }
+    });
   }
 
   static async playHeroSound() {
-    if (!this.enabled || !this.sfxEnabled) return;
-    try {
-      this.curtainSound = new Audio.Sound();
-      await this.curtainSound.loadAsync(
-        require("../../assets/audio/screena.wav")
-      );
-      await this.curtainSound.setVolumeAsync(1 * this.sfxLevel);
-      await this.curtainSound.playAsync();
-    } catch (error) {
-      console.warn("Error playing curtain sound", error);
-    }
+    return this.enqueue(async () => {
+      if (!this.enabled || !this.sfxEnabled) return;
+      try {
+        this.curtainSound = new Audio.Sound();
+        await this.curtainSound.loadAsync(
+          require("../../assets/audio/screena.wav")
+        );
+        await this.curtainSound.setVolumeAsync(1 * this.sfxLevel);
+        await this.curtainSound.playAsync();
+      } catch (error) {
+        console.warn("Error playing curtain sound", error);
+      }
+    });
   }
 
-  private static async stopCurtainSound() {
+  private static async stopCurtainSoundInner() {
     if (!this.curtainSound) return;
     try {
       await this.curtainSound.stopAsync();
@@ -286,47 +350,53 @@ class AudioManager {
   }
 
   static async playCurtainSoundClose() {
-    if (!this.enabled || !this.sfxEnabled) return;
-    try {
-      await this.stopCurtainSound();
-      this.curtainSound = new Audio.Sound();
-      await this.curtainSound.loadAsync(
-        require("../../assets/audio/closeCurtain.wav")
-      );
-      await this.curtainSound.setVolumeAsync(1 * this.sfxLevel);
-      await this.curtainSound.playAsync();
-    } catch (error) {
-      console.warn("Error playing curtain sound", error);
-    }
+    return this.enqueue(async () => {
+      if (!this.enabled || !this.sfxEnabled) return;
+      try {
+        await this.stopCurtainSoundInner();
+        this.curtainSound = new Audio.Sound();
+        await this.curtainSound.loadAsync(
+          require("../../assets/audio/closeCurtain.wav")
+        );
+        await this.curtainSound.setVolumeAsync(1 * this.sfxLevel);
+        await this.curtainSound.playAsync();
+      } catch (error) {
+        console.warn("Error playing curtain sound", error);
+      }
+    });
   }
 
   static async playCount() {
-    if (!this.enabled || !this.sfxEnabled) return;
-    try {
-      await this.stopCurtainSound();
-      this.curtainSound = new Audio.Sound();
-      await this.curtainSound.loadAsync(
-        require("../../assets/audio/count.wav")
-      );
-      await this.curtainSound.setVolumeAsync(1 * this.sfxLevel);
-      await this.curtainSound.playAsync();
-    } catch (error) {
-      console.warn("Error playing curtain sound", error);
-    }
+    return this.enqueue(async () => {
+      if (!this.enabled || !this.sfxEnabled) return;
+      try {
+        await this.stopCurtainSoundInner();
+        this.curtainSound = new Audio.Sound();
+        await this.curtainSound.loadAsync(
+          require("../../assets/audio/count.wav")
+        );
+        await this.curtainSound.setVolumeAsync(1 * this.sfxLevel);
+        await this.curtainSound.playAsync();
+      } catch (error) {
+        console.warn("Error playing curtain sound", error);
+      }
+    });
   }
 
   static async playHeroBuy() {
-    if (!this.enabled || !this.sfxEnabled) return;
-    try {
-      this.curtainSound = new Audio.Sound();
-      await this.curtainSound.loadAsync(
-        require("../../assets/audio/audioHorn.mp3")
-      );
-      await this.curtainSound.setVolumeAsync(0.7 * this.sfxLevel);
-      await this.curtainSound.playAsync();
-    } catch (error) {
-      console.warn("Error playing buy hero sound", error);
-    }
+    return this.enqueue(async () => {
+      if (!this.enabled || !this.sfxEnabled) return;
+      try {
+        this.curtainSound = new Audio.Sound();
+        await this.curtainSound.loadAsync(
+          require("../../assets/audio/audioHorn.mp3")
+        );
+        await this.curtainSound.setVolumeAsync(0.7 * this.sfxLevel);
+        await this.curtainSound.playAsync();
+      } catch (error) {
+        console.warn("Error playing buy hero sound", error);
+      }
+    });
   }
 
   // -----------------------
@@ -343,6 +413,7 @@ class AudioManager {
       volume: 0.95,
     });
   }
+
   static async heroPickerSwipe() {
     return this.playOneShot(
       require("../../assets/audio/maybe/UISounds_027.wav"),
@@ -356,19 +427,21 @@ class AudioManager {
   // Button click
   // ----------
   static async playButtonClick() {
-    if (!this.enabled || !this.sfxEnabled) return;
-    try {
-      const { sound } = await Audio.Sound.createAsync(
-        require("../../assets/audio/buttonClick.wav")
-      );
-      await sound.setVolumeAsync(0.7 * this.sfxLevel);
-      await sound.playAsync();
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if ((status as any).didJustFinish) sound.unloadAsync();
-      });
-    } catch (error) {
-      console.warn("Error playing button click", error);
-    }
+    return this.enqueue(async () => {
+      if (!this.enabled || !this.sfxEnabled) return;
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require("../../assets/audio/buttonClick.wav")
+        );
+        await sound.setVolumeAsync(0.7 * this.sfxLevel);
+        await sound.playAsync();
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if ((status as any).didJustFinish) void sound.unloadAsync();
+        });
+      } catch (error) {
+        console.warn("Error playing button click", error);
+      }
+    });
   }
 }
 

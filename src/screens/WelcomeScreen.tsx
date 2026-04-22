@@ -1,75 +1,65 @@
 // src/screens/WelcomeScreen.tsx
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
-  TouchableOpacity,
   Image,
   Pressable,
-  Animated,
+  ScrollView,
+  StyleSheet,
+  Platform,
 } from "react-native";
 import ImageBackgroundWithLoadGate from "../components/ImageBackgroundWithLoadGate";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 
-import CustomText from "../components/common/CustomText";
 import CustomButton from "../components/common/CustomButton";
 import LanguageSelector from "../components/LanguageSelector";
 import { backgrounds } from "../../assets/backgrounds";
 import { OnboardingStackParamList } from "../navigation/types";
 import CurtainOverlay from "../components/CurtainOverlay";
 import AudioManager from "../utils/audioManager";
-import { Entypo, FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../store/useUserStore";
 import { game_images } from "../../assets/images";
 import { trackPlayerSessionStarted } from "../api/analytics";
+import { useResponsive } from "../utils/responsive";
+import CustomText from "../components/common/CustomText";
+import ScreenTopBar from "../components/common/ScreenTopBar";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Welcome">;
-const useIconPressAnim = () => {
-  const anim = useRef(new Animated.Value(0)).current;
 
-  const pressIn = () =>
-    Animated.timing(anim, {
-      toValue: 1,
-      duration: 80,
-      useNativeDriver: true,
-    }).start();
-
-  const pressOut = () =>
-    Animated.timing(anim, {
-      toValue: 0,
-      duration: 120,
-      useNativeDriver: true,
-    }).start();
-
-  const style = {
-    transform: [
-      {
-        translateY: anim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, 4],
-        }),
-      },
-      {
-        scale: anim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [1, 0.94],
-        }),
-      },
-    ],
-  };
-
-  return { style, pressIn, pressOut };
-};
 export default function WelcomeScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<RouteProp<OnboardingStackParamList, "Welcome">>();
   const { t, i18n } = useTranslation();
+  const insets = useSafeAreaInsets();
   const { settings, updateSettings, user } = useAuthStore();
-  const [curtainActive, setCurtainActive] = useState(!route.params?.skipCurtain);
-  const settingsAnim = useIconPressAnim();
-  const profileAnim = useIconPressAnim();
+  const [curtainActive, setCurtainActive] = useState(
+    !route.params?.skipCurtain,
+  );
+  const {
+    logo,
+    htpOverlay,
+    horizontalPadding,
+    topIconSize,
+    logoBlockMarginTop,
+    windowHeight,
+    windowWidth,
+    isShortScreen,
+  } = useResponsive();
+
+  /** ~P30 Pro and similar; when they can't stay on one row, stack diagonally. */
+  const stackStoreAndRulebook = windowWidth < 420;
+  const stackedButtonsWidth = "65%";
+  const buttonsVerticalGap = 10;
+
+  const btnIconW = 72;
+  const btnIconH = 56;
+
   const logoSource = useMemo(() => {
     const sound = settings.soundEnabled ? "MusicOn" : "MusicOff";
 
@@ -104,155 +94,215 @@ export default function WelcomeScreen() {
     navigation.navigate("MenuPlay");
   };
 
+  const androidLangExtra = Platform.OS === "android" ? 36 : 0;
+  const languageBarHeight =
+    100 + insets.bottom + (isShortScreen ? 56 : 0) + androidLangExtra;
+  const scrollMinH = Math.max(windowHeight - 24, 480);
+
   return (
-    <SafeAreaView className="flex-1 relative" edges={["right", "left"]}>
-      <ImageBackgroundWithLoadGate
-        source={backgrounds.bg023}
-        style={{ flex: 1, width: "100%", height: "100%", position: "relative" }}
-        resizeMode="cover"
-      >
-        <View className="absolute top-16 left-8">
-          {/* <Ionicons name="settings" size={24} color="#fce58d" />
-           */}
-          <Pressable
-            onPressIn={settingsAnim.pressIn}
-            onPressOut={settingsAnim.pressOut}
-            onPress={() => {
-              AudioManager.playButtonClick();
-              navigation.navigate("Settings");
+    <View style={styles.root}>
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+        <ImageBackgroundWithLoadGate
+          source={backgrounds.bg023}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        >
+          <ScreenTopBar
+            horizontalPadding={horizontalPadding}
+            topIconSize={topIconSize}
+            showBack={false}
+            onSettings={() => navigation.navigate("Settings")}
+            onProfile={() => navigation.navigate("Profile")}
+          />
+
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={{
+              flexGrow: 1,
+              minHeight: scrollMinH,
+              paddingHorizontal: horizontalPadding,
+              paddingBottom: languageBarHeight + 8,
             }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
-            <Animated.Image
-              source={game_images.settingsIcon}
-              style={[
-                { width: 56, height: 56, resizeMode: "contain" },
-                settingsAnim.style,
-              ]}
-            />
-          </Pressable>
-        </View>
-        <View className="absolute top-16 right-8">
-          {/* <Ionicons name="settings" size={24} color="#fce58d" />
-           */}
-          <Pressable
-            onPressIn={profileAnim.pressIn}
-            onPressOut={profileAnim.pressOut}
-            onPress={() => {
-              AudioManager.playButtonClick();
-              navigation.navigate("Profile");
-            }}
-          >
-            <Animated.Image
-              source={game_images.userIcon}
-              style={[
-                { width: 56, height: 56, resizeMode: "contain" },
-                profileAnim.style,
-              ]}
-            />
-          </Pressable>
-        </View>
-        {/* <View className="absolute top-16 right-12 boxShadow bg-[#2db6d7] border-white border-2 rounded-full p-3 w-[48px] h-[48px] justify-center items-center">
-          <FontAwesome5 name="user-alt" size={24} color="white" />
-        </View> */}
-        <View className="flex-1 items-center w-full px-4 mt-[40px]">
-          <View className="mt-[80px]">
-            <Pressable className="mt-[80px]" onPress={toggleSound}>
-              <Image
-                source={game_images.htpIcon}
-                style={{
-                  width: 350,
-                  height: 260,
-                  position: "absolute",
-                  top: -88,
-                  left: 12,
-                }}
-                resizeMode="contain"
-              />
-              <Image
-                source={logoSource}
-                style={{ width: 360, height: 280 }}
-                resizeMode="contain"
-              />
-            </Pressable>
-          </View>
-          {/* <CustomText variant="h2-headline" className="text-center w-full">
-            {t("title_00")}
-            <TouchableOpacity
-              className="px-4"
-              onPress={() => {
-                toggleSound();
+            <View
+              style={{ marginTop: logoBlockMarginTop, alignItems: "center" }}
+            >
+              <Pressable onPress={toggleSound}>
+                <View
+                  style={{
+                    width: logo.width,
+                    height: logo.height,
+                    position: "relative",
+                    alignItems: "center",
+                  }}
+                >
+                  <Image
+                    source={game_images.htpIcon}
+                    style={{
+                      position: "absolute",
+                      width: htpOverlay.width,
+                      height: htpOverlay.height,
+                      top: htpOverlay.top,
+                      left: htpOverlay.left,
+                    }}
+                    resizeMode="contain"
+                  />
+                  <Image
+                    source={logoSource}
+                    style={{ width: logo.width, height: logo.height }}
+                    resizeMode="contain"
+                  />
+                </View>
+              </Pressable>
+            </View>
+
+            <View
+              style={{
+                width: "100%",
+                maxWidth: 420,
+                alignSelf: "center",
+                paddingTop: 20,
+                paddingBottom: stackStoreAndRulebook ? 8 : 64,
               }}
             >
-              <Entypo
-                name={settings.soundEnabled ? "sound" : "sound-mute"}
-                size={48}
-                color="white"
-                className=""
+              <CustomButton
+                title={t("menu_play_btn")}
+                appearance="primary"
+                onPress={handleStart}
+                backgroundImage={backgrounds.bg026}
+                glow
+                iconOverlayPadText={false}
+                glowColor="rgba(41,255,25,0.8)"
+                shadowColor="#005f07"
+                btnSize="md"
+                fontSize="md"
+                horizontalPadding={Math.min(52, horizontalPadding + 8)}
+                fullWidth
+                // icon={game_images.playIcon}
+                // iconWidth={btnIconW}
+                // iconHeight={btnIconH}
+                // iconSize={btnIconW}
+                // iconOverlayPreset="play"
+                // iconRotation="0deg"
+                // iconTop={4}
+                // iconLeft={-24}
               />
-            </TouchableOpacity>
-          </CustomText>
-          <CustomText
-            variant="h2"
-            className="-rotate-3 text-center w-full"
-            shadow
+            </View>
+
+            <View
+              style={{
+                flexDirection: stackStoreAndRulebook ? "column" : "row",
+                gap: buttonsVerticalGap,
+                width: "100%",
+                maxWidth: 420,
+                alignSelf: "center",
+                alignItems: "stretch",
+                marginTop: stackStoreAndRulebook ? buttonsVerticalGap : 16,
+                marginBottom: 8,
+              }}
+            >
+              <View
+                style={
+                  stackStoreAndRulebook
+                    ? { width: stackedButtonsWidth, alignSelf: "flex-start" }
+                    : { flex: 1, minWidth: 0, paddingTop: 8 }
+                }
+              >
+                <CustomButton
+                  title={t("menu_store_btn")}
+                  appearance="secondary"
+                  btnSize="sm"
+                  fontSize="sm"
+                  fullWidth
+                  backgroundImage={backgrounds.bg022}
+                  onPress={() => navigation.navigate("Store")}
+                  label="Ad-free 😎"
+                  shadowColor="#410047"
+                  icon={game_images.storeIcon}
+                  iconWidth={btnIconW}
+                  iconHeight={btnIconH}
+                  iconSize={btnIconW}
+                  iconOverlayPreset="store"
+                  iconRotation="4deg"
+                  iconLeft={-28}
+                  iconTop={3}
+                />
+              </View>
+              <View
+                style={
+                  stackStoreAndRulebook
+                    ? { width: stackedButtonsWidth, alignSelf: "flex-end" }
+                    : { flex: 1, minWidth: 0, paddingTop: 8 }
+                }
+              >
+                <CustomButton
+                  title={t("menu_htp_btn")}
+                  appearance="tertiary"
+                  onPress={() => navigation.navigate("Rules")}
+                  btnSize="sm"
+                  fontSize="sm"
+                  fullWidth
+                  backgroundImage={backgrounds.bg015}
+                  shadowColor="#540d0d"
+                  icon={game_images.rulebookIcon}
+                  iconWidth={btnIconW}
+                  iconHeight={btnIconH}
+                  iconSize={btnIconW}
+                  iconOverlayPreset="rulebook"
+                  iconRotation="-11deg"
+                  iconRight={-32}
+                />
+              </View>
+            </View>
+          </ScrollView>
+
+          <View
+            style={[
+              styles.languageDock,
+              {
+                paddingBottom:
+                  Math.max(insets.bottom, 12) +
+                  (isShortScreen ? 28 : 0) +
+                  (Platform.OS === "android" ? 24 : 0),
+                paddingHorizontal: horizontalPadding,
+              },
+            ]}
+            pointerEvents="box-none"
           >
-            {t("title_01")}
-          </CustomText> */}
-
-          <View className="mt-8">
-            <CustomButton
-              title={t("menu_play_btn")}
-              appearance="primary"
-              // onPress={() => navigation.navigate("MenuPlay")}
-              onPress={handleStart}
-              backgroundImage={backgrounds.bg026}
-              glow
-              glowColor="rgba(41,255,25,0.8)"
-              shadowColor="#005f07"
-              horizontalPadding={48}
-            />
+            <CustomText className="mb-2" variant="p-small">
+              {t("language_pick_btn")}
+            </CustomText>
+            <LanguageSelector />
           </View>
-        </View>
 
-        <View className="w-full p-8 items-center justify-center absolute bottom-12">
-          <View className="flex-row items-center justify-center gap-4 mt-12 w-full">
-            <View className="w-1/2">
-              <CustomButton
-                title={t("menu_store_btn")}
-                appearance="secondary"
-                btnSize="xs"
-                fontSize="sm"
-                fullWidth
-                backgroundImage={backgrounds.bg022}
-                // glow
-                // glowColor="rgba(240,130,255,0.8)"
-                onPress={() => navigation.navigate("Store")}
-                label="Ad-free 😎"
-                shadowColor="#410047"
-              />
-            </View>
-            <View className="w-1/2">
-              <CustomButton
-                title={t("menu_htp_btn")}
-                appearance="tertiary"
-                onPress={() => navigation.navigate("Rules")}
-                btnSize="xs"
-                fullWidth
-                backgroundImage={backgrounds.bg015}
-                // glow
-                // glowColor="rgba(255,167,73,0.8)"
-                shadowColor="#540d0d"
-              />
-            </View>
-          </View>
-          <CustomText className="mt-8 mb-4" variant="p-small">
-            {t("language_pick_btn")}
-          </CustomText>
-          <LanguageSelector />
-        </View>
-
-        {curtainActive && <CurtainOverlay onDone={onCurtainDone} />}
-      </ImageBackgroundWithLoadGate>
-    </SafeAreaView>
+          {curtainActive && <CurtainOverlay onDone={onCurtainDone} />}
+        </ImageBackgroundWithLoadGate>
+      </SafeAreaView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: "#0a0a0a",
+  },
+  safe: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
+  scroll: {
+    flex: 1,
+  },
+  languageDock: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: "center",
+    zIndex: 15,
+    backgroundColor: "transparent",
+  },
+});

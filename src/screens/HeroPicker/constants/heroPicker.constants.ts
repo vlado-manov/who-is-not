@@ -1,11 +1,24 @@
 // heroPicker.constants.ts — референция на всяка стойност
 import { Dimensions } from "react-native";
 
-const { height: H, width: W } = Dimensions.get("window");
+const { width: W } = Dimensions.get("window");
 
-// —— Stage (визуал) ——
-/** Височина на контейнера за героя: 60% от екрана, макс. 520px. Ползва се в createHeroPickerStyles() за stage/hero слой. */
-export const HERO_STAGE_HEIGHT = Math.min(Math.round(H * 0.6), 520);
+// —— Hero picker layout ——
+/** Разстояние под заглавието до зоната на героя (ratio от височината, напр. 0.04 = 4%). */
+export const HERO_PICKER_TITLE_TO_HERO_GAP = 0.015;
+/** Разстояние между героя и футъра (ratio от височината, напр. 0.01 = 1%). */
+export const HERO_PICKER_HERO_TO_FOOTER_GAP = 0;
+/** Large screens: title -> hero gap ratio. */
+export const HERO_PICKER_LARGE_SCREEN_TITLE_TO_HERO_GAP_RATIO = 0.05;
+/** Large screens: hero -> footer gap ratio. */
+export const HERO_PICKER_LARGE_SCREEN_HERO_TO_FOOTER_GAP_RATIO = 0.03;
+/** Height breakpoint for "large screen" hero picker spacing. */
+export const HERO_PICKER_LARGE_SCREEN_HEIGHT = 900;
+
+/** Bottom offset за сцената (ratio от височината; отрицателно = по-надолу). */
+export const HERO_PICKER_BOTTOM_ART_BOTTOM = -0.1;
+/** Височина на сцената като дял от hero зоната (0..1). */
+export const HERO_PICKER_BOTTOM_ART_HEIGHT_RATIO = 0.59;
 
 // —— Carousel (превключване герои) ——
 /** Продължителност (ms) на фазата „излизане”: slide out + fade out на текущия герой. */
