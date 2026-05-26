@@ -5,8 +5,10 @@ import MenuPlayScreen from "../screens/MenuPlayScreen";
 import StoreScreen from "../screens/StoreScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import ReferralScreen from "../screens/ReferralScreen";
-import SettingsScreen from "../screens/SettingsScreen";
 import HowToPlayScreen from "../screens/HowToPlayScreen";
+import PrivacyScreen from "../screens/PrivacyScreen";
+import TermsScreen from "../screens/TermsScreen";
+import SupportScreen from "../screens/SupportScreen";
 import DevMultiplayerLabScreen from "../screens/dev/DevMultiplayerLabScreen";
 import { Transitions } from "./transitions";
 
@@ -57,8 +59,8 @@ export default function OnboardingStackNavigator() {
         }}
       />
       <Stack.Screen
-        name="Settings"
-        component={SettingsScreen}
+        name="Rules"
+        component={HowToPlayScreen}
         options={{
           cardStyleInterpolator: Transitions.slideFromRight,
           gestureDirection: "horizontal",
@@ -67,8 +69,28 @@ export default function OnboardingStackNavigator() {
         }}
       />
       <Stack.Screen
-        name="Rules"
-        component={HowToPlayScreen}
+        name="Privacy"
+        component={PrivacyScreen}
+        options={{
+          cardStyleInterpolator: Transitions.slideFromRight,
+          gestureDirection: "horizontal",
+          cardStyle: { backgroundColor: "transparent" },
+          cardOverlayEnabled: false,
+        }}
+      />
+      <Stack.Screen
+        name="Terms"
+        component={TermsScreen}
+        options={{
+          cardStyleInterpolator: Transitions.slideFromRight,
+          gestureDirection: "horizontal",
+          cardStyle: { backgroundColor: "transparent" },
+          cardOverlayEnabled: false,
+        }}
+      />
+      <Stack.Screen
+        name="Support"
+        component={SupportScreen}
         options={{
           cardStyleInterpolator: Transitions.slideFromRight,
           gestureDirection: "horizontal",

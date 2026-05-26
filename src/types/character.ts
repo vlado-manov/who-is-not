@@ -24,6 +24,10 @@ export interface ICharacter {
   profileImage: ImageSourcePropType;
   /** Rate/number question result image. Fallback to Silent Vanessa if missing. */
   rateImage?: ImageSourcePropType | null;
+  /** Optional end-game winner image. Empty when not uploaded. */
+  finalWinnerImage?: ImageSourcePropType | null;
+  /** Optional end-game loser image. Empty when not uploaded. */
+  finalLoserImage?: ImageSourcePropType | null;
   winImages: ImageSourcePropType[];
   winVideo?: any;
   loseImages: ImageSourcePropType[];

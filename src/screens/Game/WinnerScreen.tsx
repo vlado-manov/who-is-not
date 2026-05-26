@@ -42,6 +42,7 @@ import { useHeroesStore } from "../../store/useHeroesStore";
 import { usePreventBack } from "../../hooks/usePreventBack";
 import { getRevealVariant } from "../../utils/revealQuotes";
 import { fetchRandomFunFact } from "../../api/questions";
+import { useTrackGameFinishedMutation } from "../../api/hooks/useAnalyticsMutations";
 import AppImage from "../../components/AppImage";
 import CustomButton from "../../components/common/CustomButton";
 import CustomText from "../../components/common/CustomText";
@@ -71,7 +72,8 @@ const WINNER_HERO_BOTTOM_PCT = 0.08;
 const WINNER_PLATFORM_HEIGHT_PCT = 0.3;
 const WINNER_PLATFORM_BOTTOM_PCT = 0;
 const WINNER_TITLE_TO_STAGE_GAP_PCT = 0.04;
-const CONFETTI_RENDER_MODE = Platform.OS === "android" ? "SOFTWARE" : "AUTOMATIC";
+const CONFETTI_RENDER_MODE =
+  Platform.OS === "android" ? "SOFTWARE" : "AUTOMATIC";
 
 function startAnim(animation: Animated.CompositeAnimation) {
   return new Promise<void>((resolve) => animation.start(() => resolve()));
@@ -93,12 +95,15 @@ export default function WinnerScreen() {
   const onlineIsHost = useGameStore((s) => s.onlineIsHost);
   const heroes = useHeroesStore((s) => s.heroes);
   const restartWithSamePlayersAndHeroes = useGameStore(
-    (s) => s.restartWithSamePlayersAndHeroes
+    (s) => s.restartWithSamePlayersAndHeroes,
   );
   const resetGameState = useGameStore((s) => s.reset);
   const round = useGameStore((s) => s.round);
   const gameId = useGameStore((s) => s.gameId);
   const updateSettings = useAuthStore((s) => s.updateSettings);
+  const userId = useAuthStore((s) => s.user.id);
+  const trackGameFinishedMutation = useTrackGameFinishedMutation();
+  const gameFinishedSentRef = useRef(false);
 
   useEffect(() => {
     if (gameId?.startsWith("dev_")) return;
@@ -146,7 +151,7 @@ export default function WinnerScreen() {
 
   const alivePlayers = useMemo(
     () => players.filter((p) => (lives[p.id] ?? 0) > 0),
-    [lives, players]
+    [lives, players],
   );
   const winnerPlayers = useMemo(() => {
     if (!alivePlayers.length) return [];
@@ -170,7 +175,8 @@ export default function WinnerScreen() {
   const isLocalEliminated =
     mode === "ONLINE" &&
     onlinePlayerId != null &&
-    (lives[onlinePlayerId] ?? 0) <= 0;
+    lives[onlinePlayerId] != null &&
+    lives[onlinePlayerId] <= 0;
 
   const effectiveWinnerStageIndex = useMemo(() => {
     if (mode === "ONLINE" && hasTwoWinners && onlinePlayerId) {
@@ -193,6 +199,28 @@ export default function WinnerScreen() {
   const shouldShowCoWinnerSticker =
     hasTwoWinners && mode !== "ONLINE" && winnerStageIndex === 1;
 
+  const maybeTrackGameFinished = useCallback(() => {
+    if (!gameId) return;
+    if (gameFinishedSentRef.current) return;
+    if (mode === "ONLINE" && !onlineIsHost) return;
+    gameFinishedSentRef.current = true;
+    trackGameFinishedMutation.mutate(
+      { gameId, mode, userId },
+      {
+        onError: (e) => {
+          gameFinishedSentRef.current = false;
+          console.warn("track GAME_FINISHED failed", e);
+        },
+      },
+    );
+  }, [gameId, mode, onlineIsHost, trackGameFinishedMutation, userId]);
+
+  useEffect(() => {
+    if (!showButtons) return;
+    if (shouldShowContinueButton) return;
+    maybeTrackGameFinished();
+  }, [showButtons, shouldShowContinueButton, maybeTrackGameFinished]);
+
   const votedWinner = useMemo(() => {
     if (!oddOneId) return null;
     const votedWinnerMap = Object.entries(votes).reduce(
@@ -201,7 +229,7 @@ export default function WinnerScreen() {
         acc[targetId] = (acc[targetId] || 0) + 1;
         return acc;
       },
-      {} as Record<string, number>
+      {} as Record<string, number>,
     );
     const maxVotes = Math.max(0, ...Object.values(votedWinnerMap));
     const topTargets = Object.entries(votedWinnerMap)
@@ -214,12 +242,12 @@ export default function WinnerScreen() {
   const impostorLost = !!oddOneId && votedWinner === oddOneId;
   const totalEligibleVoters = players.length > 0 ? players.length - 1 : 0;
   const votesForImpostor = Object.entries(votes).filter(
-    ([voterId, targetId]) => voterId !== oddOneId && targetId === oddOneId
+    ([voterId, targetId]) => voterId !== oddOneId && targetId === oddOneId,
   ).length;
   const revealVariant = getRevealVariant(
     votesForImpostor,
     totalEligibleVoters,
-    !impostorLost
+    !impostorLost,
   );
 
   const winnerHeroImage = useMemo(() => {
@@ -252,36 +280,36 @@ export default function WinnerScreen() {
   }, [i18n.language]);
   const surpriseTargetHeight = useMemo(
     () => Math.max(320, Math.round(windowHeight * 0.55)),
-    [windowHeight]
+    [windowHeight],
   );
   const winnerTitleHeight = useMemo(
     () => Math.round(windowHeight * 0.3),
-    [windowHeight]
+    [windowHeight],
   );
   const winnerHeroHeight = useMemo(
     () => Math.round(windowHeight * WINNER_HERO_HEIGHT_PCT),
-    [windowHeight]
+    [windowHeight],
   );
   const winnerPlatformHeight = useMemo(
     () => Math.round(windowHeight * WINNER_PLATFORM_HEIGHT_PCT),
-    [windowHeight]
+    [windowHeight],
   );
   const heroBottomOffset = useMemo(
     () => Math.round(windowHeight * WINNER_HERO_BOTTOM_PCT),
-    [windowHeight]
+    [windowHeight],
   );
   /** Stage vertical offset from screen bottom (percentage of screen height). */
   const platformBottomOffset = useMemo(
     () => Math.round(windowHeight * WINNER_PLATFORM_BOTTOM_PCT),
-    [windowHeight]
+    [windowHeight],
   );
   const titleTopOffset = useMemo(
     () => Math.round(windowHeight * 0.002),
-    [windowHeight]
+    [windowHeight],
   );
   const stageTopOffset = useMemo(
     () => Math.round(windowHeight * WINNER_TITLE_TO_STAGE_GAP_PCT),
-    [windowHeight]
+    [windowHeight],
   );
 
   useEffect(() => {
@@ -295,11 +323,11 @@ export default function WinnerScreen() {
     const fallbackPrimary = t("winner_fun_fact_fallback", DEFAULT_FUN_FACT);
     const fallbackSecondary = t(
       "winner_fun_fact_fallback_alt",
-      "Octopuses have three hearts."
+      "Octopuses have three hearts.",
     );
     const pickFallbackDifferent = (excluded?: string) => {
       const candidates = [fallbackPrimary, fallbackSecondary].map((s) =>
-        s.trim()
+        s.trim(),
       );
       const found = candidates.find((s) => s && s !== excluded);
       return found || fallbackPrimary;
@@ -368,6 +396,15 @@ export default function WinnerScreen() {
     winnerPlayers,
     winnerStageIndex,
   ]);
+
+  const funFactDisplay = useMemo(
+    () =>
+      funFactText
+        .replace(/\r?\n/g, " ")
+        .replace(/\s{2,}/g, " ")
+        .trim(),
+    [funFactText],
+  );
 
   const animateTitleBurst = async () => {
     await startAnim(
@@ -484,7 +521,7 @@ export default function WinnerScreen() {
             useNativeDriver: true,
           }),
         ]),
-      ])
+      ]),
     );
   };
 
@@ -494,8 +531,8 @@ export default function WinnerScreen() {
         () => {
           setConfettiBursts((v) => Math.max(v, idx + 1));
         },
-        650 * (idx + 1)
-      )
+        650 * (idx + 1),
+      ),
     );
   };
 
@@ -561,7 +598,7 @@ export default function WinnerScreen() {
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
-        ])
+        ]),
       );
 
       void animateTitleBurst();
@@ -588,26 +625,26 @@ export default function WinnerScreen() {
                 useNativeDriver: true,
               }),
             ]).start();
-          }, 520)
+          }, 520),
         );
       }
 
       timersRef.current.push(
         setTimeout(() => {
           setShowSecondWave(true);
-        }, 1500)
+        }, 1500),
       );
       timersRef.current.push(
         setTimeout(() => {
           setShowThirdWave(true);
-        }, 3200)
+        }, 3200),
       );
       timersRef.current.push(
         setTimeout(() => {
           setConfettiBursts(0);
           setShowSecondWave(false);
           setShowThirdWave(false);
-        }, 6400)
+        }, 6400),
       );
       timersRef.current.push(
         setTimeout(() => {
@@ -627,7 +664,7 @@ export default function WinnerScreen() {
               useNativeDriver: false,
             }),
           ]).start();
-        }, 6500)
+        }, 6500),
       );
     };
 
@@ -794,7 +831,7 @@ export default function WinnerScreen() {
                 useNativeDriver: false,
               }),
             ]).start();
-          }, 1000)
+          }, 1000),
         );
       });
     });
@@ -865,7 +902,7 @@ export default function WinnerScreen() {
       CommonActions.reset({
         index: 0,
         routes: [{ name: "Round" }],
-      })
+      }),
     );
     if (mode === "ONLINE" && onlineIsHost) {
       sendMultiplayerRelay({ type: HOST_SESSION_RESTART_MESSAGE_TYPE });
@@ -887,7 +924,7 @@ export default function WinnerScreen() {
             },
           },
         ],
-      })
+      }),
     );
     if (mode === "ONLINE" && onlineIsHost) {
       sendMultiplayerRelay({ type: HOST_SESSION_NEW_HEROES_MESSAGE_TYPE });
@@ -905,7 +942,7 @@ export default function WinnerScreen() {
       CommonActions.reset({
         index: 0,
         routes: [{ name: "Onboarding", params: { screen: "Menu" } }],
-      })
+      }),
     );
   };
   const handleContinueToSecondWinner = () => {
@@ -1272,8 +1309,9 @@ export default function WinnerScreen() {
                         variant="h5"
                         className="text-center"
                         textColor="#592410"
+                        allowWrap
                       >
-                        {funFactText}
+                        {funFactDisplay}
                       </CustomText>
                       <View style={styles.surpriseDivider} />
                       <CustomText

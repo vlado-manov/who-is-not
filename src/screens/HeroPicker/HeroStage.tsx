@@ -1,10 +1,10 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   View,
   Animated,
+  Easing,
   Pressable,
   PanResponderInstance,
-  Easing,
 } from "react-native";
 import { Image } from "expo-image";
 import AppImage from "../../components/AppImage";
@@ -16,6 +16,7 @@ import { ICharacter } from "../../types/character";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
+
 type Props = {
   hero: ICharacter;
   opacity: Animated.Value;
@@ -24,6 +25,8 @@ type Props = {
 
   canInteract: boolean;
   previewing: boolean;
+  /** True once the player has confirmed this hero. Triggers secondary image cross-fade. */
+  selected?: boolean;
 
   onPrev: () => void;
   onNext: () => void;
@@ -53,6 +56,7 @@ export function HeroStage({
   panResponder,
   canInteract,
   previewing,
+  selected = false,
   onPrev,
   onNext,
   leftArrowAnim,
@@ -71,12 +75,38 @@ export function HeroStage({
     // game_images.lock5,
   ];
   const sepiaOpacity = useRef(new Animated.Value(0.8)).current;
-  // const heroScale = useRef(new Animated.Value(1)).current;
   const lockTranslate = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   const lockScale = useRef(new Animated.Value(1)).current;
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [lockFrame, setLockFrame] = useState(0);
   const isLocked = !hero.unlocked;
+
+  // Secondary image scale-swap: main squishes away, secondary pops in
+  const mainImgScale = useRef(new Animated.Value(1)).current;
+  const secondaryImgScale = useRef(new Animated.Value(0)).current;
+  const hasSecondary = Boolean(hero.secondaryImage);
+
+  useEffect(() => {
+    if (selected && hasSecondary) {
+      Animated.parallel([
+        Animated.spring(mainImgScale, {
+          toValue: 0,
+          speed: 22,
+          bounciness: 0,
+          useNativeDriver: true,
+        }),
+        Animated.spring(secondaryImgScale, {
+          toValue: 1,
+          speed: 13,
+          bounciness: 9,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      mainImgScale.setValue(1);
+      secondaryImgScale.setValue(0);
+    }
+  }, [selected, hasSecondary, hero.id, mainImgScale, secondaryImgScale]);
   const bounceHero = () => {
     Animated.sequence([
       Animated.spring(heroScale, {
@@ -195,13 +225,46 @@ export function HeroStage({
           },
         ]}
       >
-        {/* BASE IMAGE */}
-        <AppImage
-          key={`hero-main-${hero.id}`}
-          source={hero.main_image}
-          contentFit="contain"
-          style={styles.heroImage}
-        />
+        {/* BASE IMAGE — scales away when secondary is shown */}
+        <Animated.View
+          style={[
+            styles.heroImage,
+            { transform: [{ scale: mainImgScale }] },
+          ]}
+          pointerEvents="none"
+        >
+          <AppImage
+            key={`hero-main-${hero.id}`}
+            source={hero.main_image}
+            contentFit="contain"
+            style={{ width: "100%", height: "100%" }}
+          />
+        </Animated.View>
+
+        {/* SECONDARY IMAGE — pops in with spring when hero is selected */}
+        {hasSecondary && (
+          <Animated.View
+            style={[
+              styles.heroImage,
+              {
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                transform: [{ scale: secondaryImgScale }],
+              },
+            ]}
+            pointerEvents="none"
+          >
+            <Image
+              key={`hero-secondary-${hero.id}`}
+              source={hero.secondaryImage as any}
+              contentFit="contain"
+              style={{ width: "100%", height: "100%" }}
+            />
+          </Animated.View>
+        )}
 
         {/* Static lock overlay (no animation state leakage between heroes) */}
         {isLocked && !isUnlocking && (

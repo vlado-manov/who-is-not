@@ -8,7 +8,9 @@ import {
   StyleSheet,
   Platform,
 } from "react-native";
+import FullBleedStack from "../components/FullBleedStack";
 import ImageBackgroundWithLoadGate from "../components/ImageBackgroundWithLoadGate";
+import WarmBubblesOverlay from "../components/WarmBubblesOverlay";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -29,11 +31,13 @@ import { trackPlayerSessionStarted } from "../api/analytics";
 import { useResponsive } from "../utils/responsive";
 import CustomText from "../components/common/CustomText";
 import ScreenTopBar from "../components/common/ScreenTopBar";
+import { useUserSettingsSheet } from "../context/UserSettingsModalContext";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Welcome">;
 
 export default function WelcomeScreen() {
   const navigation = useNavigation<Nav>();
+  const { openUserSettings } = useUserSettingsSheet();
   const route = useRoute<RouteProp<OnboardingStackParamList, "Welcome">>();
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -100,18 +104,24 @@ export default function WelcomeScreen() {
   const scrollMinH = Math.max(windowHeight - 24, 480);
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+    <FullBleedStack
+      rootStyle={styles.root}
+      backdrop={
         <ImageBackgroundWithLoadGate
           source={backgrounds.bg023}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         >
+          <WarmBubblesOverlay variant="normal" />
+        </ImageBackgroundWithLoadGate>
+      }
+    >
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
           <ScreenTopBar
             horizontalPadding={horizontalPadding}
             topIconSize={topIconSize}
             showBack={false}
-            onSettings={() => navigation.navigate("Settings")}
+            onSettings={() => openUserSettings()}
             onProfile={() => navigation.navigate("Profile")}
           />
 
@@ -278,9 +288,8 @@ export default function WelcomeScreen() {
           </View>
 
           {curtainActive && <CurtainOverlay onDone={onCurtainDone} />}
-        </ImageBackgroundWithLoadGate>
       </SafeAreaView>
-    </View>
+    </FullBleedStack>
   );
 }
 

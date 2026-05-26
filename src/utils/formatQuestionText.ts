@@ -1,8 +1,10 @@
 /**
- * Replaces {{name}} in question text for "rate X's ..." style questions.
- * - Non-impostor: "Rate your tech addiction..." (yourLabel, e.g. "your")
- * - Impostor (same question, with substitute): "Rate Maria's tech addiction..." (substituteName)
- * - Impostor (different question): "Rate your ..." (yourLabel)
+ * Replaces name placeholders in question text.
+ * Supports both `{{name}}` and `{name}`.
+ *
+ * - Non-impostor: placeholder -> `yourLabel` (usually the shared picked player name)
+ * - Impostor (same question, different name): placeholder -> `substituteName`
+ * - Impostor (different question): placeholder -> `substituteName` if provided, else `yourLabel`
  */
 export function formatQuestionWithName(
   text: string,
@@ -12,9 +14,9 @@ export function formatQuestionWithName(
     yourLabel: string;
   }
 ): string {
-  if (!text || !text.includes("{{name}}")) return text;
+  if (!text || !/\{\{name\}\}|\{name\}/.test(text)) return text;
   const { isImpostor, substituteName, yourLabel } = options;
   const replacement =
     isImpostor && substituteName?.trim() ? substituteName.trim() : yourLabel;
-  return text.replace(/\{\{name\}\}/g, replacement);
+  return text.replace(/\{\{name\}\}|\{name\}/g, replacement);
 }

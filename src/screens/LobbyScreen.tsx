@@ -167,7 +167,7 @@ export default function LobbyScreen() {
         const lang = (i18n.language ?? "en").slice(0, 2).toLowerCase();
         let questions: Awaited<ReturnType<typeof fetchQuestions>> = [];
         try {
-          questions = await fetchQuestions({ packs: packSlugs, lang });
+          questions = await fetchQuestions({ packs: packSlugs, lang, userId });
           if (!questions.length) {
             Alert.alert("Error", "No questions loaded. Check your connection.");
             return;

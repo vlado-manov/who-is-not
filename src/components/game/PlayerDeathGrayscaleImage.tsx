@@ -1,5 +1,10 @@
 import React from "react";
-import { ImageSourcePropType, Platform, StyleSheet } from "react-native";
+import {
+  ImageSourcePropType,
+  Platform,
+  StyleSheet,
+  View,
+} from "react-native";
 import { Image } from "expo-image";
 import { FilterImage } from "react-native-svg/filter-image";
 import type { Filters } from "react-native-svg/filter-image";
@@ -18,23 +23,32 @@ const GRAYSCALE_FE_MATRIX: Filters = [
 
 type Props = {
   source: ImageSourcePropType;
-  size: number;
+  /** Legacy square size — prefer `width` + `height`. */
+  size?: number;
+  width?: number;
+  height?: number;
 };
 
 /**
- * Grayscale hero for death screen — no `react-native-color-matrix-image-filters`
- * (native view missing in Expo Go). Uses `react-native-svg` FilterImage on native,
- * CSS filter on web.
+ * Grayscale hero overlay — same box + `contain` as the color layer beneath it.
  */
-export default function PlayerDeathGrayscaleImage({ source, size }: Props) {
+export default function PlayerDeathGrayscaleImage({
+  source,
+  size,
+  width,
+  height,
+}: Props) {
+  const w = width ?? size ?? 0;
+  const h = height ?? size ?? 0;
+  if (w <= 0 || h <= 0) return null;
+
   if (Platform.OS === "web") {
     return (
       <Image
         source={source}
         style={[
-          styles.img,
-          { width: size, height: size },
-          { filter: "grayscale(1)" } as object,
+          StyleSheet.absoluteFillObject,
+          { filter: "grayscale(1) sepia(0.18) hue-rotate(290deg) saturate(1.4)" } as object,
         ]}
         contentFit="contain"
         cachePolicy="memory-disk"
@@ -43,17 +57,15 @@ export default function PlayerDeathGrayscaleImage({ source, size }: Props) {
   }
 
   return (
-    <FilterImage
-      source={source}
-      width={size}
-      height={size}
-      resizeMode="contain"
-      style={{ width: size, height: size }}
-      filters={GRAYSCALE_FE_MATRIX}
-    />
+    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+      <FilterImage
+        source={source}
+        width={w}
+        height={h}
+        resizeMode="contain"
+        style={{ width: w, height: h, backgroundColor: "transparent" }}
+        filters={GRAYSCALE_FE_MATRIX}
+      />
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  img: { backgroundColor: "transparent" },
-});

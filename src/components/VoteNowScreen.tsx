@@ -9,13 +9,15 @@ import {
   StyleSheet,
 } from "react-native";
 import AppImage from "./AppImage";
+import FullBleedStack from "./FullBleedStack";
 import ImageBackgroundWithLoadGate from "./ImageBackgroundWithLoadGate";
+import WarmBubblesOverlay from "./WarmBubblesOverlay";
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 
 import { backgrounds } from "../../assets/backgrounds";
@@ -34,6 +36,8 @@ import {
   getVoteMarkBox,
   getVoteNowDecoration,
 } from "../utils/responsive";
+import { reportMultiplayerDiagnostic } from "../utils/multiplayerDiagnostics";
+import AudioManager from "../utils/audioManager";
 
 const VOTE_NOW_IMAGE_URLS = [
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/536c3912-ecb7-485e-a434-6702f142fdc9-voteNow1.webp",
@@ -43,17 +47,20 @@ const VOTE_NOW_IMAGE_URLS = [
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/44a2c8db-e7d3-4842-9149-3f76646c8145-voteNow6.webp",
 ];
 
+type R = RouteProp<GameStackParamList, "VoteNow">;
 type Nav = StackNavigationProp<GameStackParamList, "VoteNow">;
 
 const VoteNowScreen = () => {
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<Nav>();
+  const { voterIndex } = useRoute<R>().params;
   usePreventBack();
+  const continuedRef = useRef(false);
   const players = useGameStore((s) => s.players);
   const mode = useGameStore((s) => s.mode) as GameMode;
   const onlinePlayerId = useGameStore((s) => s.onlinePlayerId);
 
-  const firstVoter = players[0];
+  const currentVoter = players[voterIndex];
   const randomVoteNowImage = useMemo(
     () =>
       VOTE_NOW_IMAGE_URLS[
@@ -105,11 +112,23 @@ const VoteNowScreen = () => {
   const markTopPx = (effectiveStageHeight - markStackOuterHeight) / 2;
 
   const onStartVoting = () => {
-    if (!firstVoter) return;
-    const voterIndex =
-      mode === "ONLINE" ? getOnlinePlayerIndex(players, onlinePlayerId) : 0;
-    navigation.navigate("Vote", { voterIndex });
+    if (continuedRef.current) return;
+    if (!currentVoter) return;
+    if (mode === "ONLINE" && !onlinePlayerId) {
+      reportMultiplayerDiagnostic("vote_now_missing_online_player_id", {
+        playersCount: players.length,
+      });
+      return;
+    }
+    continuedRef.current = true;
+    const resolvedVoterIndex =
+      mode === "ONLINE" ? getOnlinePlayerIndex(players, onlinePlayerId) : voterIndex;
+    navigation.navigate("Vote", { voterIndex: resolvedVoterIndex });
   };
+
+  useEffect(() => {
+    void AudioManager.playBackgroundGame();
+  }, []);
 
   useEffect(() => {
     Animated.sequence([
@@ -171,11 +190,21 @@ const VoteNowScreen = () => {
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-primary-700" edges={["right", "left"]}>
-      <ImageBackgroundWithLoadGate
-        source={backgrounds.bg023}
-        style={{ flex: 1 }}
-        resizeMode="cover"
+    <FullBleedStack
+      rootStyle={{ flex: 1, backgroundColor: "#0a0a0a" }}
+      backdrop={
+        <ImageBackgroundWithLoadGate
+          source={backgrounds.bg023}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        >
+          <WarmBubblesOverlay variant="intense" />
+        </ImageBackgroundWithLoadGate>
+      }
+    >
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: "transparent" }}
+        edges={["right", "left"]}
       >
         <View
           style={styles.stage}
@@ -285,15 +314,19 @@ const VoteNowScreen = () => {
               </View>
             </Pressable>
 
-            <CustomText
-              variant="h4-headline"
-              className="px-2 text-center"
-              style={styles.titleUnderMark}
-            >
-              {firstVoter
-                ? t("first_player_name", { name: firstVoter.name })
-                : t("first_player_up")}
-            </CustomText>
+            {mode !== "ONLINE" ? (
+              <CustomText
+                variant="h4-headline"
+                className="px-2 text-center"
+                style={styles.titleUnderMark}
+              >
+                {currentVoter
+                  ? voterIndex === 0
+                    ? t("first_player_name", { name: currentVoter.name })
+                    : t("vote_now_player_turn", { name: currentVoter.name })
+                  : t("first_player_up")}
+              </CustomText>
+            ) : null}
           </Animated.View>
 
           <View
@@ -306,15 +339,21 @@ const VoteNowScreen = () => {
               },
             ]}
           >
-            <CustomText
-              variant="footnote"
-              className="px-2 text-center"
-              style={styles.hintAboveButton}
-            >
-              {firstVoter
-                ? t("first_voter_click_hint", { name: firstVoter.name })
-                : t("first_player_up")}
-            </CustomText>
+            {mode !== "ONLINE" ? (
+              <CustomText
+                variant="footnote"
+                className="px-2 text-center"
+                style={styles.hintAboveButton}
+              >
+                {currentVoter
+                  ? voterIndex === 0
+                    ? t("first_voter_click_hint", { name: currentVoter.name })
+                    : t("pass_device_vote_instruction", {
+                        name: currentVoter.name,
+                      })
+                  : t("first_player_up")}
+              </CustomText>
+            ) : null}
             <CustomButton
               title={t("its_me")}
               backgroundImage={backgrounds.bg026}
@@ -327,8 +366,8 @@ const VoteNowScreen = () => {
             />
           </View>
         </View>
-      </ImageBackgroundWithLoadGate>
-    </SafeAreaView>
+      </SafeAreaView>
+    </FullBleedStack>
   );
 };
 

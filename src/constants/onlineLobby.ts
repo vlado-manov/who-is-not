@@ -19,8 +19,8 @@ export const MP_PHASE_ALL_READY_MESSAGE_TYPE = "mp_phase_all_ready";
 /** Discussion phase (Results screen) — text chat broadcast to the room. */
 export const DISCUSSION_CHAT_MESSAGE_TYPE = "discussion_chat";
 
-/** Dead players only — shadow-realm chat (client filters by eliminated / lives). */
-export const DEAD_CHAT_MESSAGE_TYPE = "dead_chat";
+/** Results discussion: player tapped the timer to vote for skipping early (server adds fromPlayerId). */
+export const DISCUSSION_SKIP_VOTE_MESSAGE_TYPE = "discussion_skip_vote";
 
 /** Winner closed fun-fact overlay; host can show restart/quit after this. */
 export const WINNER_FACT_DISMISSED_MESSAGE_TYPE = "winner_fact_dismissed";

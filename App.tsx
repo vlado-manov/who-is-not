@@ -19,6 +19,7 @@ import "./global.css";
 import { loadStoredLanguagePreference } from "./src/i18n";
 
 import RootNavigator from "./src/navigation/RootNavigator";
+import { UserSettingsModalProvider } from "./src/context/UserSettingsModalContext";
 import CurtainOverlay from "./src/components/CurtainOverlay";
 import CrashBoundary from "./src/components/CrashBoundary";
 import { useAuthStore } from "./src/store/useUserStore";
@@ -273,21 +274,23 @@ export default function App() {
             }
           }}
         >
-          <StatusBar style="light" />
-          {!canShowCurtain ? (
-            <View style={{ flex: 1, backgroundColor: "#000" }} />
-          ) : (
-            <CrashBoundary>
-              <RootNavigator />
-              {!appReady && (
-                <CurtainOverlay
-                  onDone={onCurtainDone}
-                  mode="welcomeInitial"
-                  preloadWithProgress={preloadHeroPickerAssets}
-                />
-              )}
-            </CrashBoundary>
-          )}
+          <UserSettingsModalProvider>
+            <StatusBar style="light" />
+            {!canShowCurtain ? (
+              <View style={{ flex: 1, backgroundColor: "#000" }} />
+            ) : (
+              <CrashBoundary>
+                <RootNavigator />
+                {!appReady && (
+                  <CurtainOverlay
+                    onDone={onCurtainDone}
+                    mode="welcomeInitial"
+                    preloadWithProgress={preloadHeroPickerAssets}
+                  />
+                )}
+              </CrashBoundary>
+            )}
+          </UserSettingsModalProvider>
         </NavigationContainer>
       </QueryClientProvider>
     </SafeAreaProvider>

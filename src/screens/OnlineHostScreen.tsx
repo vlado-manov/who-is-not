@@ -17,7 +17,9 @@ import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
+import FullBleedStack from "../components/FullBleedStack";
 import ImageBackgroundWithLoadGate from "../components/ImageBackgroundWithLoadGate";
+import WarmBubblesOverlay from "../components/WarmBubblesOverlay";
 import CustomText from "../components/common/CustomText";
 import CustomButton from "../components/common/CustomButton";
 import { backgrounds } from "../../assets/backgrounds";
@@ -43,6 +45,7 @@ import {
   MIN_ONLINE_PLAYERS,
 } from "../constants/onlineLobby";
 import ScreenTopBar from "../components/common/ScreenTopBar";
+import { useUserSettingsSheet } from "../context/UserSettingsModalContext";
 import { useResponsive } from "../utils/responsive";
 import { goBackFromCreateGameToMenu } from "../navigation/goBackFromCreateGameToMenu";
 import {
@@ -77,15 +80,17 @@ export default function OnlineHostScreen() {
   } = useResponsive();
   const plateModalWidth = usePlateModalCardWidth();
   const { settings, updateSettings } = useAuthStore();
+  const userId = useAuthStore((s) => s.user.id);
   const navigation = useNavigation<Nav>();
+  const { openUserSettings } = useUserSettingsSheet();
   const applyOnlinePartySession = useGameStore(
-    (s) => s.applyOnlinePartySession
+    (s) => s.applyOnlinePartySession,
   );
   const prepareOnlineGameFromLobby = useGameStore(
-    (s) => s.prepareOnlineGameFromLobby
+    (s) => s.prepareOnlineGameFromLobby,
   );
   const setOnlineSessionLanguage = useGameStore(
-    (s) => s.setOnlineSessionLanguage
+    (s) => s.setOnlineSessionLanguage,
   );
 
   const hostPlayerId = useMemo(() => createOpaquePlayerId("host"), []);
@@ -100,14 +105,14 @@ export default function OnlineHostScreen() {
   const gameSettings = useGameStore((s) => s.gameSettings);
   const setGameSettings = useGameStore((s) => s.setGameSettings);
   const [selectedLives, setSelectedLives] = useState<3 | 5>(
-    gameSettings?.livesPerPlayer ?? 3
+    gameSettings?.livesPerPlayer ?? 3,
   );
   const [selectedSec, setSelectedSec] = useState<number>(
-    gameSettings?.discussionSeconds ?? 120
+    gameSettings?.discussionSeconds ?? 120,
   );
   const [availablePacks, setAvailablePacks] = useState<QuestionPackDto[]>([]);
   const [selectedSlugs, setSelectedSlugs] = useState<string[]>(
-    gameSettings?.selectedPacks ?? ["main"]
+    gameSettings?.selectedPacks ?? ["main"],
   );
   const [packsLoading, setPacksLoading] = useState(true);
   const [openTimeDropdown, setOpenTimeDropdown] = useState(false);
@@ -148,10 +153,10 @@ export default function OnlineHostScreen() {
   const startGameAfterTransitionRef = useRef<(() => void) | null>(null);
   const SLOT_MAX = 12;
   const slotScale = useRef(
-    Array.from({ length: SLOT_MAX }, () => new Animated.Value(1))
+    Array.from({ length: SLOT_MAX }, () => new Animated.Value(1)),
   ).current;
   const slotGlow = useRef(
-    Array.from({ length: SLOT_MAX }, () => new Animated.Value(0))
+    Array.from({ length: SLOT_MAX }, () => new Animated.Value(0)),
   ).current;
 
   const goBackToMenu = useCallback(() => {
@@ -168,7 +173,7 @@ export default function OnlineHostScreen() {
 
   const selectedDiscussionLabel = useMemo(
     () => formatDiscussionLabel(selectedSec),
-    [formatDiscussionLabel, selectedSec]
+    [formatDiscussionLabel, selectedSec],
   );
 
   const logoSource = useMemo(() => {
@@ -193,7 +198,7 @@ export default function OnlineHostScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchQuestionPacks()
+    fetchQuestionPacks({ userId })
       .then((packs) => {
         if (cancelled) return;
         setAvailablePacks(packs);
@@ -214,7 +219,7 @@ export default function OnlineHostScreen() {
     return () => {
       cancelled = true;
     };
-  }, [gameSettings?.selectedPacks]);
+  }, [gameSettings?.selectedPacks, userId]);
 
   const handleCreateRoom = useCallback(async () => {
     setCreateError(null);
@@ -408,7 +413,7 @@ export default function OnlineHostScreen() {
     if (count < REQUIRED_START_PLAYERS) {
       Alert.alert(
         t("required_alert_title"),
-        t("online_need_more_players", { min: REQUIRED_START_PLAYERS })
+        t("online_need_more_players", { min: REQUIRED_START_PLAYERS }),
       );
       return;
     }
@@ -497,519 +502,510 @@ export default function OnlineHostScreen() {
   }, []);
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+    <FullBleedStack
+      rootStyle={styles.root}
+      backdrop={
         <ImageBackgroundWithLoadGate
           source={backgrounds.bg027}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         >
-          <ScreenTopBar
-            variant="soloBackFromCenter"
-            horizontalPadding={horizontalPadding}
-            topIconSize={topIconSize}
-            showBack
-            onSettings={() => {}}
-            onProfile={() => {}}
-            onBack={onBackPress}
-            backAccessibilityLabel={t("back_btn")}
-          />
-          <ScrollView
-            removeClippedSubviews={false}
-            contentContainerStyle={{
-              flexGrow: 1,
-              paddingBottom: 48,
-            }}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={{ width: "100%" }}>
-              <View
-                style={{
-                  paddingHorizontal: horizontalPadding,
-                  alignItems: "center",
-                }}
-              >
-                <AnimatedLogoHero
-                  logoSource={logoSource}
-                  overlaySource={game_images.menuPlayIcon}
-                  logoWidth={logo.width}
-                  logoHeight={logo.height}
-                  overlayLayout={storeIconOverlay}
-                  marginTop={logoBlockMarginTop}
-                  onPress={toggleSound}
-                />
-              </View>
+          <WarmBubblesOverlay variant="normal" />
+        </ImageBackgroundWithLoadGate>
+      }
+    >
+      <SafeAreaView style={styles.safe} edges={["left", "right"]}>
+        <ScreenTopBar
+          variant="soloBackFromCenter"
+          horizontalPadding={horizontalPadding}
+          topIconSize={topIconSize}
+          showBack
+          onSettings={() => openUserSettings()}
+          onProfile={() => {}}
+          onBack={onBackPress}
+          backAccessibilityLabel={t("back_btn")}
+        />
+        <ScrollView
+          removeClippedSubviews={false}
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingBottom: 16,
+          }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={{ width: "100%" }}>
+            <View
+              style={{
+                paddingHorizontal: horizontalPadding,
+                alignItems: "center",
+              }}
+            >
+              <AnimatedLogoHero
+                logoSource={logoSource}
+                overlaySource={game_images.menuPlayIcon}
+                logoWidth={logo.width}
+                logoHeight={logo.height}
+                overlayLayout={storeIconOverlay}
+                marginTop={logoBlockMarginTop}
+                onPress={toggleSound}
+              />
+            </View>
 
-              {!joinCode ? (
-                <Animated.View
-                  style={{
-                    opacity: settingsOpacity,
-                    transform: [{ translateY: settingsTranslateY }],
-                  }}
-                  className="gap-4 w-full items-stretch"
-                >
-                  <View style={styles.modalWrap}>
-                    <View style={styles.namePlateShadow}>
-                      <ImageBackground
-                        source={backgrounds.bg005}
-                        resizeMode="stretch"
-                        imageStyle={{ borderRadius: 18 }}
-                        style={styles.namePlate}
-                      >
-                        <View style={styles.namePlateContent}>
+            {!joinCode ? (
+              <Animated.View
+                style={{
+                  opacity: settingsOpacity,
+                  transform: [{ translateY: settingsTranslateY }],
+                }}
+                className="gap-4 w-full items-stretch"
+              >
+                <View style={styles.modalWrap}>
+                  <View style={styles.namePlateShadow}>
+                    <ImageBackground
+                      source={backgrounds.bg005}
+                      resizeMode="stretch"
+                      imageStyle={{ borderRadius: 18 }}
+                      style={styles.namePlate}
+                    >
+                      <View style={styles.namePlateContent}>
+                        <CustomText
+                          variant="p"
+                          className="text-center"
+                          textColor="#762a05"
+                        >
+                          {t("game_settings")}
+                        </CustomText>
+                        <View style={styles.nameDivider} />
+                        <View style={styles.settingsSection}>
                           <CustomText
-                            variant="p"
-                            className="text-center"
-                            textColor="#762a05"
+                            variant="h6"
+                            className="text-center mb-2"
+                            textColor="#592410"
                           >
-                            {t("game_settings")}
+                            {t("lives_per_player")}
                           </CustomText>
-                          <View style={styles.nameDivider} />
-                          <View style={styles.settingsSection}>
-                            <CustomText
-                              variant="h6"
-                              className="text-center mb-2"
-                              textColor="#592410"
-                            >
-                              {t("lives_per_player")}
-                            </CustomText>
-                            <View style={styles.livesRow}>
-                              {LIVES_OPTIONS.map((l) => (
-                                <Pressable
-                                  key={l}
-                                  onPress={() => {
-                                    AudioManager.playButtonClick();
-                                    setSelectedLives(l);
-                                  }}
-                                  style={[
-                                    styles.livesOption,
-                                    selectedLives === l &&
-                                      styles.livesOptionSelected,
-                                  ]}
-                                >
-                                  <CustomText
-                                    variant="p"
-                                    textColor={
-                                      selectedLives === l
-                                        ? "#592410"
-                                        : "#762a05"
-                                    }
-                                  >
-                                    {String(l)}
-                                  </CustomText>
-                                </Pressable>
-                              ))}
-                            </View>
-                          </View>
-                          <View style={styles.nameDivider} />
-                          <View style={styles.settingsSection}>
-                            <CustomText
-                              variant="h6"
-                              className="text-center mb-2"
-                              textColor="#592410"
-                            >
-                              {t("time_for_discussion")}
-                            </CustomText>
-                            <View style={styles.dropdownWrap}>
+                          <View style={styles.livesRow}>
+                            {LIVES_OPTIONS.map((l) => (
                               <Pressable
-                                style={styles.dropdownTrigger}
+                                key={l}
                                 onPress={() => {
                                   AudioManager.playButtonClick();
-                                  setOpenTimeDropdown((v) => !v);
+                                  setSelectedLives(l);
                                 }}
+                                style={[
+                                  styles.livesOption,
+                                  selectedLives === l &&
+                                    styles.livesOptionSelected,
+                                ]}
                               >
-                                <CustomText variant="p" textColor="#592410">
-                                  {selectedDiscussionLabel}
-                                </CustomText>
-                                <FontAwesome
-                                  name={
-                                    openTimeDropdown ? "angle-up" : "angle-down"
+                                <CustomText
+                                  variant="p"
+                                  textColor={
+                                    selectedLives === l ? "#592410" : "#762a05"
                                   }
-                                  size={20}
-                                  color="#762a05"
-                                />
+                                >
+                                  {String(l)}
+                                </CustomText>
                               </Pressable>
-                              {openTimeDropdown ? (
-                                <View style={styles.dropdownList}>
-                                  <ScrollView
-                                    nestedScrollEnabled
-                                    showsVerticalScrollIndicator={false}
-                                    keyboardShouldPersistTaps="handled"
-                                  >
-                                    {TIME_OPTIONS.map((sec) => (
+                            ))}
+                          </View>
+                        </View>
+                        <View style={styles.nameDivider} />
+                        <View style={styles.settingsSection}>
+                          <CustomText
+                            variant="h6"
+                            className="text-center mb-2"
+                            textColor="#592410"
+                          >
+                            {t("time_for_discussion")}
+                          </CustomText>
+                          <View style={styles.dropdownWrap}>
+                            <Pressable
+                              style={styles.dropdownTrigger}
+                              onPress={() => {
+                                AudioManager.playButtonClick();
+                                setOpenTimeDropdown((v) => !v);
+                              }}
+                            >
+                              <CustomText variant="p" textColor="#592410">
+                                {selectedDiscussionLabel}
+                              </CustomText>
+                              <FontAwesome
+                                name={
+                                  openTimeDropdown ? "angle-up" : "angle-down"
+                                }
+                                size={20}
+                                color="#762a05"
+                              />
+                            </Pressable>
+                            {openTimeDropdown ? (
+                              <View style={styles.dropdownList}>
+                                <ScrollView
+                                  nestedScrollEnabled
+                                  showsVerticalScrollIndicator={false}
+                                  keyboardShouldPersistTaps="handled"
+                                >
+                                  {TIME_OPTIONS.map((sec) => (
+                                    <Pressable
+                                      key={sec}
+                                      style={[
+                                        styles.dropdownItem,
+                                        sec === selectedSec &&
+                                          styles.dropdownItemSelected,
+                                      ]}
+                                      onPress={() => {
+                                        AudioManager.playButtonClick();
+                                        setSelectedSec(sec);
+                                        setOpenTimeDropdown(false);
+                                      }}
+                                    >
+                                      <CustomText
+                                        variant="p-small"
+                                        textColor={
+                                          sec === selectedSec
+                                            ? "#762a05"
+                                            : "#592410"
+                                        }
+                                      >
+                                        {formatDiscussionLabel(sec)}
+                                      </CustomText>
+                                    </Pressable>
+                                  ))}
+                                </ScrollView>
+                              </View>
+                            ) : null}
+                          </View>
+                        </View>
+                        <View style={styles.nameDivider} />
+                        <View
+                          style={[styles.settingsSection, styles.packsSection]}
+                        >
+                          <CustomText
+                            variant="h6"
+                            className="text-center mb-2"
+                            textColor="#592410"
+                          >
+                            {t("packages_included")}
+                          </CustomText>
+                          {packsLoading ? (
+                            <View style={styles.packsLoading}>
+                              <ActivityIndicator size="small" color="#762a05" />
+                            </View>
+                          ) : (
+                            <ScrollView
+                              style={styles.packsScroll}
+                              contentContainerStyle={styles.packsScrollContent}
+                              showsVerticalScrollIndicator={false}
+                              nestedScrollEnabled
+                            >
+                              {availablePacks.length === 0 ? (
+                                <CustomText
+                                  variant="p-small"
+                                  className="text-center py-2"
+                                  textColor="#762a05"
+                                >
+                                  {t("no_packs_available") ||
+                                    "No question packs available."}
+                                </CustomText>
+                              ) : (
+                                <View style={styles.packsList}>
+                                  {availablePacks.map((pack) => {
+                                    const checked = selectedSlugs.includes(
+                                      pack.slug,
+                                    );
+                                    const isMain = isMainPack(pack.slug);
+                                    return (
                                       <Pressable
-                                        key={sec}
-                                        style={[
-                                          styles.dropdownItem,
-                                          sec === selectedSec &&
-                                            styles.dropdownItemSelected,
-                                        ]}
+                                        key={pack.slug}
                                         onPress={() => {
                                           AudioManager.playButtonClick();
-                                          setSelectedSec(sec);
-                                          setOpenTimeDropdown(false);
+                                          setSelectedSlugs((prev) => {
+                                            if (prev.includes(pack.slug)) {
+                                              if (prev.length === 1) {
+                                                Alert.alert(
+                                                  t("required_alert_title"),
+                                                  t("required_alert_message"),
+                                                );
+                                                return prev;
+                                              }
+                                              return prev.filter(
+                                                (x) => x !== pack.slug,
+                                              );
+                                            }
+                                            if (prev.length >= 5) {
+                                              Alert.alert(
+                                                t("limit_alert_title"),
+                                                t("limit_alert_message"),
+                                              );
+                                              return prev;
+                                            }
+                                            return [...prev, pack.slug];
+                                          });
                                         }}
+                                        style={[
+                                          styles.packRow,
+                                          checked && styles.packRowChecked,
+                                        ]}
                                       >
                                         <CustomText
                                           variant="p-small"
                                           textColor={
-                                            sec === selectedSec
-                                              ? "#762a05"
-                                              : "#592410"
+                                            checked ? "#592410" : "#762a05"
                                           }
                                         >
-                                          {formatDiscussionLabel(sec)}
+                                          {pack.title} ({pack.questionsCount})
+                                          {isMain ? " ★" : ""}
                                         </CustomText>
-                                      </Pressable>
-                                    ))}
-                                  </ScrollView>
-                                </View>
-                              ) : null}
-                            </View>
-                          </View>
-                          <View style={styles.nameDivider} />
-                          <View
-                            style={[
-                              styles.settingsSection,
-                              styles.packsSection,
-                            ]}
-                          >
-                            <CustomText
-                              variant="h6"
-                              className="text-center mb-2"
-                              textColor="#592410"
-                            >
-                              {t("packages_included")}
-                            </CustomText>
-                            {packsLoading ? (
-                              <View style={styles.packsLoading}>
-                                <ActivityIndicator
-                                  size="small"
-                                  color="#762a05"
-                                />
-                              </View>
-                            ) : (
-                              <ScrollView
-                                style={styles.packsScroll}
-                                contentContainerStyle={
-                                  styles.packsScrollContent
-                                }
-                                showsVerticalScrollIndicator={false}
-                                nestedScrollEnabled
-                              >
-                                {availablePacks.length === 0 ? (
-                                  <CustomText
-                                    variant="p-small"
-                                    className="text-center py-2"
-                                    textColor="#762a05"
-                                  >
-                                    {t("no_packs_available") ||
-                                      "No question packs available."}
-                                  </CustomText>
-                                ) : (
-                                  <View style={styles.packsList}>
-                                    {availablePacks.map((pack) => {
-                                      const checked = selectedSlugs.includes(
-                                        pack.slug
-                                      );
-                                      const isMain = isMainPack(pack.slug);
-                                      return (
-                                        <Pressable
-                                          key={pack.slug}
-                                          onPress={() => {
-                                            AudioManager.playButtonClick();
-                                            setSelectedSlugs((prev) => {
-                                              if (prev.includes(pack.slug)) {
-                                                if (prev.length === 1) {
-                                                  Alert.alert(
-                                                    t("required_alert_title"),
-                                                    t("required_alert_message")
-                                                  );
-                                                  return prev;
-                                                }
-                                                return prev.filter(
-                                                  (x) => x !== pack.slug
-                                                );
-                                              }
-                                              if (prev.length >= 5) {
-                                                Alert.alert(
-                                                  t("limit_alert_title"),
-                                                  t("limit_alert_message")
-                                                );
-                                                return prev;
-                                              }
-                                              return [...prev, pack.slug];
-                                            });
-                                          }}
+                                        <View
                                           style={[
-                                            styles.packRow,
-                                            checked && styles.packRowChecked,
+                                            styles.checkbox,
+                                            checked && styles.checkboxChecked,
                                           ]}
                                         >
-                                          <CustomText
-                                            variant="p-small"
-                                            textColor={
-                                              checked ? "#592410" : "#762a05"
-                                            }
-                                          >
-                                            {pack.title} ({pack.questionsCount})
-                                            {isMain ? " ★" : ""}
-                                          </CustomText>
-                                          <View
-                                            style={[
-                                              styles.checkbox,
-                                              checked && styles.checkboxChecked,
-                                            ]}
-                                          >
-                                            {checked ? (
-                                              <FontAwesome
-                                                name="check"
-                                                size={12}
-                                                color="#fff"
-                                              />
-                                            ) : null}
-                                          </View>
-                                        </Pressable>
-                                      );
-                                    })}
-                                  </View>
-                                )}
-                              </ScrollView>
-                            )}
-                          </View>
+                                          {checked ? (
+                                            <FontAwesome
+                                              name="check"
+                                              size={12}
+                                              color="#fff"
+                                            />
+                                          ) : null}
+                                        </View>
+                                      </Pressable>
+                                    );
+                                  })}
+                                </View>
+                              )}
+                            </ScrollView>
+                          )}
                         </View>
-                      </ImageBackground>
-                    </View>
+                      </View>
+                    </ImageBackground>
                   </View>
-                  <View
-                    style={[
-                      { paddingHorizontal: 24, marginTop: 8 },
-                      styles.ctaBelowSettings,
-                    ]}
+                </View>
+                <View
+                  style={[
+                    { paddingHorizontal: 24, marginTop: 8 },
+                    styles.ctaBelowSettings,
+                  ]}
+                >
+                  {createError ? (
+                    <CustomText className="text-red-200 text-center">
+                      {createError}
+                    </CustomText>
+                  ) : null}
+                  <CustomButton
+                    title={t("online_create_room_btn")}
+                    fullWidth
+                    onPress={() => {
+                      AudioManager.playButtonClick();
+                      void handleCreateRoom();
+                    }}
+                    disabled={creating}
+                    backgroundImage={backgrounds.bg026}
+                    shadowColor="#005f07"
+                  />
+                  {creating ? (
+                    <ActivityIndicator color="#fff" size="large" />
+                  ) : null}
+                </View>
+              </Animated.View>
+            ) : (
+              <Animated.View
+                style={{
+                  opacity: roomOpacity,
+                  transform: [{ translateY: roomTranslateY }],
+                }}
+                className="gap-5 w-full items-stretch"
+              >
+                <View style={styles.modalWrap}>
+                  <View style={styles.namePlateShadow}>
+                    <ImageBackground
+                      source={backgrounds.bg005}
+                      resizeMode="stretch"
+                      imageStyle={{ borderRadius: 18 }}
+                      style={styles.namePlate}
+                    >
+                      <View style={styles.namePlateContent}>
+                        <CustomText
+                          variant="p"
+                          className="text-center"
+                          textColor="#762a05"
+                        >
+                          {t("online_room_code_label")}
+                        </CustomText>
+                        <View style={styles.nameDivider} />
+                        <TouchableOpacity
+                          onPress={() => void copyCode()}
+                          activeOpacity={0.9}
+                        >
+                          <View style={styles.codeBox}>
+                            <CustomText
+                              variant="h4-headline"
+                              className="text-center tracking-[0.2em]"
+                              textColor="#592410"
+                            >
+                              {joinCode}
+                            </CustomText>
+                          </View>
+                        </TouchableOpacity>
+                        <View style={styles.nameDivider} />
+
+                        <View style={styles.quickActionsRow}>
+                          <Pressable
+                            onPress={() => void copyCode()}
+                            style={styles.quickActionItem}
+                          >
+                            <View className="flex-row items-center gap-2 justify-center">
+                              <Feather name="copy" size={18} color="#592410" />
+                              <CustomText
+                                variant="p-small"
+                                textColor="#592410"
+                                numberOfLines={2}
+                              >
+                                {t("copy_link")}
+                              </CustomText>
+                            </View>
+                          </Pressable>
+                          <Pressable
+                            onPress={() => void shareCode()}
+                            style={styles.quickActionItem}
+                          >
+                            <View className="flex-row items-center gap-2 justify-center">
+                              <Feather
+                                name="share-2"
+                                size={18}
+                                color="#592410"
+                              />
+                              <CustomText
+                                variant="p-small"
+                                textColor="#592410"
+                                numberOfLines={2}
+                              >
+                                {t("share")}
+                              </CustomText>
+                            </View>
+                          </Pressable>
+                        </View>
+                        <View style={styles.nameDivider} />
+                        <View style={styles.roomMetaBox}>
+                          <CustomText
+                            variant="p-small"
+                            className="text-center"
+                            textColor="#592410"
+                          >
+                            {t("online_waiting_players_status", {
+                              defaultValue: "Waiting players: {{count}}",
+                              count: participantCount,
+                            })}
+                          </CustomText>
+                          <CustomText
+                            variant="p-xsmall"
+                            className="text-center mt-1"
+                            textColor="#762a05"
+                          >
+                            {connLabel}
+                          </CustomText>
+                          {hostSecret ? (
+                            <CustomText
+                              variant="p-xsmall"
+                              className="text-center mt-2"
+                              textColor="#762a05"
+                            >
+                              {t("online_host_secret_hint")}
+                            </CustomText>
+                          ) : null}
+                        </View>
+                      </View>
+                    </ImageBackground>
+                  </View>
+                </View>
+
+                <View
+                  style={[
+                    { paddingHorizontal: horizontalPadding },
+                    styles.ctaBelowSettings,
+                  ]}
+                >
+                  <Animated.View
+                    style={{
+                      transform: [{ scale: playersPulse }],
+                    }}
+                    className="w-full"
                   >
-                    {createError ? (
-                      <CustomText className="text-red-200 text-center">
-                        {createError}
-                      </CustomText>
-                    ) : null}
+                    <View className="flex-row flex-wrap gap-2 justify-center">
+                      {Array.from({
+                        length: Math.max(6, participantCount),
+                      }).map((_, i) => {
+                        const active = i < participantCount;
+                        return (
+                          <Animated.View
+                            key={i}
+                            style={{
+                              transform: [
+                                {
+                                  scale: i < SLOT_MAX ? slotScale[i] : 1,
+                                },
+                              ],
+                            }}
+                          >
+                            <ImageBackground
+                              source={backgrounds.bg005}
+                              resizeMode="stretch"
+                              imageStyle={{ borderRadius: 10 }}
+                              style={[
+                                styles.playerSlotBg,
+                                active
+                                  ? styles.playerSlotBgActive
+                                  : styles.playerSlotBgInactive,
+                              ]}
+                            >
+                              {active && i < SLOT_MAX ? (
+                                <Animated.View
+                                  pointerEvents="none"
+                                  style={[
+                                    StyleSheet.absoluteFill,
+                                    {
+                                      borderRadius: 10,
+                                      backgroundColor: "#ff9d00",
+                                      opacity: slotGlow[i],
+                                    },
+                                  ]}
+                                />
+                              ) : null}
+                              <MaterialCommunityIcons
+                                name={active ? "account-check" : "account"}
+                                size={24}
+                                color={active ? "#12e049" : "#d8d8d8"}
+                              />
+                            </ImageBackground>
+                          </Animated.View>
+                        );
+                      })}
+                    </View>
+                  </Animated.View>
+
+                  <Animated.View
+                    style={{
+                      width: "100%",
+                      opacity: startCtaOpacity,
+                      transform: [{ scale: startCtaScale }],
+                      marginTop: 24,
+                    }}
+                  >
                     <CustomButton
-                      title={t("online_create_room_btn")}
+                      title={t("online_start_game_btn")}
                       fullWidth
-                      onPress={() => {
-                        AudioManager.playButtonClick();
-                        void handleCreateRoom();
-                      }}
-                      disabled={creating}
+                      onPress={() => void handleStartGame()}
+                      disabled={!canStartGame}
                       backgroundImage={backgrounds.bg026}
                       shadowColor="#005f07"
                     />
-                    {creating ? (
-                      <ActivityIndicator color="#fff" size="large" />
-                    ) : null}
-                  </View>
-                </Animated.View>
-              ) : (
-                <Animated.View
-                  style={{
-                    opacity: roomOpacity,
-                    transform: [{ translateY: roomTranslateY }],
-                  }}
-                  className="gap-5 w-full items-stretch"
-                >
-                  <View style={styles.modalWrap}>
-                    <View style={styles.namePlateShadow}>
-                      <ImageBackground
-                        source={backgrounds.bg005}
-                        resizeMode="stretch"
-                        imageStyle={{ borderRadius: 18 }}
-                        style={styles.namePlate}
-                      >
-                        <View style={styles.namePlateContent}>
-                          <CustomText
-                            variant="p"
-                            className="text-center"
-                            textColor="#762a05"
-                          >
-                            {t("online_room_code_label")}
-                          </CustomText>
-                          <View style={styles.nameDivider} />
-                          <TouchableOpacity
-                            onPress={() => void copyCode()}
-                            activeOpacity={0.9}
-                          >
-                            <View style={styles.codeBox}>
-                              <CustomText
-                                variant="h4-headline"
-                                className="text-center tracking-[0.2em]"
-                                textColor="#592410"
-                              >
-                                {joinCode}
-                              </CustomText>
-                            </View>
-                          </TouchableOpacity>
-                          <View style={styles.nameDivider} />
-
-                          <View style={styles.quickActionsRow}>
-                            <Pressable
-                              onPress={() => void copyCode()}
-                              style={styles.quickActionItem}
-                            >
-                              <View className="flex-row items-center gap-2 justify-center">
-                                <Feather
-                                  name="copy"
-                                  size={18}
-                                  color="#592410"
-                                />
-                                <CustomText
-                                  variant="p-small"
-                                  textColor="#592410"
-                                  numberOfLines={2}
-                                >
-                                  {t("copy_link")}
-                                </CustomText>
-                              </View>
-                            </Pressable>
-                            <Pressable
-                              onPress={() => void shareCode()}
-                              style={styles.quickActionItem}
-                            >
-                              <View className="flex-row items-center gap-2 justify-center">
-                                <Feather
-                                  name="share-2"
-                                  size={18}
-                                  color="#592410"
-                                />
-                                <CustomText
-                                  variant="p-small"
-                                  textColor="#592410"
-                                  numberOfLines={2}
-                                >
-                                  {t("share")}
-                                </CustomText>
-                              </View>
-                            </Pressable>
-                          </View>
-                          <View style={styles.nameDivider} />
-                          <View style={styles.roomMetaBox}>
-                            <CustomText
-                              variant="p-small"
-                              className="text-center"
-                              textColor="#592410"
-                            >
-                              {t("online_waiting_players_status", {
-                                defaultValue: "Waiting players: {{count}}",
-                                count: participantCount,
-                              })}
-                            </CustomText>
-                            <CustomText
-                              variant="p-xsmall"
-                              className="text-center mt-1"
-                              textColor="#762a05"
-                            >
-                              {connLabel}
-                            </CustomText>
-                            {hostSecret ? (
-                              <CustomText
-                                variant="p-xsmall"
-                                className="text-center mt-2"
-                                textColor="#762a05"
-                              >
-                                {t("online_host_secret_hint")}
-                              </CustomText>
-                            ) : null}
-                          </View>
-                        </View>
-                      </ImageBackground>
-                    </View>
-                  </View>
-
-                  <View
-                    style={[
-                      { paddingHorizontal: horizontalPadding },
-                      styles.ctaBelowSettings,
-                    ]}
-                  >
-                    <Animated.View
-                      style={{
-                        transform: [{ scale: playersPulse }],
-                      }}
-                      className="w-full"
-                    >
-                      <View className="flex-row flex-wrap gap-2 justify-center">
-                        {Array.from({
-                          length: Math.max(6, participantCount),
-                        }).map((_, i) => {
-                          const active = i < participantCount;
-                          return (
-                            <Animated.View
-                              key={i}
-                              style={{
-                                transform: [
-                                  {
-                                    scale: i < SLOT_MAX ? slotScale[i] : 1,
-                                  },
-                                ],
-                              }}
-                            >
-                              <ImageBackground
-                                source={backgrounds.bg005}
-                                resizeMode="stretch"
-                                imageStyle={{ borderRadius: 10 }}
-                                style={[
-                                  styles.playerSlotBg,
-                                  active
-                                    ? styles.playerSlotBgActive
-                                    : styles.playerSlotBgInactive,
-                                ]}
-                              >
-                                {active && i < SLOT_MAX ? (
-                                  <Animated.View
-                                    pointerEvents="none"
-                                    style={[
-                                      StyleSheet.absoluteFill,
-                                      {
-                                        borderRadius: 10,
-                                        backgroundColor: "#ff9d00",
-                                        opacity: slotGlow[i],
-                                      },
-                                    ]}
-                                  />
-                                ) : null}
-                                <MaterialCommunityIcons
-                                  name={active ? "account-check" : "account"}
-                                  size={24}
-                                  color={active ? "#12e049" : "#d8d8d8"}
-                                />
-                              </ImageBackground>
-                            </Animated.View>
-                          );
-                        })}
-                      </View>
-                    </Animated.View>
-
-                    <Animated.View
-                      style={{
-                        width: "100%",
-                        opacity: startCtaOpacity,
-                        transform: [{ scale: startCtaScale }],
-                        marginTop: 24,
-                      }}
-                    >
-                      <CustomButton
-                        title={t("online_start_game_btn")}
-                        fullWidth
-                        onPress={() => void handleStartGame()}
-                        disabled={!canStartGame}
-                        backgroundImage={backgrounds.bg026}
-                        shadowColor="#005f07"
-                      />
-                    </Animated.View>
-                  </View>
-                </Animated.View>
-              )}
-            </View>
-          </ScrollView>
-        </ImageBackgroundWithLoadGate>
+                  </Animated.View>
+                </View>
+              </Animated.View>
+            )}
+          </View>
+        </ScrollView>
         {copyToastVisible ? (
           <Animated.View
             pointerEvents="none"
@@ -1140,7 +1136,7 @@ export default function OnlineHostScreen() {
           </Pressable>
         ) : null}
       </SafeAreaView>
-    </View>
+    </FullBleedStack>
   );
 }
 

@@ -1,27 +1,26 @@
-import { Animated, View } from "react-native";
+import { Animated, View, ImageBackground, StyleSheet } from "react-native";
 import { createHeroPickerStyles } from "../styles/heroPicker.styles";
-import { ImageBackground } from "react-native";
 import { backgrounds } from "../../../assets/backgrounds";
+import WarmBubblesOverlay from "../../components/WarmBubblesOverlay";
 
-type Props = {
-  children: React.ReactNode;
+type BackdropProps = {
   showOverlay: boolean;
   overlayOpacity: Animated.Value;
   styles: ReturnType<typeof createHeroPickerStyles>;
 };
 
-export function HeroPickerBackground({
-  children,
+export function HeroPickerBackdrop({
   showOverlay,
   overlayOpacity,
   styles,
-}: Props) {
+}: BackdropProps) {
   return (
     <ImageBackground
       source={backgrounds.bg004}
-      style={{ flex: 1 }}
+      style={StyleSheet.absoluteFill}
       resizeMode="cover"
     >
+      <WarmBubblesOverlay variant="normal" />
       {showOverlay && (
         <Animated.View
           pointerEvents="none"
@@ -36,11 +35,31 @@ export function HeroPickerBackground({
           ]}
         />
       )}
+    </ImageBackground>
+  );
+}
 
-      <View style={styles.contentLayer}>
+type Props = BackdropProps & {
+  children: React.ReactNode;
+};
+
+export function HeroPickerBackground({
+  children,
+  showOverlay,
+  overlayOpacity,
+  styles,
+}: Props) {
+  return (
+    <View style={{ flex: 1 }}>
+      <HeroPickerBackdrop
+        showOverlay={showOverlay}
+        overlayOpacity={overlayOpacity}
+        styles={styles}
+      />
+      <View style={styles.contentLayer} pointerEvents="box-none">
         {children}
       </View>
-    </ImageBackground>
+    </View>
   );
 }
 

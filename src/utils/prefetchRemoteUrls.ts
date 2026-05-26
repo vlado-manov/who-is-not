@@ -72,6 +72,10 @@ export const REMOTE_GAME_URLS: string[] = [
   `${BASE_URL}/62640c5a-b953-4641-a7ce-f1b2e73138be-bg029.webp`,
   `${BASE_URL}/e2e9083e-b7c8-4399-8ac6-0d6aa8b0f4f1-bg030.webp`,
   `${BASE_URL}/ba09f448-5270-4b9b-84d1-aaac8869f4b4-bg-heroes01.webp`,
+  // PreRevealScreen (splash + same loader strip as welcome CurtainOverlay)
+  `${BASE_URL}/1610859b-0622-44bb-b82d-e022668a6c08-IMG_4089.webp`,
+  `${BASE_URL}/d54269d6-7963-4249-a9e0-56d64daa6ec6-IMG_4090.webp`,
+  "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/b6612c06-2e0e-45ee-8557-483d229c70a7-loader.webp",
   // CurtainOverlay (curtainTop, curtainBottom)
   `${BASE_URL}/0dc9c386-810b-456a-b982-d940950ae855-curtainTop.webp`,
   `${BASE_URL}/e0a83a0a-c4cc-45ad-88a7-4b9e026e236d-curtainBottom.webp`,

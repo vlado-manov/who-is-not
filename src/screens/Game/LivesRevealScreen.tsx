@@ -1,15 +1,19 @@
 // src/screens/Game/LivesRevealScreen.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
   Easing,
   ImageBackground,
-  Pressable,
+  Platform,
   ScrollView,
   StyleSheet,
+  Text,
   View,
+  ViewStyle,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -26,6 +30,7 @@ import { useTranslation } from "react-i18next";
 import AppImage from "../../components/AppImage";
 import CustomButton from "../../components/common/CustomButton";
 import CustomText from "../../components/common/CustomText";
+import AudioManager from "../../utils/audioManager";
 import { backgrounds } from "../../../assets/backgrounds";
 import { getRevealVariant } from "../../utils/revealQuotes";
 import LottieView from "lottie-react-native";
@@ -44,10 +49,10 @@ const WIN_SLOW_FACTOR = 2;
 const { width: SCREEN_W } = Dimensions.get("window");
 const MINUS_ONE_LIVE_URI =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/b358fa09-3908-4736-9bd5-18a01c7b0e2a--1live.webp";
-const HEART_RED_URI =
-  "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/eb11ec00-734c-4d5a-b982-69ce7f9d0245-heartRed.webp";
-const HEART_BLACK_URI =
-  "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/ea21d9fe-366e-41fe-867b-cc57ddd3ad6d-heartBlack.webp";
+const HEART_FULL_URI =
+  "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/9c43592c-f28a-4922-bf8f-8e33529a6227-heart1.webp";
+const HEART_EMPTY_URI =
+  "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/44a82900-4469-4558-b968-50208d4fb581-heart2.webp";
 const X_PART_1_URI =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/61d7faf3-5a8a-4aa8-babd-c20a6b82c588-xpart1.webp";
 const X_PART_2_URI =
@@ -55,12 +60,83 @@ const X_PART_2_URI =
 const CENTER_DEATH_SLOW_MULTIPLIER = 1.5;
 const GRID_DEATH_FAST_MULTIPLIER = 0.75;
 const HAPPY_JUMP_EXTRA_DURATION = 500;
+const FOCUS_BLUR_IN_MS = 560;
+const FOCUS_BLUR_OUT_MS = 620;
+const FOCUS_SPOTLIGHT_SCALE = 1.14;
+const CENTER_FOCUS_SLOT_HEIGHT = 320;
 const WINNER_BG_URI =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/3a93c0b5-d3f5-4f42-a996-6c58992cc8ae-IMG_4043.webp";
 const WINNER_TEXT_URI =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/1aea25ff-4f32-458c-9623-59374130ff96-winnerText_en.webp";
 const WINNER_PLATFORM_URI =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/5051b921-dc67-4c52-a68b-f065ac5eb93d-HeroPickerBottomWinner.webp";
+const LIVES_REVEAL_ACTION_BG_URI =
+  "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/5a7412ac-af25-4288-a026-54e8c9020e95-livesRevealActionBackground.webp";
+const LIVES_REVEAL_STANDINGS_BG_URI =
+  "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/a139ba52-e82f-4b13-b10b-25b962ce9785-livesRevealBackground.webp";
+
+const CARD_ACCENTS = [
+  {
+    border: "#4da6ff",
+    glow: "rgba(77,166,255,0.55)",
+    ribbon: ["#3b8fd9", "#1e5fa8"] as [string, string],
+    avatarRing: "#5bb8ff",
+  },
+  {
+    border: "#ffb84d",
+    glow: "rgba(255,184,77,0.55)",
+    ribbon: ["#f0a020", "#c87800"] as [string, string],
+    avatarRing: "#ffcc66",
+  },
+  {
+    border: "#c084fc",
+    glow: "rgba(192,132,252,0.55)",
+    ribbon: ["#a855f7", "#7e22ce"] as [string, string],
+    avatarRing: "#d8b4fe",
+  },
+  {
+    border: "#34d399",
+    glow: "rgba(52,211,153,0.55)",
+    ribbon: ["#10b981", "#047857"] as [string, string],
+    avatarRing: "#6ee7b7",
+  },
+  {
+    border: "#fb7185",
+    glow: "rgba(251,113,133,0.55)",
+    ribbon: ["#f43f5e", "#be123c"] as [string, string],
+    avatarRing: "#fda4af",
+  },
+  {
+    border: "#22d3ee",
+    glow: "rgba(34,211,238,0.55)",
+    ribbon: ["#06b6d4", "#0e7490"] as [string, string],
+    avatarRing: "#67e8f9",
+  },
+  {
+    border: "#facc15",
+    glow: "rgba(250,204,21,0.55)",
+    ribbon: ["#eab308", "#a16207"] as [string, string],
+    avatarRing: "#fde047",
+  },
+  {
+    border: "#818cf8",
+    glow: "rgba(129,140,248,0.55)",
+    ribbon: ["#6366f1", "#4338ca"] as [string, string],
+    avatarRing: "#a5b4fc",
+  },
+  {
+    border: "#e879f9",
+    glow: "rgba(232,121,249,0.55)",
+    ribbon: ["#d946ef", "#a21caf"] as [string, string],
+    avatarRing: "#f0abfc",
+  },
+  {
+    border: "#84cc16",
+    glow: "rgba(132,204,22,0.55)",
+    ribbon: ["#65a30d", "#3f6212"] as [string, string],
+    avatarRing: "#bef264",
+  },
+] as const;
 
 type Phase = "focus" | "grid";
 type HeartPlateVariant = "center" | "grid";
@@ -121,10 +197,141 @@ function getRoundOutcome(
   return { impostorLost, losingIds, nextLives };
 }
 
+function buildStaggeredGridRows(players: PlayerUi[]) {
+  const rows: { players: PlayerUi[]; centered: boolean }[] = [];
+  let i = 0;
+  while (i < players.length) {
+    const remaining = players.length - i;
+    if (remaining === 1) {
+      rows.push({ players: [players[i]], centered: true });
+      i += 1;
+    } else {
+      rows.push({ players: players.slice(i, i + 2), centered: false });
+      i += 2;
+    }
+  }
+  return rows;
+}
+
 function startAnim(animation: Animated.CompositeAnimation) {
   return new Promise<void>((resolve) => {
     animation.start(() => resolve());
   });
+}
+
+type GameShowTitleTone = "danger" | "gold";
+
+/** Chunky stacked-outline title — Cyrillic-safe (AmaticSC-Bold). */
+function GameShowTitle({
+  text,
+  tone,
+  fontSize,
+  style,
+}: {
+  text: string;
+  tone: GameShowTitleTone;
+  fontSize: number;
+  style?: ViewStyle;
+}) {
+  const fill = tone === "danger" ? "#fffdf8" : "#ffe047";
+  const stroke = tone === "danger" ? "#9b0a0a" : "#6b3200";
+  const deep = tone === "danger" ? "#4a0202" : "#3a1800";
+  const highlight = tone === "gold" ? "#fff9b8" : "#ffffff";
+
+  const outlineLayers =
+    tone === "danger"
+      ? [
+          { dx: 0, dy: 5, color: deep },
+          { dx: 0, dy: 4, color: stroke },
+          { dx: 3, dy: 4, color: stroke },
+          { dx: -3, dy: 4, color: stroke },
+          { dx: 2, dy: 3, color: stroke },
+          { dx: -2, dy: 3, color: stroke },
+        ]
+      : [
+          { dx: 0, dy: 6, color: deep },
+          { dx: 0, dy: 5, color: stroke },
+          { dx: 3, dy: 5, color: stroke },
+          { dx: -3, dy: 5, color: stroke },
+          { dx: 2, dy: 4, color: "#9a4e00" },
+          { dx: -2, dy: 4, color: "#9a4e00" },
+        ];
+
+  const baseTextStyle = {
+    fontFamily: "AmaticSC-Bold",
+    fontSize,
+    lineHeight: fontSize * 1.05,
+    letterSpacing: tone === "gold" ? 2 : 1,
+    textAlign: "center" as const,
+    includeFontPadding: false,
+  };
+
+  return (
+    <View style={[styles.gameShowTitleWrap, { minHeight: fontSize * 1.15 }, style]}>
+      {outlineLayers.map((layer, i) => (
+        <Text
+          key={`stroke-${i}`}
+          style={[
+            baseTextStyle,
+            styles.gameShowTitleLayer,
+            {
+              color: layer.color,
+              transform: [{ translateX: layer.dx }, { translateY: layer.dy }],
+            },
+          ]}
+        >
+          {text}
+        </Text>
+      ))}
+      <Text
+        style={[
+          baseTextStyle,
+          styles.gameShowTitleLayer,
+          {
+            color: fill,
+            textShadowColor: tone === "gold" ? "#ff9900" : "#ff5555",
+            textShadowOffset: { width: 0, height: 1 },
+            textShadowRadius: tone === "gold" ? 6 : 4,
+          },
+        ]}
+      >
+        {text}
+      </Text>
+      <Text
+        style={[
+          baseTextStyle,
+          styles.gameShowTitleLayer,
+          styles.gameShowTitleHighlight,
+          { color: highlight },
+        ]}
+      >
+        {text}
+      </Text>
+    </View>
+  );
+}
+
+/** Bold ribbon label with slight skew — Cyrillic-safe (OpenSans-ExtraBold). */
+function RibbonLabel({
+  text,
+  style,
+  compact = false,
+}: {
+  text: string;
+  style?: ViewStyle;
+  compact?: boolean;
+}) {
+  const fontSize = compact ? 13 : 16;
+  return (
+    <View style={[styles.ribbonLabelWrap, style]}>
+      <Text style={[styles.ribbonLabelStroke, { fontSize, lineHeight: fontSize + 4 }]}>
+        {text}
+      </Text>
+      <Text style={[styles.ribbonLabelFill, { fontSize, lineHeight: fontSize + 4 }]}>
+        {text}
+      </Text>
+    </View>
+  );
 }
 
 const LivesRevealScreen = () => {
@@ -148,6 +355,7 @@ const LivesRevealScreen = () => {
   );
   const setGameState = useGameStore((s) => s.set);
   const resetGameState = useGameStore((s) => s.reset);
+  const round = useGameStore((s) => s.round);
   const maxLives = gameSettings?.livesPerPlayer ?? 3;
 
   const didStartRef = useRef(false);
@@ -167,15 +375,10 @@ const LivesRevealScreen = () => {
   const minusOneScale = useRef(new Animated.Value(0.82)).current;
 
   const burningHeartPulse = useRef(new Animated.Value(0)).current;
-  const [burningHeartIndex, setBurningHeartIndex] = useState<number | null>(
-    null
-  );
-  const [gridBurningPlayerId, setGridBurningPlayerId] = useState<string | null>(
-    null
-  );
-  const [gridBurningHeartIndex, setGridBurningHeartIndex] = useState<
-    number | null
-  >(null);
+  const [burningHeart, setBurningHeart] = useState<{
+    playerId: string;
+    index: number;
+  } | null>(null);
 
   const [phase, setPhase] = useState<Phase>("focus");
   const initialCenterId =
@@ -199,6 +402,27 @@ const LivesRevealScreen = () => {
   const winnerButtonsOpacity = useRef(new Animated.Value(0)).current;
   const winnerButtonsY = useRef(new Animated.Value(28)).current;
 
+  /* ── Screen chrome animations ─────────────────────────────────────────── */
+  const titleOp = useRef(new Animated.Value(0)).current;
+  const titleY = useRef(new Animated.Value(-28)).current;
+  const titleScale = useRef(new Animated.Value(0.88)).current;
+  const subtitleOp = useRef(new Animated.Value(0)).current;
+  const spotlightPulse = useRef(new Animated.Value(0)).current;
+  const ctaOp = useRef(new Animated.Value(0)).current;
+  const ctaY = useRef(new Animated.Value(24)).current;
+  const gridHeaderOp = useRef(new Animated.Value(0)).current;
+  const focusOtherAnimsRef = useRef<Record<string, Animated.Value>>({});
+  const gridSlideRef = useRef<Record<string, Animated.Value>>({});
+  const spotlightLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+  const bgActionOp = useRef(new Animated.Value(1)).current;
+  const bgStandingsOp = useRef(new Animated.Value(0)).current;
+  const bgBlurOpacity = useRef(new Animated.Value(0)).current;
+  const focusSpotlightScale = useRef(new Animated.Value(1)).current;
+  const titleWobble = useRef(new Animated.Value(0)).current;
+  const titlePulse = useRef(new Animated.Value(0)).current;
+  const titleWobbleLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+  const titlePulseLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+
   const playersUi = useMemo(() => {
     return players.map((p) => {
       const hero = heroes.find((h) => h.id === p.characterId);
@@ -218,23 +442,31 @@ const LivesRevealScreen = () => {
     return map;
   }, [playersUi]);
 
-  const others = useMemo(
-    () => playersUi.filter((p) => p.id !== oddOneId),
-    [oddOneId, playersUi]
+  const waitingOthers = useMemo(
+    () => playersUi.filter((p) => p.id !== activeCenterId),
+    [activeCenterId, playersUi]
   );
 
   const focusRows = useMemo(() => {
-    if (others.length <= 5) return [others];
-    const firstRowCount = Math.ceil(others.length / 2);
-    return [others.slice(0, firstRowCount), others.slice(firstRowCount)];
-  }, [others]);
+    if (waitingOthers.length <= 5) return [waitingOthers];
+    const firstRowCount = Math.ceil(waitingOthers.length / 2);
+    return [
+      waitingOthers.slice(0, firstRowCount),
+      waitingOthers.slice(firstRowCount),
+    ];
+  }, [waitingOthers]);
 
-  const gridRows = useMemo(() => {
-    const rows: PlayerUi[][] = [];
-    for (let i = 0; i < playersUi.length; i += 2) {
-      rows.push(playersUi.slice(i, i + 2));
-    }
-    return rows;
+  const staggeredGridRows = useMemo(
+    () => buildStaggeredGridRows(playersUi),
+    [playersUi]
+  );
+
+  const playerAccentIndex = useMemo(() => {
+    const map: Record<string, number> = {};
+    playersUi.forEach((p, i) => {
+      map[p.id] = i % CARD_ACCENTS.length;
+    });
+    return map;
   }, [playersUi]);
 
   const gridItemAnimsRef = useRef<Record<string, Animated.Value>>({});
@@ -246,6 +478,12 @@ const LivesRevealScreen = () => {
     playersUi.forEach((p) => {
       if (!gridItemAnimsRef.current[p.id]) {
         gridItemAnimsRef.current[p.id] = new Animated.Value(0);
+      }
+      if (!gridSlideRef.current[p.id]) {
+        gridSlideRef.current[p.id] = new Animated.Value(0);
+      }
+      if (!focusOtherAnimsRef.current[p.id]) {
+        focusOtherAnimsRef.current[p.id] = new Animated.Value(0);
       }
       if (!deathShakeRef.current[p.id]) {
         deathShakeRef.current[p.id] = new Animated.Value(0);
@@ -261,6 +499,115 @@ const LivesRevealScreen = () => {
       }
     });
   }, [playersUi]);
+
+  /* Spotlight pulse loop during focus phase */
+  useEffect(() => {
+    if (phase !== "focus") {
+      spotlightLoopRef.current?.stop();
+      spotlightLoopRef.current = null;
+      spotlightPulse.setValue(0);
+      return;
+    }
+    spotlightPulse.setValue(0);
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(spotlightPulse, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(spotlightPulse, {
+          toValue: 0,
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    spotlightLoopRef.current = loop;
+    loop.start();
+    return () => {
+      loop.stop();
+    };
+  }, [phase, spotlightPulse]);
+
+  /* Title idle motion — subtle wobble + pulse while visible */
+  useEffect(() => {
+    titleWobbleLoopRef.current?.stop();
+    titlePulseLoopRef.current?.stop();
+    titleWobble.setValue(0);
+    titlePulse.setValue(0);
+
+    const wobbleLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(titleWobble, {
+          toValue: 1,
+          duration: 700,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(titleWobble, {
+          toValue: -1,
+          duration: 1400,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(titleWobble, {
+          toValue: 0,
+          duration: 700,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(titlePulse, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(titlePulse, {
+          toValue: 0,
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    titleWobbleLoopRef.current = wobbleLoop;
+    titlePulseLoopRef.current = pulseLoop;
+    wobbleLoop.start();
+    pulseLoop.start();
+
+    return () => {
+      wobbleLoop.stop();
+      pulseLoop.stop();
+    };
+  }, [phase, titlePulse, titleWobble]);
+
+  /* Continue button entrance */
+  useEffect(() => {
+    if (!canContinue) return;
+    ctaOp.setValue(0);
+    ctaY.setValue(24);
+    Animated.parallel([
+      Animated.timing(ctaOp, {
+        toValue: 1,
+        duration: 320,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.spring(ctaY, {
+        toValue: 0,
+        speed: 16,
+        bounciness: 6,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [canContinue, ctaOp, ctaY]);
 
   const containerWidth = Math.min(SCREEN_W - 32, 380);
 
@@ -331,66 +678,204 @@ const LivesRevealScreen = () => {
     displayLivesRef.current = displayLives;
   }, [displayLives]);
 
+  const animateTitleEntrance = useCallback(async () => {
+    titleOp.setValue(0);
+    titleY.setValue(-28);
+    titleScale.setValue(0.88);
+    subtitleOp.setValue(0);
+    await startAnim(
+      Animated.parallel([
+        Animated.timing(titleOp, {
+          toValue: 1,
+          duration: 340,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(titleScale, {
+          toValue: 1,
+          speed: 18,
+          bounciness: 7,
+          useNativeDriver: true,
+        }),
+        Animated.timing(titleY, {
+          toValue: 0,
+          duration: 340,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    await startAnim(
+      Animated.timing(subtitleOp, {
+        toValue: 1,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    );
+  }, [subtitleOp, titleOp, titleScale, titleY]);
+
+  const animateFocusOthersIn = useCallback(async () => {
+    const ids = waitingOthers.map((p) => p.id);
+    ids.forEach((id) => focusOtherAnimsRef.current[id]?.setValue(0));
+    const anims = ids
+      .map((id) => focusOtherAnimsRef.current[id])
+      .filter(Boolean)
+      .map((v) =>
+        Animated.spring(v!, {
+          toValue: 1,
+          speed: 20,
+          bounciness: 8,
+          useNativeDriver: true,
+        }),
+      );
+    if (!anims.length) return;
+    await startAnim(Animated.stagger(55, anims));
+  }, [waitingOthers]);
+
+  const getDisplayName = useCallback(
+    (playerId: string, fallback: string) => {
+      if (mode === "ONLINE" && onlinePlayerId && playerId === onlinePlayerId) {
+        return t("lives_reveal_you");
+      }
+      return fallback;
+    },
+    [mode, onlinePlayerId, t],
+  );
+
+  const enterFocusSpotlight = useCallback(async () => {
+    await startAnim(
+      Animated.parallel([
+        Animated.timing(bgBlurOpacity, {
+          toValue: 1,
+          duration: FOCUS_BLUR_IN_MS,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(focusSpotlightScale, {
+          toValue: FOCUS_SPOTLIGHT_SCALE,
+          speed: 13,
+          bounciness: 7,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+  }, [bgBlurOpacity, focusSpotlightScale]);
+
+  const exitFocusSpotlight = useCallback(async () => {
+    await startAnim(
+      Animated.timing(bgBlurOpacity, {
+        toValue: 0,
+        duration: FOCUS_BLUR_OUT_MS,
+        easing: Easing.inOut(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    );
+    await startAnim(
+      Animated.spring(focusSpotlightScale, {
+        toValue: 1,
+        speed: 20,
+        bounciness: 2,
+        useNativeDriver: true,
+      }),
+    );
+    focusSpotlightScale.setValue(1);
+  }, [bgBlurOpacity, focusSpotlightScale]);
+
+  const runFocusSpotlightMoment = useCallback(
+    async (moment: () => Promise<void>) => {
+      await enterFocusSpotlight();
+      await moment();
+      await exitFocusSpotlight();
+    },
+    [enterFocusSpotlight, exitFocusSpotlight],
+  );
+
   const renderHeartsPlate = (
     count: number,
-    burningIndex: number | null = null,
-    variant: HeartPlateVariant = "center"
-  ) => (
-    <ImageBackground
-      source={backgrounds.bg005}
-      resizeMode="stretch"
-      imageStyle={{ borderRadius: 14 }}
-      style={[styles.heartsPlate, variant === "grid" && styles.heartsPlateGrid]}
-    >
-      <View style={styles.heartsRow}>
-        {Array.from({ length: maxLives }, (_, i) => {
-          const isBurning = burningIndex === i;
-          const pulseScale = isBurning
-            ? burningHeartPulse.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 1.45],
-              })
-            : 1;
-          const heartSize =
-            maxLives >= 5
-              ? variant === "grid"
-                ? 26
-                : 32
-              : variant === "grid"
-                ? 44
-                : 54;
-          const horizontalGap =
-            maxLives >= 5
-              ? variant === "grid"
-                ? 1.5
-                : 2.5
-              : variant === "grid"
-                ? 3
-                : 4;
+    playerId: string,
+    variant: HeartPlateVariant = "center",
+    isDead = false,
+  ) => {
+    const heartSize =
+      maxLives >= 5
+        ? variant === "grid"
+          ? 22
+          : 28
+        : variant === "grid"
+          ? 34
+          : 42;
+    const horizontalGap =
+      maxLives >= 5
+        ? variant === "grid"
+          ? 2
+          : 3
+        : variant === "grid"
+          ? 4
+          : 5;
 
-          return (
-            <Animated.View
-              key={`heart-${i}`}
-              style={{
-                transform: [{ scale: pulseScale }],
-                opacity: 1,
-                marginHorizontal: horizontalGap,
-              }}
-            >
-              <AppImage
-                source={{ uri: i < count ? HEART_RED_URI : HEART_BLACK_URI }}
-                contentFit="contain"
+    return (
+      <View
+        style={[
+          styles.heartsPlate,
+          variant === "center" && styles.heartsPlateFocus,
+          variant === "grid" && styles.heartsPlateGrid,
+          isDead && styles.heartsPlateDead,
+        ]}
+      >
+        <View style={styles.heartsRow}>
+          {Array.from({ length: maxLives }, (_, i) => {
+            const isBurning =
+              burningHeart?.playerId === playerId && burningHeart.index === i;
+            const pulseScale = isBurning
+              ? burningHeartPulse.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1, 1.45],
+                })
+              : 1;
+            const pulseGlow = isBurning
+              ? burningHeartPulse.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 0.75],
+                })
+              : 0;
+
+            return (
+              <Animated.View
+                key={`heart-${playerId}-${i}`}
                 style={{
-                  width: heartSize,
-                  height: heartSize,
+                  transform: [{ scale: pulseScale }],
+                  marginHorizontal: horizontalGap,
                 }}
-              />
-            </Animated.View>
-          );
-        })}
+              >
+                {isBurning && (
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[
+                      styles.heartBurnGlow,
+                      {
+                        width: heartSize + 14,
+                        height: heartSize + 14,
+                        borderRadius: (heartSize + 14) / 2,
+                        opacity: pulseGlow,
+                      },
+                    ]}
+                  />
+                )}
+                <AppImage
+                  source={{
+                    uri: i < count ? HEART_FULL_URI : HEART_EMPTY_URI,
+                  }}
+                  contentFit="contain"
+                  style={{ width: heartSize, height: heartSize }}
+                />
+              </Animated.View>
+            );
+          })}
+        </View>
       </View>
-    </ImageBackground>
-  );
+    );
+  };
 
   const decrementLife = (playerId: string) => {
     const current = displayLivesRef.current[playerId] ?? maxLives;
@@ -402,16 +887,17 @@ const LivesRevealScreen = () => {
     setDisplayLives(next);
   };
 
-  const animateHeartBurnThenDecrease = async (
+  const runHeartLossSequence = async (
     playerId: string,
-    slow = false
+    opts?: { slow?: boolean; visualOnly?: boolean; heartIndex?: number },
   ) => {
+    const slow = opts?.slow ?? false;
+    const visualOnly = opts?.visualOnly ?? false;
     const before = displayLivesRef.current[playerId] ?? 0;
-    const rightMostActive = before - 1;
+    const idx = opts?.heartIndex ?? before - 1;
+    if (idx < 0) return;
 
-    if (rightMostActive < 0) return;
-
-    setBurningHeartIndex(rightMostActive);
+    setBurningHeart({ playerId, index: idx });
     burningHeartPulse.setValue(0);
 
     const d = (base: number) =>
@@ -431,53 +917,34 @@ const LivesRevealScreen = () => {
           easing: Easing.inOut(Easing.cubic),
           useNativeDriver: true,
         }),
-      ])
+      ]),
     );
 
-    decrementLife(playerId);
-    setBurningHeartIndex(null);
+    if (!visualOnly) decrementLife(playerId);
+    setBurningHeart(null);
+    burningHeartPulse.setValue(0);
+  };
+
+  const animateHeartBurnThenDecrease = async (
+    playerId: string,
+    slow = false,
+  ) => {
+    await runHeartLossSequence(playerId, { slow });
   };
 
   const animateGridHeartBurnThenDecrease = async (
     playerId: string,
-    slow = false
+    slow = false,
   ) => {
-    const before = displayLivesRef.current[playerId] ?? 0;
-    const rightMostActive = before - 1;
-    if (rightMostActive < 0) return;
-
-    setGridBurningPlayerId(playerId);
-    setGridBurningHeartIndex(rightMostActive);
-    burningHeartPulse.setValue(0);
-
-    const d = (base: number) =>
-      Math.max(70, Math.round(base * (slow ? WIN_SLOW_FACTOR : 1)));
-
-    await startAnim(
-      Animated.sequence([
-        Animated.timing(burningHeartPulse, {
-          toValue: 1,
-          duration: d(200),
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(burningHeartPulse, {
-          toValue: 0,
-          duration: d(220),
-          easing: Easing.inOut(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    decrementLife(playerId);
-    setGridBurningHeartIndex(null);
-    setGridBurningPlayerId(null);
+    await runHeartLossSequence(playerId, { slow });
   };
 
   const animateLifeLoss = async (playerId: string, slow = false) => {
     const d = (base: number) =>
       Math.max(70, Math.round(base * (slow ? WIN_SLOW_FACTOR : 1)));
+
+    // Sound fires as the shake + "-1 live" animation begins
+    void AudioManager.playLosingLiveSound();
 
     minusOneOpacity.setValue(0);
     minusOneY.setValue(10);
@@ -559,17 +1026,23 @@ const LivesRevealScreen = () => {
       Animated.parallel([
         Animated.timing(centerFade, {
           toValue: 0,
-          duration: 90,
+          duration: 140,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(centerScale, {
-          toValue: 0.92,
-          duration: 90,
+          toValue: 0.86,
+          duration: 140,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
-      ])
+        Animated.timing(focusSpotlightScale, {
+          toValue: 0.92,
+          duration: 140,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
     );
 
     setActiveCenterId(playerId);
@@ -579,22 +1052,30 @@ const LivesRevealScreen = () => {
     centerDeathX1.setValue(0);
     centerDeathX2.setValue(0);
     setCenterDeadId(null);
+    focusSpotlightScale.setValue(1);
+    void AudioManager.playAnswerPop();
 
     await startAnim(
       Animated.parallel([
         Animated.timing(centerFade, {
           toValue: 1,
-          duration: 120,
+          duration: 240,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.spring(centerScale, {
           toValue: 1,
-          speed: 15,
-          bounciness: 5,
+          speed: 17,
+          bounciness: 11,
           useNativeDriver: true,
         }),
-      ])
+        Animated.spring(focusSpotlightScale, {
+          toValue: 1,
+          speed: 17,
+          bounciness: 8,
+          useNativeDriver: true,
+        }),
+      ]),
     );
   };
 
@@ -695,25 +1176,95 @@ const LivesRevealScreen = () => {
 
   const unfoldGrid = async () => {
     setPhase("grid");
+    bgBlurOpacity.setValue(0);
+    focusSpotlightScale.setValue(1);
+    gridHeaderOp.setValue(0);
+    titleOp.setValue(0);
+    titleY.setValue(-20);
+    titleScale.setValue(0.9);
+    subtitleOp.setValue(0);
 
-    playersUi.forEach((p) => {
+    playersUi.forEach((p, idx) => {
       const v = gridItemAnimsRef.current[p.id];
+      const slide = gridSlideRef.current[p.id];
       if (v) v.setValue(0);
+      if (slide) slide.setValue(idx % 2 === 0 ? -1 : 1);
     });
 
-    const animations = playersUi
-      .map((p) => gridItemAnimsRef.current[p.id])
-      .filter(Boolean)
-      .map((v) =>
+    Animated.parallel([
+      Animated.timing(bgActionOp, {
+        toValue: 0,
+        duration: 480,
+        easing: Easing.inOut(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(bgStandingsOp, {
+        toValue: 1,
+        duration: 480,
+        easing: Easing.inOut(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    await startAnim(
+      Animated.parallel([
+        Animated.timing(titleOp, {
+          toValue: 1,
+          duration: 360,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(titleScale, {
+          toValue: 1,
+          speed: 16,
+          bounciness: 6,
+          useNativeDriver: true,
+        }),
+        Animated.timing(titleY, {
+          toValue: 0,
+          duration: 360,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    Animated.timing(subtitleOp, {
+      toValue: 1,
+      duration: 240,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+    Animated.timing(gridHeaderOp, {
+      toValue: 1,
+      duration: 280,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+
+    const cardAnims = playersUi.map((p) => {
+      const v = gridItemAnimsRef.current[p.id]!;
+      const slide = gridSlideRef.current[p.id]!;
+      return Animated.parallel([
         Animated.spring(v, {
           toValue: 1,
-          speed: 15,
-          bounciness: 7,
+          speed: 18,
+          bounciness: 9,
           useNativeDriver: true,
-        })
-      );
+        }),
+        Animated.spring(slide, {
+          toValue: 0,
+          speed: 18,
+          bounciness: 8,
+          useNativeDriver: true,
+        }),
+      ]);
+    });
 
-    await startAnim(Animated.stagger(65, animations));
+    for (let i = 0; i < cardAnims.length; i++) {
+      void AudioManager.playAnswerPop();
+      await startAnim(cardAnims[i]);
+      await startAnim(Animated.delay(50));
+    }
   };
 
   const animateDeadPlayerInGrid = async (playerId: string) => {
@@ -815,36 +1366,15 @@ const LivesRevealScreen = () => {
 
   const replayGridLostHeartLift = async (
     beforeLives: Record<string, number>,
-    ids: string[]
+    ids: string[],
   ) => {
     for (const id of ids) {
       const lostHeartIndex = (beforeLives[id] ?? 0) - 1;
       if (lostHeartIndex < 0) continue;
-
-      setGridBurningPlayerId(id);
-      setGridBurningHeartIndex(lostHeartIndex);
-      burningHeartPulse.setValue(0);
-
-      const d = (base: number) => Math.max(60, Math.round(base * 0.75));
-      await startAnim(
-        Animated.sequence([
-          Animated.timing(burningHeartPulse, {
-            toValue: 1,
-            duration: d(210),
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(burningHeartPulse, {
-            toValue: 0,
-            duration: d(220),
-            easing: Easing.inOut(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ])
-      );
-
-      setGridBurningHeartIndex(null);
-      setGridBurningPlayerId(null);
+      await runHeartLossSequence(id, {
+        visualOnly: true,
+        heartIndex: lostHeartIndex,
+      });
     }
   };
 
@@ -970,7 +1500,12 @@ const LivesRevealScreen = () => {
       mode === "ONLINE" && typeof onlinePlayerId === "string";
 
     const run = async () => {
+      await animateTitleEntrance();
+      void animateFocusOthersIn();
+
       if (!oddOneId) {
+        bgActionOp.setValue(0);
+        bgStandingsOp.setValue(1);
         await unfoldGrid();
         setCanContinue(true);
         return;
@@ -982,13 +1517,15 @@ const LivesRevealScreen = () => {
           onlinePlayerId &&
           onlinePlayerId !== oddOneId
         ) {
-          await happyJumpDiagonal();
+          await runFocusSpotlightMoment(happyJumpDiagonal);
           await switchCenterTo(oddOneId);
         }
-        await animateLifeLoss(oddOneId, true);
-        if ((displayLivesRef.current[oddOneId] ?? 0) <= 0) {
-          await animateDeadPlayerInCenter(oddOneId);
-        }
+        await runFocusSpotlightMoment(async () => {
+          await animateLifeLoss(oddOneId, true);
+          if ((displayLivesRef.current[oddOneId] ?? 0) <= 0) {
+            await animateDeadPlayerInCenter(oddOneId);
+          }
+        });
       } else if (isOnlineSpotlight && onlinePlayerId) {
         const orderedLosingIds = losingIds.includes(onlinePlayerId)
           ? [
@@ -998,23 +1535,29 @@ const LivesRevealScreen = () => {
           : losingIds;
 
         await switchCenterTo(onlinePlayerId);
-        await happyJumpDiagonal();
+        void AudioManager.playImposterNotLosingLiveSound();
+        await runFocusSpotlightMoment(happyJumpDiagonal);
         for (const id of orderedLosingIds) {
           await switchCenterTo(id);
-          await animateLifeLoss(id, true);
-          if ((displayLivesRef.current[id] ?? 0) <= 0) {
-            await animateDeadPlayerInCenter(id);
-          }
+          await runFocusSpotlightMoment(async () => {
+            await animateLifeLoss(id, true);
+            if ((displayLivesRef.current[id] ?? 0) <= 0) {
+              await animateDeadPlayerInCenter(id);
+            }
+          });
         }
         await switchCenterTo(oddOneId);
       } else {
-        await happyJumpDiagonal();
+        void AudioManager.playImposterNotLosingLiveSound();
+        await runFocusSpotlightMoment(happyJumpDiagonal);
         for (const id of losingIds) {
           await switchCenterTo(id);
-          await animateLifeLoss(id, true);
-          if ((displayLivesRef.current[id] ?? 0) <= 0) {
-            await animateDeadPlayerInCenter(id);
-          }
+          await runFocusSpotlightMoment(async () => {
+            await animateLifeLoss(id, true);
+            if ((displayLivesRef.current[id] ?? 0) <= 0) {
+              await animateDeadPlayerInCenter(id);
+            }
+          });
         }
         await switchCenterTo(oddOneId);
       }
@@ -1083,7 +1626,10 @@ const LivesRevealScreen = () => {
 
     void run();
   }, [
+    animateFocusOthersIn,
+    animateTitleEntrance,
     applyRoundLives,
+    happyJumpDiagonal,
     impostorLost,
     lives,
     losingIds,
@@ -1095,6 +1641,7 @@ const LivesRevealScreen = () => {
     maxLives,
     players,
     navigation,
+    runFocusSpotlightMoment,
   ]);
 
   const goNextRound = () => {
@@ -1112,9 +1659,14 @@ const LivesRevealScreen = () => {
       alivePlayers.forEach((p) => {
         aliveLives[p.id] = livesAfterRound[p.id] ?? 0;
       });
+      const someoneJustDied = alivePlayers.length < players.length;
+      const currentOriginal = useGameStore.getState().originalPlayers;
       setGameState({
         players: alivePlayers,
         lives: aliveLives,
+        // Preserve the full roster the first time someone is eliminated so
+        // "restart with same players" can bring everyone back.
+        ...(someoneJustDied && !currentOriginal ? { originalPlayers: players } : {}),
       });
     }
     goToNextRound();
@@ -1128,11 +1680,7 @@ const LivesRevealScreen = () => {
 
   const handleContinue = () => {
     if (!canContinue) return;
-    goNextRound();
-  };
-
-  const handleSkip = () => {
-    if (showGameOver) return;
+    void AudioManager.playTransitionBetweenRounds();
     goNextRound();
   };
 
@@ -1165,21 +1713,44 @@ const LivesRevealScreen = () => {
     );
   };
 
+  const titleMotionRotate = titleWobble.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: ["-1.4deg", "0deg", "1.4deg"],
+  });
+  const titleMotionScale = titlePulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.045],
+  });
+
   return (
     <SafeAreaView className="flex-1 bg-primary-700" edges={["right", "left"]}>
-      <ImageBackground
-        source={showGameOver ? { uri: WINNER_BG_URI } : backgrounds.bg023}
-        style={styles.bg}
-        resizeMode="cover"
-      >
-        {!showGameOver && (
-          <View style={styles.skipWrap}>
-            <Pressable onPress={handleSkip} hitSlop={16}>
-              <CustomText className="h3-headline">
-                {t("skip", { defaultValue: "Skip" })}
-              </CustomText>
-            </Pressable>
-          </View>
+      <View style={styles.bg}>
+        {/* Focus phase background (life loss — purple/orange stage) */}
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: bgActionOp }]}>
+          <ImageBackground
+            source={{ uri: LIVES_REVEAL_STANDINGS_BG_URI }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
+        </Animated.View>
+
+        {/* Grid phase background (standings — red radial burst) */}
+        <Animated.View
+          style={[StyleSheet.absoluteFill, { opacity: bgStandingsOp }]}
+        >
+          <ImageBackground
+            source={{ uri: LIVES_REVEAL_ACTION_BG_URI }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
+        </Animated.View>
+
+        {showGameOver && (
+          <ImageBackground
+            source={{ uri: WINNER_BG_URI }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
         )}
 
         {!showGameOver && (
@@ -1189,155 +1760,94 @@ const LivesRevealScreen = () => {
             bounces
           >
             <View style={styles.content}>
-              {phase === "focus" && centerPlayer && (
+              {/* ── FOCUS HEADER ─────────────────────────────────────────── */}
+              {phase === "focus" && (
                 <Animated.View
                   style={[
-                    styles.centerBlock,
+                    styles.focusHeader,
                     {
-                      opacity: centerFade,
+                      opacity: titleOp,
                       transform: [
-                        { translateX: centerShakeX },
-                        {
-                          translateX: centerDeathShakeX.interpolate({
-                            inputRange: [0, 0.16, 0.32, 0.48, 0.64, 0.8, 1],
-                            outputRange: [0, -12, 12, -10, 10, -5, 0],
-                          }),
-                        },
-                        { translateX: centerJumpX },
-                        { translateY: centerJumpY },
-                        { scale: centerScale },
+                        { translateY: titleY },
+                        { scale: Animated.multiply(titleScale, titleMotionScale) },
+                        { rotate: titleMotionRotate },
                       ],
                     },
                   ]}
                 >
-                  {renderHeartsPlate(centerLives, burningHeartIndex)}
-                  <View style={styles.centerImageWrap}>
-                    {centerPlayer.image && (
-                      <AppImage
-                        source={centerPlayer.image}
-                        contentFit="cover"
-                        style={styles.centerImage}
-                      />
-                    )}
-                    <Animated.View
-                      pointerEvents="none"
-                      style={[
-                        styles.grayFilterLayer,
-                        {
-                          opacity: centerDeathGray,
-                        },
-                      ]}
+                  <GameShowTitle
+                    text={t("lives_reveal_life_lost_title")}
+                    tone="danger"
+                    fontSize={56}
+                  />
+                  <Animated.View style={{ opacity: subtitleOp, width: "100%" }}>
+                    <LinearGradient
+                      colors={["#f02828", "#9b0f0f"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.focusRibbon}
                     >
-                      {centerPlayer.image && (
-                        <AppImage
-                          source={centerPlayer.image}
-                          contentFit="cover"
-                          style={styles.centerImageGray}
-                        />
-                      )}
-                    </Animated.View>
-                    <Animated.View
-                      pointerEvents="none"
-                      style={[
-                        styles.crossLineWrap,
-                        {
-                          opacity: centerDeathX1,
-                          transform: [
-                            {
-                              scale: centerDeathX1.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [0.86, 1],
-                              }),
-                            },
-                          ],
-                        },
-                      ]}
-                    >
-                      <AppImage
-                        source={{ uri: X_PART_1_URI }}
-                        contentFit="contain"
-                        style={styles.centerCrossLineImage}
-                      />
-                    </Animated.View>
-                    <Animated.View
-                      pointerEvents="none"
-                      style={[
-                        styles.crossLineWrap,
-                        {
-                          opacity: centerDeathX2,
-                          transform: [
-                            {
-                              scale: centerDeathX2.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [0.86, 1],
-                              }),
-                            },
-                          ],
-                        },
-                      ]}
-                    >
-                      <AppImage
-                        source={{ uri: X_PART_2_URI }}
-                        contentFit="contain"
-                        style={styles.centerCrossLineImage}
-                      />
-                    </Animated.View>
-                  </View>
-
-                  <Animated.View
-                    style={[
-                      styles.minusOne,
-                      {
-                        opacity: minusOneOpacity,
-                        transform: [
-                          { translateY: minusOneY },
-                          { scale: minusOneScale },
-                          {
-                            rotate: minusOneScale.interpolate({
-                              inputRange: [0.82, 1.15],
-                              outputRange: ["-8deg", "0deg"],
-                            }),
-                          },
-                        ],
-                      },
-                    ]}
-                  >
-                    <AppImage
-                      source={{ uri: MINUS_ONE_LIVE_URI }}
-                      contentFit="contain"
-                      style={styles.minusOneImage}
-                    />
+                      <RibbonLabel text={t("lives_reveal_subtitle_focus")} />
+                    </LinearGradient>
                   </Animated.View>
-
-                  <View style={styles.centerNameBtnWrap}>
-                    <CustomButton
-                      title={centerPlayer.name}
-                      appearance="tertiary"
-                      btnSize="xs"
-                      fontSize="sm"
-                      backgroundImage={
-                        centerDeadId === centerPlayer.id || centerLives <= 0
-                          ? backgrounds.bg016
-                          : backgrounds.bg018
-                      }
-                      glow
-                      fullWidth
-                      onPress={() => {}}
-                      glowColor="rgba(255,204,0,1)"
-                      shadowColor="#834400"
-                      buttonClassName="-mt-4"
-                    />
-                  </View>
                 </Animated.View>
               )}
 
-              {phase === "focus" && (
+              {/* ── GRID HEADER ──────────────────────────────────────────── */}
+              {phase === "grid" && (
+                <Animated.View
+                  style={[
+                    styles.gridHeader,
+                    {
+                      opacity: titleOp,
+                      transform: [
+                        { translateY: titleY },
+                        { scale: Animated.multiply(titleScale, titleMotionScale) },
+                        { rotate: titleMotionRotate },
+                      ],
+                    },
+                  ]}
+                >
+                  <LinearGradient
+                    colors={["#b855f7", "#6b21a8"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.roundRibbon}
+                  >
+                    <RibbonLabel
+                      text={t("lives_reveal_round_label", {
+                        round: Math.max(1, round),
+                      })}
+                      compact
+                    />
+                  </LinearGradient>
+                  <GameShowTitle
+                    text={t("lives_reveal_title")}
+                    tone="gold"
+                    fontSize={64}
+                    style={styles.livesHeroTitle}
+                  />
+                  <Animated.View style={[styles.standingsRow, { opacity: subtitleOp }]}>
+                    <View style={styles.standingsLine} />
+                    <Text style={styles.standingsText}>
+                      {t("lives_reveal_subtitle_grid")}
+                    </Text>
+                    <View style={styles.standingsLine} />
+                  </Animated.View>
+                </Animated.View>
+              )}
+
+              {phase === "focus" && centerPlayer && (
+                <View style={styles.centerFocusSlot} />
+              )}
+
+              {phase === "focus" && waitingOthers.length > 0 && (
                 <View style={[styles.othersWrap, { width: containerWidth }]}>
+                  <CustomText variant="p-xsmall" style={styles.othersLabel}>
+                    {t("lives_reveal_waiting")}
+                  </CustomText>
                   {focusRows.map((row, rowIdx) => {
-                    const avatarSize = calcAvatarSize(
-                      row.length,
-                      containerWidth
-                    );
+                    const avatarSize = calcAvatarSize(row.length, containerWidth);
                     const overlap = avatarSize * OVERLAP_RATIO;
 
                     return (
@@ -1345,27 +1855,49 @@ const LivesRevealScreen = () => {
                         key={`row-${rowIdx}`}
                         style={[styles.rowCenter, { width: containerWidth }]}
                       >
-                        {row.map((p, idx) => (
-                          <View
-                            key={p.id}
-                            style={{
-                              marginLeft: idx === 0 ? 0 : -overlap,
-                              width: avatarSize,
-                              height: avatarSize,
-                              // borderRadius: avatarSize / 2,
-                              overflow: "hidden",
-                              zIndex: row.length - idx,
-                            }}
-                          >
-                            {p.image && (
-                              <AppImage
-                                source={p.image}
-                                contentFit="cover"
-                                style={{ width: "100%", height: "100%" }}
-                              />
-                            )}
-                          </View>
-                        ))}
+                        {row.map((p, idx) => {
+                          const otherAnim =
+                            focusOtherAnimsRef.current[p.id] ??
+                            new Animated.Value(1);
+                          return (
+                            <Animated.View
+                              key={p.id}
+                              style={{
+                                marginLeft: idx === 0 ? 0 : -overlap,
+                                width: avatarSize,
+                                height: avatarSize,
+                                borderRadius: avatarSize / 2,
+                                overflow: "hidden",
+                                zIndex: row.length - idx,
+                                borderWidth: 2,
+                                borderColor: "rgba(255,200,80,0.45)",
+                                opacity: otherAnim,
+                                transform: [
+                                  {
+                                    scale: otherAnim.interpolate({
+                                      inputRange: [0, 1],
+                                      outputRange: [0.6, 1],
+                                    }),
+                                  },
+                                  {
+                                    translateY: otherAnim.interpolate({
+                                      inputRange: [0, 1],
+                                      outputRange: [12, 0],
+                                    }),
+                                  },
+                                ],
+                              }}
+                            >
+                              {p.image && (
+                                <AppImage
+                                  source={p.image}
+                                  contentFit="cover"
+                                  style={{ width: "100%", height: "100%" }}
+                                />
+                              )}
+                            </Animated.View>
+                          );
+                        })}
                       </View>
                     );
                   })}
@@ -1373,13 +1905,26 @@ const LivesRevealScreen = () => {
               )}
 
               {phase === "grid" && (
-                <View style={[styles.gridWrap, { width: containerWidth }]}>
-                  {gridRows.map((row, rowIdx) => (
-                    <View key={`grid-row-${rowIdx}`} style={styles.gridRow}>
-                      {row.map((p) => {
+                <Animated.View
+                  style={[
+                    styles.gridWrap,
+                    { width: containerWidth, opacity: gridHeaderOp },
+                  ]}
+                >
+                  {staggeredGridRows.map((row, rowIdx) => (
+                    <View
+                      key={`grid-row-${rowIdx}`}
+                      style={[
+                        styles.gridRow,
+                        row.centered && styles.gridRowCentered,
+                      ]}
+                    >
+                      {row.players.map((p) => {
                         const v =
                           gridItemAnimsRef.current[p.id] ??
                           new Animated.Value(1);
+                        const slide =
+                          gridSlideRef.current[p.id] ?? new Animated.Value(0);
                         const shake =
                           deathShakeRef.current[p.id] ?? new Animated.Value(0);
                         const gray =
@@ -1391,59 +1936,98 @@ const LivesRevealScreen = () => {
                         const isDead =
                           (displayLives[p.id] ?? 0) <= 0 ||
                           deadIds.includes(p.id);
+                        const accentIdx = playerAccentIndex[p.id] ?? 0;
+                        const accent = CARD_ACCENTS[accentIdx];
+                        const cardWidth =
+                          row.players.length === 1
+                            ? containerWidth * 0.52
+                            : (containerWidth - 12) / 2;
+
                         return (
                           <Animated.View
                             key={p.id}
                             style={[
                               styles.gridCard,
                               {
+                                width: cardWidth,
+                                borderColor: isDead
+                                  ? "rgba(180,60,60,0.55)"
+                                  : accent.border,
+                                shadowColor: isDead ? "#b03030" : accent.border,
+                              },
+                              isDead && styles.gridCardDead,
+                              {
                                 opacity: v,
                                 transform: [
                                   {
                                     translateY: v.interpolate({
                                       inputRange: [0, 1],
-                                      outputRange: [16, 0],
+                                      outputRange: [36, 0],
                                     }),
                                   },
                                   {
                                     scale: v.interpolate({
                                       inputRange: [0, 1],
-                                      outputRange: [0.92, 1],
+                                      outputRange: [0.78, 1],
                                     }),
                                   },
                                   {
-                                    translateX: shake.interpolate({
-                                      inputRange: [
-                                        0, 0.16, 0.32, 0.48, 0.64, 0.8, 1,
-                                      ],
-                                      outputRange: [0, -10, 10, -8, 8, -4, 0],
+                                    translateX: Animated.add(
+                                      slide.interpolate({
+                                        inputRange: [-1, 0, 1],
+                                        outputRange: [-40, 0, 40],
+                                      }),
+                                      shake.interpolate({
+                                        inputRange: [
+                                          0, 0.16, 0.32, 0.48, 0.64, 0.8, 1,
+                                        ],
+                                        outputRange: [0, -10, 10, -8, 8, -4, 0],
+                                      }),
+                                    ),
+                                  },
+                                  {
+                                    rotate: v.interpolate({
+                                      inputRange: [0, 1],
+                                      outputRange: ["-4deg", "0deg"],
                                     }),
                                   },
                                 ],
                               },
                             ]}
                           >
-                            {renderHeartsPlate(
-                              displayLives[p.id] ?? 0,
-                              gridBurningPlayerId === p.id
-                                ? gridBurningHeartIndex
-                                : null,
-                              "grid"
-                            )}
-                            <View style={styles.gridImageWrap}>
-                              {p.image && (
-                                <AppImage
-                                  source={p.image}
-                                  contentFit="cover"
-                                  style={styles.gridImage}
-                                />
+                            <LinearGradient
+                              colors={["rgba(25,12,40,0.92)", "rgba(12,6,22,0.96)"]}
+                              style={styles.gridCardInner}
+                            >
+                              <LinearGradient
+                                colors={accent.ribbon}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.gridNameRibbon}
+                              >
+                                <CustomText
+                                  variant="p-small"
+                                  style={styles.gridNameRibbonText}
+                                  numberOfLines={1}
+                                >
+                                  {getDisplayName(p.id, p.name)}
+                                </CustomText>
+                              </LinearGradient>
+
+                              {renderHeartsPlate(
+                                displayLives[p.id] ?? 0,
+                                p.id,
+                                "grid",
+                                isDead,
                               )}
-                              <Animated.View
-                                pointerEvents="none"
+
+                              <View
                                 style={[
-                                  styles.grayFilterLayer,
+                                  styles.gridImageWrap,
                                   {
-                                    opacity: gray,
+                                    borderColor: isDead
+                                      ? "rgba(180,80,80,0.5)"
+                                      : accent.avatarRing,
                                   },
                                 ]}
                               >
@@ -1451,84 +2035,258 @@ const LivesRevealScreen = () => {
                                   <AppImage
                                     source={p.image}
                                     contentFit="cover"
-                                    style={styles.gridImageGray}
+                                    style={styles.gridImage}
                                   />
                                 )}
-                              </Animated.View>
-                              <Animated.View
-                                pointerEvents="none"
-                                style={[
-                                  styles.crossLineWrap,
-                                  {
-                                    opacity: x1,
-                                    transform: [
-                                      {
-                                        scale: x1.interpolate({
-                                          inputRange: [0, 1],
-                                          outputRange: [0.86, 1],
-                                        }),
-                                      },
-                                    ],
-                                  },
-                                ]}
-                              >
-                                <AppImage
-                                  source={{ uri: X_PART_1_URI }}
-                                  contentFit="contain"
-                                  style={styles.crossLineImage}
-                                />
-                              </Animated.View>
-                              <Animated.View
-                                pointerEvents="none"
-                                style={[
-                                  styles.crossLineWrap,
-                                  {
-                                    opacity: x2,
-                                    transform: [
-                                      {
-                                        scale: x2.interpolate({
-                                          inputRange: [0, 1],
-                                          outputRange: [0.86, 1],
-                                        }),
-                                      },
-                                    ],
-                                  },
-                                ]}
-                              >
-                                <AppImage
-                                  source={{ uri: X_PART_2_URI }}
-                                  contentFit="contain"
-                                  style={styles.crossLineImage}
-                                />
-                              </Animated.View>
-                            </View>
-                            <View style={styles.gridNameBtnWrap}>
-                              <CustomButton
-                                title={p.name}
-                                appearance="tertiary"
-                                btnSize="xs"
-                                fontSize="sm"
-                                backgroundImage={
-                                  isDead ? backgrounds.bg016 : backgrounds.bg018
-                                }
-                                glow
-                                fullWidth
-                                onPress={() => {}}
-                                glowColor="rgba(255,204,0,1)"
-                                shadowColor="#834400"
-                                buttonClassName="-mt-4"
-                              />
-                            </View>
+                                <Animated.View
+                                  pointerEvents="none"
+                                  style={[styles.grayFilterLayer, { opacity: gray }]}
+                                >
+                                  {p.image && (
+                                    <AppImage
+                                      source={p.image}
+                                      contentFit="cover"
+                                      style={styles.gridImageGray}
+                                    />
+                                  )}
+                                </Animated.View>
+                                <Animated.View
+                                  pointerEvents="none"
+                                  style={[
+                                    styles.crossLineWrap,
+                                    {
+                                      opacity: x1,
+                                      transform: [
+                                        {
+                                          scale: x1.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: [0.86, 1],
+                                          }),
+                                        },
+                                      ],
+                                    },
+                                  ]}
+                                >
+                                  <AppImage
+                                    source={{ uri: X_PART_1_URI }}
+                                    contentFit="contain"
+                                    style={styles.crossLineImage}
+                                  />
+                                </Animated.View>
+                                <Animated.View
+                                  pointerEvents="none"
+                                  style={[
+                                    styles.crossLineWrap,
+                                    {
+                                      opacity: x2,
+                                      transform: [
+                                        {
+                                          scale: x2.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: [0.86, 1],
+                                          }),
+                                        },
+                                      ],
+                                    },
+                                  ]}
+                                >
+                                  <AppImage
+                                    source={{ uri: X_PART_2_URI }}
+                                    contentFit="contain"
+                                    style={styles.crossLineImage}
+                                  />
+                                </Animated.View>
+                              </View>
+                            </LinearGradient>
                           </Animated.View>
                         );
                       })}
-                      {row.length === 1 && <View style={styles.gridCard} />}
                     </View>
                   ))}
-                </View>
+                </Animated.View>
               )}
             </View>
           </ScrollView>
+        )}
+
+        {phase === "focus" && !showGameOver && (
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.bgBlurOverlay, { opacity: bgBlurOpacity }]}
+          >
+            {Platform.OS === "web" ? (
+              <View style={styles.bgBlurWebFallback} />
+            ) : (
+              <>
+                <BlurView intensity={52} tint="dark" style={StyleSheet.absoluteFill} />
+                <View style={styles.bgBlurTint} />
+              </>
+            )}
+          </Animated.View>
+        )}
+
+        {phase === "focus" && !showGameOver && centerPlayer && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.centerFocusOverlay,
+              { paddingTop: insets.top + 118 },
+              {
+                opacity: centerFade,
+                transform: [
+                  { translateX: centerShakeX },
+                  {
+                    translateX: centerDeathShakeX.interpolate({
+                      inputRange: [0, 0.16, 0.32, 0.48, 0.64, 0.8, 1],
+                      outputRange: [0, -12, 12, -10, 10, -5, 0],
+                    }),
+                  },
+                  { translateX: centerJumpX },
+                  { translateY: centerJumpY },
+                  {
+                    scale: Animated.multiply(centerScale, focusSpotlightScale),
+                  },
+                ],
+              },
+            ]}
+          >
+            <View style={styles.centerBlock}>
+              {renderHeartsPlate(
+                centerLives,
+                centerPlayer.id,
+                "center",
+                centerDeadId === centerPlayer.id || centerLives <= 0,
+              )}
+
+              <View style={styles.centerSpotlightWrap}>
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    styles.spotlightRing,
+                    {
+                      opacity: spotlightPulse.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.35, 0.75],
+                      }),
+                      transform: [
+                        {
+                          scale: spotlightPulse.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [1, 1.06],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                />
+                <View style={styles.centerImageWrap}>
+                  {centerPlayer.image && (
+                    <AppImage
+                      source={centerPlayer.image}
+                      contentFit="cover"
+                      style={styles.centerImage}
+                    />
+                  )}
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[styles.grayFilterLayer, { opacity: centerDeathGray }]}
+                  >
+                    {centerPlayer.image && (
+                      <AppImage
+                        source={centerPlayer.image}
+                        contentFit="cover"
+                        style={styles.centerImageGray}
+                      />
+                    )}
+                  </Animated.View>
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[
+                      styles.crossLineWrap,
+                      {
+                        opacity: centerDeathX1,
+                        transform: [
+                          {
+                            scale: centerDeathX1.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [0.86, 1],
+                            }),
+                          },
+                        ],
+                      },
+                    ]}
+                  >
+                    <AppImage
+                      source={{ uri: X_PART_1_URI }}
+                      contentFit="contain"
+                      style={styles.centerCrossLineImage}
+                    />
+                  </Animated.View>
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[
+                      styles.crossLineWrap,
+                      {
+                        opacity: centerDeathX2,
+                        transform: [
+                          {
+                            scale: centerDeathX2.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [0.86, 1],
+                            }),
+                          },
+                        ],
+                      },
+                    ]}
+                  >
+                    <AppImage
+                      source={{ uri: X_PART_2_URI }}
+                      contentFit="contain"
+                      style={styles.centerCrossLineImage}
+                    />
+                  </Animated.View>
+                </View>
+              </View>
+
+              <Animated.View
+                style={[
+                  styles.minusOne,
+                  {
+                    opacity: minusOneOpacity,
+                    transform: [
+                      { translateY: minusOneY },
+                      { scale: minusOneScale },
+                      {
+                        rotate: minusOneScale.interpolate({
+                          inputRange: [0.82, 1.15],
+                          outputRange: ["-8deg", "0deg"],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <AppImage
+                  source={{ uri: MINUS_ONE_LIVE_URI }}
+                  contentFit="contain"
+                  style={styles.minusOneImage}
+                />
+              </Animated.View>
+
+              <View style={styles.centerNameBtnWrap}>
+                <LinearGradient
+                  colors={["#e02020", "#9b0f0f"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.focusNameRibbon}
+                >
+                  <CustomText variant="p" style={styles.focusNameRibbonText}>
+                    {getDisplayName(centerPlayer.id, centerPlayer.name)}
+                  </CustomText>
+                </LinearGradient>
+              </View>
+            </View>
+          </Animated.View>
         )}
 
         {showGameOver && (
@@ -1644,7 +2402,17 @@ const LivesRevealScreen = () => {
         )}
 
         {!showGameOver && (
-          <View style={[styles.ctaWrap, { paddingBottom: insets.bottom + 12 }]}>
+          <Animated.View
+            style={[
+              styles.ctaWrap,
+              {
+                paddingBottom: insets.bottom + 12,
+                opacity: canContinue ? ctaOp : 0,
+                transform: [{ translateY: canContinue ? ctaY : 24 }],
+              },
+            ]}
+            pointerEvents={canContinue ? "auto" : "none"}
+          >
             <CustomButton
               title={t("continue_btn")}
               fullWidth
@@ -1655,9 +2423,9 @@ const LivesRevealScreen = () => {
               shadowColor="#005f07"
               disabled={!canContinue}
             />
-          </View>
+          </Animated.View>
         )}
-      </ImageBackground>
+      </View>
     </SafeAreaView>
   );
 };
@@ -1665,19 +2433,33 @@ const LivesRevealScreen = () => {
 export default LivesRevealScreen;
 
 const styles = StyleSheet.create({
-  bg: {
-    flex: 1,
+  bg: { flex: 1 },
+  bgBlurOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 40,
   },
-  skipWrap: {
-    position: "absolute",
-    top: 48,
-    right: 16,
-    zIndex: 20,
+  bgBlurWebFallback: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(10, 4, 18, 0.62)",
+  },
+  bgBlurTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(8, 2, 16, 0.16)",
+  },
+  centerFocusOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 50,
+    alignItems: "center",
+    pointerEvents: "none",
+  },
+  centerFocusSlot: {
+    width: "100%",
+    height: CENTER_FOCUS_SLOT_HEIGHT,
   },
   content: {
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 16,
+    paddingTop: 12,
     paddingHorizontal: 16,
     paddingBottom: 120,
   },
@@ -1685,97 +2467,299 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
   },
+
+  /* Focus header */
+  focusHeader: {
+    width: "100%",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  gameShowTitleWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 64,
+    paddingHorizontal: 8,
+  },
+  gameShowTitleLayer: {
+    position: "absolute",
+    textAlign: "center",
+  },
+  gameShowTitleHighlight: {
+    opacity: 0.2,
+    transform: [{ translateY: -1 }],
+  },
+  livesHeroTitle: {
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  ribbonLabelWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ribbonLabelStroke: {
+    position: "absolute",
+    fontFamily: "OpenSans-ExtraBold",
+    fontSize: 16,
+    lineHeight: 20,
+    color: "#3a0505",
+    textAlign: "center",
+    letterSpacing: 0.6,
+    transform: [{ translateX: 1 }, { translateY: 2 }],
+  },
+  ribbonLabelFill: {
+    fontFamily: "OpenSans-ExtraBold",
+    fontSize: 16,
+    lineHeight: 20,
+    color: "#fff",
+    textAlign: "center",
+    letterSpacing: 0.6,
+    textShadowColor: "rgba(0,0,0,0.35)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  focusRibbon: {
+    marginTop: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 11,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,160,160,0.55)",
+    alignSelf: "center",
+    minWidth: "72%",
+    transform: [{ skewX: "-2deg" }],
+  },
+
+  /* Grid header */
+  gridHeader: {
+    width: "100%",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  roundRibbon: {
+    paddingHorizontal: 22,
+    paddingVertical: 7,
+    borderRadius: 6,
+    marginBottom: 10,
+    borderWidth: 1.5,
+    borderColor: "rgba(220,180,255,0.5)",
+    transform: [{ skewX: "-1deg" }],
+  },
+  standingsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    width: "100%",
+    maxWidth: 320,
+  },
+  standingsLine: {
+    flex: 1,
+    height: 1.5,
+    backgroundColor: "rgba(255,220,160,0.35)",
+  },
+  standingsText: {
+    color: "#fff8e8",
+    fontFamily: "OpenSans-ExtraBold",
+    fontSize: 15,
+    letterSpacing: 0.8,
+    textShadowColor: "rgba(0,0,0,0.45)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+
+  /* Focus center */
   centerBlock: {
     width: "100%",
     alignItems: "center",
-    marginBottom: 14,
+    marginBottom: 8,
+  },
+  centerSpotlightWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  spotlightRing: {
+    position: "absolute",
+    width: "72%",
+    aspectRatio: 1,
+    borderRadius: 999,
+    borderWidth: 4,
+    borderColor: "rgba(255,60,40,0.75)",
+    backgroundColor: "rgba(255,40,20,0.1)",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#ff2200",
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 20,
+      },
+      android: { elevation: 10 },
+    }),
   },
   centerImageWrap: {
-    width: "62%",
+    width: "64%",
     aspectRatio: 1,
-    // borderRadius: 999,
+    borderRadius: 999,
     overflow: "hidden",
+    borderWidth: 4,
+    borderColor: "#ff4444",
   },
-  centerImage: {
-    width: "100%",
-    height: "100%",
-  },
+  centerImage: { width: "100%", height: "100%" },
   centerImageGray: {
     width: "100%",
     height: "100%",
-    tintColor: "rgba(160,160,160,0.5)",
+    tintColor: "rgba(120,120,120,0.6)",
     opacity: 0.95,
   },
+
+  /* Hearts */
   heartsPlate: {
-    minWidth: 220,
-    paddingHorizontal: 22,
-    paddingVertical: 10,
+    minWidth: 180,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
     marginBottom: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(10,5,15,0.75)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  heartsPlateFocus: {
+    minWidth: 200,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
   },
   heartsPlateGrid: {
-    minWidth: 188,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginBottom: -16,
+    minWidth: 0,
+    width: "88%",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 8,
+    marginTop: 4,
+    borderRadius: 999,
+  },
+  heartsPlateDead: {
+    borderColor: "rgba(180,60,60,0.35)",
+    backgroundColor: "rgba(20,8,8,0.8)",
   },
   heartsRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
   },
-  centerNameBtnWrap: {
-    width: 220,
-    marginTop: 8,
+  heartBurnGlow: {
+    position: "absolute",
+    alignSelf: "center",
+    backgroundColor: "rgba(255,60,20,0.55)",
+    top: -7,
+    left: -7,
   },
+
+  centerNameBtnWrap: { width: 240, marginTop: 12, alignItems: "center" },
+  focusNameRibbon: {
+    paddingHorizontal: 32,
+    paddingVertical: 11,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,120,120,0.45)",
+    minWidth: 180,
+    alignItems: "center",
+  },
+  focusNameRibbonText: {
+    color: "#fff",
+    fontWeight: "800",
+    textAlign: "center",
+    letterSpacing: 0.5,
+  },
+
   minusOne: {
     position: "absolute",
-    right: 18,
-    top: "34%",
+    right: "6%",
+    top: "40%",
     zIndex: 10,
   },
-  minusOneImage: {
-    width: 180,
-    height: 74,
-  },
+  minusOneImage: { width: 150, height: 62 },
+
+  /* Focus others */
   othersWrap: {
     alignItems: "center",
     justifyContent: "flex-start",
     gap: 10,
-    marginTop: 14,
+    marginTop: 20,
+    backgroundColor: "rgba(8,4,16,0.72)",
+    borderRadius: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  othersLabel: {
+    color: "rgba(255,220,180,0.55)",
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+    fontWeight: "700",
   },
   rowCenter: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
   },
-  gridWrap: {
-    marginTop: 8,
-    gap: 44,
-  },
+
+  /* Grid cards */
+  gridWrap: { marginTop: 4, gap: 14 },
   gridRow: {
     width: "100%",
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 16,
+    gap: 12,
+  },
+  gridRowCentered: {
+    justifyContent: "center",
   },
   gridCard: {
-    flex: 1,
+    borderRadius: 18,
+    overflow: "hidden",
+    borderWidth: 2.5,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.45,
+        shadowRadius: 10,
+      },
+      android: { elevation: 8 },
+    }),
+  },
+  gridCardDead: { opacity: 0.82 },
+  gridCardInner: {
+    alignItems: "center",
+    paddingBottom: 14,
+    paddingTop: 0,
+  },
+  gridNameRibbon: {
+    alignSelf: "stretch",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     alignItems: "center",
   },
-  gridImageWrap: {
-    width: "88%",
-    aspectRatio: 1,
-    // borderRadius: 999,
-    overflow: "hidden",
-  },
-  gridImage: {
+  gridNameRibbonText: {
     width: "100%",
-    height: "100%",
+    color: "#fff",
+    fontWeight: "800",
+    textAlign: "center",
+    letterSpacing: 0.4,
   },
+  gridImageWrap: {
+    width: "78%",
+    aspectRatio: 1,
+    borderRadius: 999,
+    overflow: "hidden",
+    borderWidth: 3,
+    marginTop: 4,
+  },
+  gridImage: { width: "100%", height: "100%" },
   gridImageGray: {
     width: "100%",
     height: "100%",
-    tintColor: "rgba(160,160,160,0.5)",
+    tintColor: "rgba(120,120,120,0.6)",
     opacity: 0.95,
   },
   grayFilterLayer: {
@@ -1788,27 +2772,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  crossLineImage: {
-    width: "92%",
-    height: "92%",
-  },
-  centerCrossLineImage: {
-    width: "90%",
-    height: "90%",
-  },
-  gridNameBtnWrap: {
-    width: "92%",
-    marginTop: -18,
-  },
+  crossLineImage: { width: "92%", height: "92%" },
+  centerCrossLineImage: { width: "90%", height: "90%" },
+
+  /* Winner (legacy) */
   gameOverWrap: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 20,
-  },
-  gameOverTitle: {
-    color: "#fff",
-    textAlign: "center",
   },
   gameOverBtnWrap: {
     width: "100%",
@@ -1828,21 +2800,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 6,
   },
-  winnerHeroImage: {
-    width: "100%",
-    height: "60%",
-    // marginBottom: -42,
-    zIndex: 3,
-  },
-  winnerPlatformImage: {
-    width: "100%",
-    height: 180,
-    zIndex: 2,
-  },
-  winnerConfettiLayer: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 10,
-  },
+  winnerHeroImage: { width: "100%", height: "60%", zIndex: 3 },
+  winnerPlatformImage: { width: "100%", height: 180, zIndex: 2 },
+  winnerConfettiLayer: { ...StyleSheet.absoluteFillObject, zIndex: 10 },
   confettiTopCenter: {
     position: "absolute",
     top: -20,

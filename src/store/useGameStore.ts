@@ -65,25 +65,59 @@ export type MultiplayerRoundStateSnapshot = {
 
 /**
  * Единна последователност за LOCAL (party) и ONLINE: `initRoundQuestions` + host snapshot.
- * Повтаря се на всеки 10 рунда; бонус на позиция 5 (визуално „рунд 5“).
+ * Повтаря се на всеки 11 рунда. "Bonus" is a presentation flag in Results,
+ * not a fake question slot: positions 3, 6, and 10 hide the question.
  */
-const ROUND_SCHEDULE: (QuestionType | "bonus")[] = [
+const ROUND_SCHEDULE: QuestionType[] = [
   "pick", // 1
-  "pick", // 2
-  "number", // 3
+  "number", // 2
+  "pick", // 3
   "input", // 4
-  "bonus", // 5 — бонус (без масов въпрос в Results)
-  "pick", // 6
-  "rate", // 7
-  "input", // 8
-  "number", // 9
-  "rate", // 10
+  "pick", // 5
+  "number", // 6
+  "input", // 7
+  "number", // 8
+  "pick", // 9
+  "pick", // 10
+  "input", // 11
 ];
 
-function getScheduleTypeForRound(roundIndex: number): QuestionType | "bonus" {
+const NAME_PLACEHOLDER_RE = /\{\{name\}\}|\{name\}/;
+const BONUS_ROUND_POSITIONS = new Set([3, 6, 10]);
+
+function getCyclePositionForRound(roundIndex: number): number {
+  if (roundIndex < 1) return 1;
+  return ((roundIndex - 1) % ROUND_SCHEDULE.length) + 1;
+}
+
+function getScheduleTypeForRound(roundIndex: number): QuestionType {
   if (roundIndex < 1) return "pick";
-  const i = (roundIndex - 1) % ROUND_SCHEDULE.length;
-  return ROUND_SCHEDULE[i];
+  return ROUND_SCHEDULE[getCyclePositionForRound(roundIndex) - 1];
+}
+
+function isBonusRoundIndex(roundIndex: number): boolean {
+  return BONUS_ROUND_POSITIONS.has(getCyclePositionForRound(roundIndex));
+}
+
+function normalizeGroupId(groupId: string): string {
+  return groupId.trim().toLowerCase();
+}
+
+function getNormalizedRelatedGroups(q: IQuestion): string[] {
+  return Array.from(
+    new Set(
+      (q.relatedGroupIds ?? [])
+        .map(normalizeGroupId)
+        .filter((groupId) => groupId.length > 0),
+    ),
+  ).sort();
+}
+
+function haveSameRelatedGroups(a: IQuestion, b: IQuestion): boolean {
+  const aGroups = getNormalizedRelatedGroups(a);
+  const bGroups = getNormalizedRelatedGroups(b);
+  if (aGroups.length !== bGroups.length) return false;
+  return aGroups.every((groupId, index) => groupId === bGroups[index]);
 }
 
 type GameState = {
@@ -101,8 +135,6 @@ type GameState = {
   onlineIsHost?: boolean;
   /** Host’s UI language for this session (question copy + i18n). Set at lobby start. */
   onlineSessionLanguage?: string;
-  /** ONLINE: this device is spectating after elimination (blur + dead chat). */
-  onlineSpectating?: boolean;
   phase: Phase;
   players: Player[];
   round: number; // брой завършени рундове
@@ -132,12 +164,18 @@ type GameState = {
   // ново: използвани въпроси в рамките на текущата игра
   usedQuestionIds: string[];
 
-  /** Животи по играч (playerId -> останали животи). */
+  /** Животи по играч (playerId -> останали живот). */
   lives: Record<string, number>;
   lastAppliedLivesRoundKey?: string;
 
+  /**
+   * Snapshot of the full player list taken the first time a dead player is removed
+   * from `players` during a local game. Used by `restartWithSamePlayersAndHeroes`
+   * so that dead players are restored to the restarted game.
+   */
+  originalPlayers?: Player[];
+
   set: (p: Partial<GameState>) => void;
-  setOnlineSpectating: (v: boolean) => void;
   /** Sets online lobby session fields and starts an ONLINE game id. */
   applyOnlinePartySession: (p: {
     roomId: string;
@@ -197,7 +235,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   onlineWsToken: undefined,
   onlineIsHost: undefined,
   onlineSessionLanguage: undefined,
-  onlineSpectating: false,
   phase: "lobby",
   players: [],
   round: 0,
@@ -219,8 +256,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   lastAppliedLivesRoundKey: undefined,
 
   set: (p) => set(p),
-
-  setOnlineSpectating: (v) => set({ onlineSpectating: v }),
 
   applyOnlinePartySession: (p) => {
     const gameId = `game_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -298,7 +333,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       onlineWsToken: undefined,
       onlineIsHost: undefined,
       onlineSessionLanguage: undefined,
-      onlineSpectating: false,
       phase: "lobby",
       players: [],
       round: 0,
@@ -319,6 +353,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       usedQuestionIds: [],
       lives: {},
       lastAppliedLivesRoundKey: undefined,
+      originalPlayers: undefined,
     });
   },
 
@@ -366,7 +401,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((s) => {
       if (s.takenCharacters.includes(characterId)) return s;
       const players = s.players.map((pl) =>
-        pl.id === playerId ? { ...pl, characterId } : pl
+        pl.id === playerId ? { ...pl, characterId } : pl,
       );
       return {
         players,
@@ -433,7 +468,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const completedRounds = get().round ?? 0;
     const currentRoundIndex = completedRounds + 1;
     const scheduleType = getScheduleTypeForRound(currentRoundIndex);
-    const isBonusRound = scheduleType === "bonus";
+    const isBonusRound = isBonusRoundIndex(currentRoundIndex);
 
     const pickSourceForType = (type: QuestionType) => {
       const byTypeAll = active.filter((q) => q.type === type);
@@ -444,40 +479,29 @@ export const useGameStore = create<GameState>((set, get) => ({
       return byTypeAll;
     };
 
-    /**
-     * Get the pool for picking the "odd" question. If base has relatedGroupIds,
-     * pick from questions that share at least one group (same type); otherwise from all of type.
-     * Excludes questions already used in this game (as main or impostor) so they never repeat.
-     */
     const getOddPoolForBase = (base: IQuestion, type: QuestionType) => {
-      const excludeUsed = (pool: typeof active) => pool.filter((q) => q.id !== base.id && !used.includes(q.id));
-      const baseGroups = base.relatedGroupIds ?? [];
-      let fullPool: typeof active;
-      if (!baseGroups.length) {
-        fullPool = pickSourceForType(type);
-      } else {
-        const related = active.filter(
-          (q) =>
-            q.type === type &&
-            q.id !== base.id &&
-            (q.relatedGroupIds ?? []).some((g) => baseGroups.includes(g))
-        );
-        fullPool = related.length >= 1 ? related : pickSourceForType(type).filter((q) => q.id !== base.id);
-      }
-      const preferred = excludeUsed(fullPool);
+      const fullExactPool = active.filter(
+        (q) =>
+          q.type === type && q.id !== base.id && haveSameRelatedGroups(base, q),
+      );
+      const samePackExactPool = fullExactPool.filter(
+        (q) => q.packSlug === base.packSlug,
+      );
+      const fullPool =
+        samePackExactPool.length >= 1 ? samePackExactPool : fullExactPool;
+      const preferred = fullPool.filter((q) => !used.includes(q.id));
       if (preferred.length >= 1) return preferred;
-      return fullPool.filter((q) => q.id !== base.id);
+      if (fullPool.length >= 1) return fullPool;
+      return [base];
     };
 
-    const possibleTypes: QuestionType[] = ["pick", "rate", "number", "input"];
+    const possibleTypes: QuestionType[] = ["pick", "number", "input"];
     let candidates = possibleTypes
       .map((t) => ({ type: t, list: pickSourceForType(t) }))
       .filter((x) => x.list.length >= 2);
 
-    if (scheduleType !== "bonus") {
-      const forSchedule = candidates.filter((c) => c.type === scheduleType);
-      if (forSchedule.length >= 1) candidates = forSchedule;
-    }
+    const forSchedule = candidates.filter((c) => c.type === scheduleType);
+    if (forSchedule.length >= 1) candidates = forSchedule;
 
     if (!candidates.length) {
       console.warn("No question type with at least 2 active questions");
@@ -485,7 +509,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
 
     const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-    const list = chosen.list;
+    const pairableList = chosen.list.filter((q) => {
+      if (NAME_PLACEHOLDER_RE.test(q.text)) return true;
+      return getOddPoolForBase(q, chosen.type).some((odd) => odd.id !== q.id);
+    });
+    const list = pairableList.length >= 1 ? pairableList : chosen.list;
 
     const firstIdx = Math.floor(Math.random() * list.length);
     const base = list[firstIdx];
@@ -500,37 +528,27 @@ export const useGameStore = create<GameState>((set, get) => ({
     let questionNameTarget: string | undefined;
     let impostorNameSubstitute: string | undefined;
 
-    const baseHasNamePlaceholder = base.text.includes("{{name}}");
+    const baseHasNamePlaceholder = NAME_PLACEHOLDER_RE.test(base.text);
 
     if (baseHasNamePlaceholder) {
       // All non-impostors see the same player name in the base question
       const baseTarget = players[Math.floor(Math.random() * players.length)];
       questionNameTarget = baseTarget.name;
 
-      const roll = Math.random();
-      if (roll < 0.75) {
-        // 75%: impostor gets the same question but with a different player's name
-        odd = base;
-        const others = players.filter(
-          (p) => p.id !== oddPlayer.id && p.id !== baseTarget.id
-        );
-        const alt =
-          others.length > 0
-            ? others[Math.floor(Math.random() * others.length)]
-            : baseTarget;
-        impostorNameSubstitute = alt.name;
-      } else {
-        // 25%: impostor gets a different rate question from the pool
-        // If that question also has {{name}}, show another random player's name to the impostor
-        if (odd.text.includes("{{name}}")) {
-          const candidates = players.filter((p) => p.id !== oddPlayer.id);
-          const target =
-            candidates.length > 0
-              ? candidates[Math.floor(Math.random() * candidates.length)]
-              : players[0];
-          impostorNameSubstitute = target?.name;
-        }
-      }
+      // Impostor gets the same question, but with a different player name.
+      odd = base;
+      const otherNameTargets = players.filter((p) => p.id !== baseTarget.id);
+      const impostorTarget =
+        otherNameTargets.length > 0
+          ? otherNameTargets[
+              Math.floor(Math.random() * otherNameTargets.length)
+            ]
+          : baseTarget;
+      impostorNameSubstitute = impostorTarget.name;
+    } else if (NAME_PLACEHOLDER_RE.test(odd.text)) {
+      const impostorTarget =
+        players[Math.floor(Math.random() * players.length)];
+      impostorNameSubstitute = impostorTarget.name;
     }
 
     const usedIds =
@@ -595,13 +613,15 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   restartWithSamePlayersAndHeroes: () =>
     set((s) => {
+      // Restore the full roster (including players who died during the game).
+      const allPlayers = s.originalPlayers ?? s.players;
       const perPlayer = s.gameSettings.livesPerPlayer ?? 3;
       const nextLives: Record<string, number> = {};
-      const takenCharacters = s.players
+      const takenCharacters = allPlayers
         .map((p) => p.characterId)
         .filter((id): id is string => Boolean(id));
 
-      s.players.forEach((p) => {
+      allPlayers.forEach((p) => {
         nextLives[p.id] = perPlayer;
       });
 
@@ -620,11 +640,12 @@ export const useGameStore = create<GameState>((set, get) => ({
         impostorNameSubstitute: undefined,
         questionType: undefined,
         isBonusRound: false,
-        targetPlayersCount: s.players.length,
+        players: allPlayers,
+        targetPlayersCount: allPlayers.length,
         takenCharacters,
         lives: nextLives,
         lastAppliedLivesRoundKey: undefined,
-        onlineSpectating: false,
+        originalPlayers: allPlayers,
       };
     }),
 
@@ -650,15 +671,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       const imposter = players.find((p) => p.id === imposterId);
       if (!imposter) return {};
 
-      const votedWinner =
-        Object.entries(votes).reduce(
-          (acc, [voterId, targetId]) => {
-            if (voterId === imposterId) return acc;
-            acc[targetId] = (acc[targetId] || 0) + 1;
-            return acc;
-          },
-          {} as Record<string, number>
-        );
+      const votedWinner = Object.entries(votes).reduce(
+        (acc, [voterId, targetId]) => {
+          if (voterId === imposterId) return acc;
+          acc[targetId] = (acc[targetId] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
       const maxVotes = Math.max(0, ...Object.values(votedWinner));
       const topTargets = Object.entries(votedWinner)
         .filter(([, v]) => v === maxVotes && maxVotes > 0)
@@ -684,4 +704,3 @@ export const useGameStore = create<GameState>((set, get) => ({
       return { lives: nextLives, lastAppliedLivesRoundKey: roundKey };
     }),
 }));
-

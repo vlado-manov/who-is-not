@@ -1,4 +1,5 @@
 import { openMultiplayerWebSocket } from "./multiplayerWs";
+import { reportMultiplayerDiagnostic } from "../utils/multiplayerDiagnostics";
 
 export type MultiplayerRelayConnState =
   | "connecting"
@@ -19,22 +20,29 @@ function notifyConn(state: MultiplayerRelayConnState) {
 
 function attachSocket(socket: WebSocket) {
   ws = socket;
-  socket.onopen = () => notifyConn("open");
+  socket.onopen = () => {
+    notifyConn("open");
+    reportMultiplayerDiagnostic("relay_open");
+  };
   socket.onclose = () => {
     notifyConn("closed");
+    reportMultiplayerDiagnostic("relay_closed");
     if (ws === socket) {
       ws = null;
       activeToken = null;
     }
   };
-  socket.onerror = () => notifyConn("error");
+  socket.onerror = () => {
+    notifyConn("error");
+    reportMultiplayerDiagnostic("relay_error");
+  };
   socket.onmessage = (ev) => {
     try {
       const raw = typeof ev.data === "string" ? ev.data : String(ev.data);
       const data = JSON.parse(raw) as unknown;
       messageListeners.forEach((fn) => fn(data));
     } catch {
-      /* ignore */
+      reportMultiplayerDiagnostic("relay_message_parse_error");
     }
   };
 }
@@ -80,11 +88,22 @@ export function disconnectMultiplayerRelay(): void {
 }
 
 export function sendMultiplayerRelay(payload: Record<string, unknown>): void {
-  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    reportMultiplayerDiagnostic("relay_send_skipped_not_open", {
+      type:
+        typeof payload.type === "string" ? payload.type : "unknown_payload_type",
+      hasSocket: Boolean(ws),
+      readyState: ws?.readyState ?? null,
+    });
+    return;
+  }
   try {
     ws.send(JSON.stringify(payload));
   } catch {
-    /* ignore */
+    reportMultiplayerDiagnostic("relay_send_failed", {
+      type:
+        typeof payload.type === "string" ? payload.type : "unknown_payload_type",
+    });
   }
 }
 

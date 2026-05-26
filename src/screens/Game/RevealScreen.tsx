@@ -35,6 +35,7 @@ import {
   WinVariant,
 } from "../../utils/revealQuotes";
 import AudioManager from "../../utils/audioManager";
+import RevealAmbienceOverlay from "../../components/game/RevealAmbienceOverlay";
 
 type Nav = StackNavigationProp<GameStackParamList, "Reveal">;
 const SCREEN_HEIGHT = Dimensions.get("window").height;
@@ -50,6 +51,13 @@ const RevealScreen = () => {
   const animatedTitleScale = useRef(new Animated.Value(50)).current;
   const animatedTitleTranslateY = useRef(new Animated.Value(0)).current;
   const animatedTitleRotate = useRef(new Animated.Value(0)).current;
+  const titleShakeX = useRef(new Animated.Value(0)).current;
+  const blurOverlayOpacity = useRef(new Animated.Value(0)).current;
+  const shockwaveScale = useRef(new Animated.Value(0.3)).current;
+  const shockwaveOpacity = useRef(new Animated.Value(0)).current;
+  const shockwaveScale2 = useRef(new Animated.Value(0.3)).current;
+  const shockwaveOpacity2 = useRef(new Animated.Value(0)).current;
+  const impactFlash = useRef(new Animated.Value(0)).current;
   const [characterLoaded, setCharacterLoaded] = useState(false);
   const [showCTA, setShowCTA] = useState(false);
   const [showQuoteBubble, setShowQuoteBubble] = useState(false);
@@ -59,7 +67,7 @@ const RevealScreen = () => {
   const plateTranslateY = useRef(new Animated.Value(0)).current;
   const buttonTranslateY = useRef(new Animated.Value(80)).current;
   const buttonOpacity = useRef(new Animated.Value(0)).current;
-  const titleOpacity = useRef(new Animated.Value(1)).current;
+  const titleOpacity = useRef(new Animated.Value(0)).current;
   const quoteOpacity = useRef(new Animated.Value(0)).current;
   const quoteTranslateY = useRef(new Animated.Value(-28)).current;
   const quoteScale = useRef(new Animated.Value(1)).current;
@@ -101,6 +109,18 @@ const RevealScreen = () => {
     animatedTitleScale.stopAnimation();
     animatedTitleTranslateY.stopAnimation();
     animatedTitleRotate.stopAnimation();
+    titleShakeX.stopAnimation();
+    blurOverlayOpacity.stopAnimation();
+    shockwaveScale.stopAnimation();
+    shockwaveOpacity.stopAnimation();
+    shockwaveScale2.stopAnimation();
+    shockwaveOpacity2.stopAnimation();
+    impactFlash.stopAnimation();
+    blurOverlayOpacity.setValue(0);
+    shockwaveOpacity.setValue(0);
+    shockwaveOpacity2.setValue(0);
+    impactFlash.setValue(0);
+    titleShakeX.setValue(0);
     plateTranslateY.stopAnimation();
     buttonTranslateY.stopAnimation();
     buttonOpacity.stopAnimation();
@@ -120,6 +140,7 @@ const RevealScreen = () => {
   const heroes = useHeroesStore((s) => s.heroes);
   const gameId = useGameStore((s) => s.gameId);
   const mode = useGameStore((s) => s.mode);
+  const onlineIsHost = useGameStore((s) => s.onlineIsHost);
   const currentRoundId = useGameStore((s) => s.currentRoundId);
   const votes = useGameStore((s) => s.votes);
   const oddOneId = useGameStore((s) => s.oddOneId);
@@ -130,34 +151,216 @@ const RevealScreen = () => {
   const round = useGameStore((s) => s.round);
   const userId = useAuthStore((s) => s.user.id);
   const trackRoundEndedMutation = useTrackRoundEndedMutation();
+  const shouldTrackLifecycle = mode !== "ONLINE" || onlineIsHost;
   useEffect(() => {
     if (!characterLoaded) return;
     if (hasRevealedCTA.current) return;
+    // Reset shockwave/impact state before starting
+    shockwaveScale.setValue(0.3);
+    shockwaveScale2.setValue(0.3);
+    shockwaveOpacity.setValue(0);
+    shockwaveOpacity2.setValue(0);
+    impactFlash.setValue(0);
+    titleShakeX.setValue(0);
+    blurOverlayOpacity.setValue(0);
+
     entryAnimRef.current = Animated.sequence([
+      // Phase 1 — zoom in + spin, title stays centered, backdrop dims
       Animated.parallel([
         Animated.timing(animatedTitleScale, {
           toValue: 1,
-          duration: 850,
+          duration: 760,
           easing: Easing.out(Easing.exp),
           useNativeDriver: true,
         }),
         Animated.timing(animatedTitleRotate, {
           toValue: 1,
-          duration: 850,
+          duration: 760,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
-        Animated.spring(animatedTitleTranslateY, {
-          toValue: TITLE_TARGET_OFFSET_Y,
-          speed: 14,
-          bounciness: 8,
+        Animated.timing(blurOverlayOpacity, {
+          toValue: 1,
+          duration: 460,
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
       ]),
+      // Phase 2 — two quick pulses while centered
+      Animated.sequence([
+        Animated.timing(animatedTitleScale, {
+          toValue: 1.15,
+          duration: 120,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(animatedTitleScale, {
+          toValue: 0.93,
+          duration: 100,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(animatedTitleScale, {
+          toValue: 1.09,
+          duration: 100,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(animatedTitleScale, {
+          toValue: 1.0,
+          duration: 100,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.delay(55),
+      // Phase 3 — slam to final position with impact effects
+      Animated.parallel([
+        // Spring slam to top
+        Animated.spring(animatedTitleTranslateY, {
+          toValue: TITLE_TARGET_OFFSET_Y,
+          speed: 26,
+          bounciness: 4,
+          useNativeDriver: true,
+        }),
+        // Backdrop clears
+        Animated.timing(blurOverlayOpacity, {
+          toValue: 0,
+          duration: 210,
+          useNativeDriver: true,
+        }),
+        // Landing squish → spring back
+        Animated.sequence([
+          Animated.timing(animatedTitleScale, {
+            toValue: 0.88,
+            duration: 85,
+            easing: Easing.in(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.spring(animatedTitleScale, {
+            toValue: 1,
+            speed: 18,
+            bounciness: 14,
+            useNativeDriver: true,
+          }),
+        ]),
+        // Camera shake
+        Animated.sequence([
+          Animated.delay(50),
+          Animated.timing(titleShakeX, {
+            toValue: -11,
+            duration: 38,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+          Animated.timing(titleShakeX, {
+            toValue: 11,
+            duration: 38,
+            useNativeDriver: true,
+          }),
+          Animated.timing(titleShakeX, {
+            toValue: -7,
+            duration: 35,
+            useNativeDriver: true,
+          }),
+          Animated.timing(titleShakeX, {
+            toValue: 7,
+            duration: 35,
+            useNativeDriver: true,
+          }),
+          Animated.timing(titleShakeX, {
+            toValue: -3,
+            duration: 32,
+            useNativeDriver: true,
+          }),
+          Animated.timing(titleShakeX, {
+            toValue: 0,
+            duration: 32,
+            useNativeDriver: true,
+          }),
+        ]),
+        // Impact flash
+        Animated.sequence([
+          Animated.delay(35),
+          Animated.timing(impactFlash, {
+            toValue: 1,
+            duration: 50,
+            useNativeDriver: true,
+          }),
+          Animated.timing(impactFlash, {
+            toValue: 0,
+            duration: 310,
+            useNativeDriver: true,
+          }),
+        ]),
+        // Shockwave ring 1
+        Animated.sequence([
+          Animated.delay(25),
+          Animated.parallel([
+            Animated.timing(shockwaveScale, {
+              toValue: 2.8,
+              duration: 530,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }),
+            Animated.sequence([
+              Animated.timing(shockwaveOpacity, {
+                toValue: 0.9,
+                duration: 38,
+                useNativeDriver: true,
+              }),
+              Animated.timing(shockwaveOpacity, {
+                toValue: 0,
+                duration: 460,
+                easing: Easing.out(Easing.cubic),
+                useNativeDriver: true,
+              }),
+            ]),
+          ]),
+        ]),
+        // Shockwave ring 2 (slightly delayed, smaller)
+        Animated.sequence([
+          Animated.delay(80),
+          Animated.parallel([
+            Animated.timing(shockwaveScale2, {
+              toValue: 2.4,
+              duration: 490,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }),
+            Animated.sequence([
+              Animated.timing(shockwaveOpacity2, {
+                toValue: 0.7,
+                duration: 38,
+                useNativeDriver: true,
+              }),
+              Animated.timing(shockwaveOpacity2, {
+                toValue: 0,
+                duration: 420,
+                easing: Easing.out(Easing.cubic),
+                useNativeDriver: true,
+              }),
+            ]),
+          ]),
+        ]),
+      ]),
     ]);
+    setTimeout(() => void AudioManager.playRevealTitleSplash(), 1000);
     entryAnimRef.current.start(() => {
       if (isContinuingRef.current) return;
+      // Stop the pre-reveal suspense bg, then play the outcome sting
+      void AudioManager.stopBackground();
+      if (impostorWon) {
+        void AudioManager.playImposterWinSound();
+      } else {
+        void AudioManager.playImposterLossSound();
+      }
       setHideAnimatedTitle(true);
+      Animated.timing(titleOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
       revealCtaTimeoutRef.current = setTimeout(() => {
         if (isContinuingRef.current) return;
         revealCTA();
@@ -281,7 +484,7 @@ const RevealScreen = () => {
         void AudioManager.restoreBackground(0.35);
         onDone?.();
       }
-    }, 26);
+    }, 38);
   };
 
   const runRevealQuoteSequence = () => {
@@ -501,7 +704,7 @@ const RevealScreen = () => {
     isContinuingRef.current = true;
     stopRevealAnimations();
 
-    if (gameId && currentRoundId) {
+    if (gameId && currentRoundId && shouldTrackLifecycle) {
       try {
         await trackRoundEndedMutation.mutateAsync({
           gameId,
@@ -527,6 +730,8 @@ const RevealScreen = () => {
         style={styles.bg}
         resizeMode="cover"
       >
+        <RevealAmbienceOverlay variant={impostorWon ? "win" : "lose"} />
+
         {/* TOP TITLE */}
         {/* <View style={styles.topTitleWrap}>
           <Image
@@ -581,12 +786,100 @@ const RevealScreen = () => {
           />
         </Animated.View>
 
+        {/* Dark backdrop — fades in during fly-in, out on slam */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              zIndex: 995,
+              opacity: blurOverlayOpacity,
+              backgroundColor: "rgba(0,0,0,0.58)",
+            },
+          ]}
+        />
+
+        {/* Shockwave ring 1 */}
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            zIndex: 996,
+            top: TOP_TITLE_MARGIN_TOP,
+            left: 0,
+            right: 0,
+            height: TOP_TITLE_HEIGHT,
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: shockwaveOpacity,
+            transform: [{ scale: shockwaveScale }],
+          }}
+        >
+          <View
+            style={{
+              width: "88%",
+              height: TOP_TITLE_HEIGHT * 0.82,
+              borderRadius: TOP_TITLE_HEIGHT * 0.38,
+              borderWidth: 3,
+              borderColor: impostorWon
+                ? "rgba(255,230,80,1)"
+                : "rgba(255,90,20,1)",
+            }}
+          />
+        </Animated.View>
+
+        {/* Shockwave ring 2 */}
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            zIndex: 996,
+            top: TOP_TITLE_MARGIN_TOP,
+            left: 0,
+            right: 0,
+            height: TOP_TITLE_HEIGHT,
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: shockwaveOpacity2,
+            transform: [{ scale: shockwaveScale2 }],
+          }}
+        >
+          <View
+            style={{
+              width: "88%",
+              height: TOP_TITLE_HEIGHT * 0.82,
+              borderRadius: TOP_TITLE_HEIGHT * 0.38,
+              borderWidth: 2,
+              borderColor: impostorWon
+                ? "rgba(255,200,50,1)"
+                : "rgba(255,50,10,1)",
+            }}
+          />
+        </Animated.View>
+
+        {/* Impact flash */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              zIndex: 997,
+              opacity: impactFlash,
+              backgroundColor: impostorWon
+                ? "rgba(255,240,160,0.55)"
+                : "rgba(255,60,5,0.38)",
+            },
+          ]}
+        />
+
         {!hideAnimatedTitle && (
           <Animated.View
             style={[
               styles.topTitleWrap2,
               {
+                zIndex: 999,
                 transform: [
+                  { translateX: titleShakeX },
                   { translateY: animatedTitleTranslateY },
                   { scale: animatedTitleScale },
                   {

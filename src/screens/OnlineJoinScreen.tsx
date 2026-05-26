@@ -14,7 +14,9 @@ import * as Clipboard from "expo-clipboard";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { SafeAreaView } from "react-native-safe-area-context";
+import FullBleedStack from "../components/FullBleedStack";
 import ImageBackgroundWithLoadGate from "../components/ImageBackgroundWithLoadGate";
+import WarmBubblesOverlay from "../components/WarmBubblesOverlay";
 import CustomText from "../components/common/CustomText";
 import { backgrounds } from "../../assets/backgrounds";
 import { useTranslation } from "react-i18next";
@@ -34,6 +36,7 @@ import {
   MIN_ONLINE_PLAYERS,
 } from "../constants/onlineLobby";
 import ScreenTopBar from "../components/common/ScreenTopBar";
+import { useUserSettingsSheet } from "../context/UserSettingsModalContext";
 import { useResponsive } from "../utils/responsive";
 import { goBackFromCreateGameToMenu } from "../navigation/goBackFromCreateGameToMenu";
 import { ApiError } from "../api/types";
@@ -60,6 +63,7 @@ export default function OnlineJoinScreen() {
   } = useResponsive();
   const { settings, updateSettings } = useAuthStore();
   const navigation = useNavigation<Nav>();
+  const { openUserSettings } = useUserSettingsSheet();
   const plateModalWidth = usePlateModalCardWidth();
 
   const joinCode = useGameStore((s) => s.roomCode);
@@ -199,10 +203,7 @@ export default function OnlineJoinScreen() {
           }
         })
         .catch((e: unknown) => {
-          if (
-            e instanceof ApiError &&
-            (e.status === 404 || e.status === 410)
-          ) {
+          if (e instanceof ApiError && (e.status === 404 || e.status === 410)) {
             setShowRoomEndedModal(true);
           }
         });
@@ -310,220 +311,225 @@ export default function OnlineJoinScreen() {
   }
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+    <FullBleedStack
+      rootStyle={styles.root}
+      backdrop={
         <ImageBackgroundWithLoadGate
           source={backgrounds.bg027}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         >
-          <ScreenTopBar
-            variant="soloBackFromCenter"
-            horizontalPadding={horizontalPadding}
-            topIconSize={topIconSize}
-            showBack
-            onSettings={() => {}}
-            onProfile={() => {}}
-            onBack={onBackPress}
-            backAccessibilityLabel={t("back_btn")}
-          />
-          <ScrollView
-            removeClippedSubviews={false}
-            contentContainerStyle={{
-              flexGrow: 1,
-              paddingBottom: 48,
-            }}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={{ width: "100%" }}>
-              <View
-                style={{
-                  paddingHorizontal: horizontalPadding,
-                  alignItems: "center",
-                }}
-              >
-                <AnimatedLogoHero
-                  logoSource={logoSource}
-                  overlaySource={game_images.menuPlayIcon}
-                  logoWidth={logo.width}
-                  logoHeight={logo.height}
-                  overlayLayout={storeIconOverlay}
-                  marginTop={logoBlockMarginTop}
-                  onPress={toggleSound}
-                />
-              </View>
+          <WarmBubblesOverlay variant="normal" />
+        </ImageBackgroundWithLoadGate>
+      }
+    >
+      <SafeAreaView style={styles.safe} edges={["left", "right"]}>
+        <ScreenTopBar
+          variant="soloBackFromCenter"
+          horizontalPadding={horizontalPadding}
+          topIconSize={topIconSize}
+          showBack
+          onSettings={() => openUserSettings()}
+          onProfile={() => {}}
+          onBack={onBackPress}
+          backAccessibilityLabel={t("back_btn")}
+        />
+        <ScrollView
+          removeClippedSubviews={false}
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingBottom: 16,
+          }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={{ width: "100%" }}>
+            <View
+              style={{
+                paddingHorizontal: horizontalPadding,
+                alignItems: "center",
+              }}
+            >
+              <AnimatedLogoHero
+                logoSource={logoSource}
+                overlaySource={game_images.menuPlayIcon}
+                logoWidth={logo.width}
+                logoHeight={logo.height}
+                overlayLayout={storeIconOverlay}
+                marginTop={logoBlockMarginTop}
+                onPress={toggleSound}
+              />
+            </View>
 
-              <View className="gap-5 w-full items-stretch">
-                <View style={styles.modalWrap}>
-                  <View style={styles.namePlateShadow}>
-                    <ImageBackground
-                      source={backgrounds.bg005}
-                      resizeMode="stretch"
-                      imageStyle={{ borderRadius: 18 }}
-                      style={styles.namePlate}
-                    >
-                      <View style={styles.namePlateContent}>
-                        <CustomText
-                          variant="p"
-                          className="text-center"
-                          textColor="#762a05"
-                        >
-                          {t("online_room_code_label")}
-                        </CustomText>
-                        <View style={styles.nameDivider} />
-                        <TouchableOpacity
-                          onPress={() => void copyCode()}
-                          activeOpacity={0.9}
-                        >
-                          <View style={styles.codeBox}>
-                            <CustomText
-                              variant="h4-headline"
-                              className="text-center tracking-[0.2em]"
-                              textColor="#592410"
-                            >
-                              {joinCode}
-                            </CustomText>
-                          </View>
-                        </TouchableOpacity>
-                        <View style={styles.nameDivider} />
-
-                        <View style={styles.quickActionsRow}>
-                          <Pressable
-                            onPress={() => void copyCode()}
-                            style={styles.quickActionItem}
-                          >
-                            <View className="flex-row items-center gap-2 justify-center">
-                              <Feather name="copy" size={18} color="#592410" />
-                              <CustomText
-                                variant="p-small"
-                                textColor="#592410"
-                                numberOfLines={2}
-                              >
-                                {t("copy_link")}
-                              </CustomText>
-                            </View>
-                          </Pressable>
-                          <Pressable
-                            onPress={() => void shareCode()}
-                            style={styles.quickActionItem}
-                          >
-                            <View className="flex-row items-center gap-2 justify-center">
-                              <Feather name="share-2" size={18} color="#592410" />
-                              <CustomText
-                                variant="p-small"
-                                textColor="#592410"
-                                numberOfLines={2}
-                              >
-                                {t("share")}
-                              </CustomText>
-                            </View>
-                          </Pressable>
-                        </View>
-                        <View style={styles.nameDivider} />
-                        <View style={styles.roomMetaBox}>
+            <View className="gap-5 w-full items-stretch">
+              <View style={styles.modalWrap}>
+                <View style={styles.namePlateShadow}>
+                  <ImageBackground
+                    source={backgrounds.bg005}
+                    resizeMode="stretch"
+                    imageStyle={{ borderRadius: 18 }}
+                    style={styles.namePlate}
+                  >
+                    <View style={styles.namePlateContent}>
+                      <CustomText
+                        variant="p"
+                        className="text-center"
+                        textColor="#762a05"
+                      >
+                        {t("online_room_code_label")}
+                      </CustomText>
+                      <View style={styles.nameDivider} />
+                      <TouchableOpacity
+                        onPress={() => void copyCode()}
+                        activeOpacity={0.9}
+                      >
+                        <View style={styles.codeBox}>
                           <CustomText
-                            variant="p-small"
-                            className="text-center"
+                            variant="h4-headline"
+                            className="text-center tracking-[0.2em]"
                             textColor="#592410"
                           >
-                            {t("online_waiting_players_status", {
-                              defaultValue: "Waiting players: {{count}}",
-                              count: participantCount,
-                            })}
-                          </CustomText>
-                          <CustomText
-                            variant="p-xsmall"
-                            className="text-center mt-1"
-                            textColor="#762a05"
-                          >
-                            {connLabel}
+                            {joinCode}
                           </CustomText>
                         </View>
-                      </View>
-                    </ImageBackground>
-                  </View>
-                </View>
+                      </TouchableOpacity>
+                      <View style={styles.nameDivider} />
 
-                <View
-                  style={[
-                    { paddingHorizontal: horizontalPadding },
-                    styles.ctaBelowSettings,
-                  ]}
-                >
-                  <Animated.View
-                    style={{
-                      transform: [{ scale: playersPulse }],
-                    }}
-                    className="w-full"
-                  >
-                    <View className="flex-row flex-wrap gap-2 justify-center">
-                      {Array.from({
-                        length: Math.max(6, participantCount),
-                      }).map((_, i) => {
-                        const active = i < participantCount;
-                        return (
-                          <Animated.View
-                            key={i}
-                            style={{
-                              transform: [
-                                {
-                                  scale: i < SLOT_MAX ? slotScale[i] : 1,
-                                },
-                              ],
-                            }}
-                          >
-                            <ImageBackground
-                              source={backgrounds.bg005}
-                              resizeMode="stretch"
-                              imageStyle={{ borderRadius: 10 }}
-                              style={[
-                                styles.playerSlotBg,
-                                active
-                                  ? styles.playerSlotBgActive
-                                  : styles.playerSlotBgInactive,
-                              ]}
+                      <View style={styles.quickActionsRow}>
+                        <Pressable
+                          onPress={() => void copyCode()}
+                          style={styles.quickActionItem}
+                        >
+                          <View className="flex-row items-center gap-2 justify-center">
+                            <Feather name="copy" size={18} color="#592410" />
+                            <CustomText
+                              variant="p-small"
+                              textColor="#592410"
+                              numberOfLines={2}
                             >
-                              {active && i < SLOT_MAX ? (
-                                <Animated.View
-                                  pointerEvents="none"
-                                  style={[
-                                    StyleSheet.absoluteFill,
-                                    {
-                                      borderRadius: 10,
-                                      backgroundColor: "#ff9d00",
-                                      opacity: slotGlow[i],
-                                    },
-                                  ]}
-                                />
-                              ) : null}
-                              <MaterialCommunityIcons
-                                name={active ? "account-check" : "account"}
-                                size={22}
-                                color={active ? "#b5f7c2" : "#d8d8d8"}
-                              />
-                            </ImageBackground>
-                          </Animated.View>
-                        );
-                      })}
+                              {t("copy_link")}
+                            </CustomText>
+                          </View>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => void shareCode()}
+                          style={styles.quickActionItem}
+                        >
+                          <View className="flex-row items-center gap-2 justify-center">
+                            <Feather name="share-2" size={18} color="#592410" />
+                            <CustomText
+                              variant="p-small"
+                              textColor="#592410"
+                              numberOfLines={2}
+                            >
+                              {t("share")}
+                            </CustomText>
+                          </View>
+                        </Pressable>
+                      </View>
+                      <View style={styles.nameDivider} />
+                      <View style={styles.roomMetaBox}>
+                        <CustomText
+                          variant="p-small"
+                          className="text-center"
+                          textColor="#592410"
+                        >
+                          {t("online_waiting_players_status", {
+                            defaultValue: "Waiting players: {{count}}",
+                            count: participantCount,
+                          })}
+                        </CustomText>
+                        <CustomText
+                          variant="p-xsmall"
+                          className="text-center mt-1"
+                          textColor="#762a05"
+                        >
+                          {connLabel}
+                        </CustomText>
+                      </View>
                     </View>
-                  </Animated.View>
-
-                  <CustomText
-                    variant="p-small"
-                    className="text-center mt-6 px-2"
-                    textColor="rgba(255,255,255,0.9)"
-                  >
-                    {participantCount < MIN_ONLINE_PLAYERS
-                      ? t("online_min_players_hint", {
-                          min: MIN_ONLINE_PLAYERS,
-                        })
-                      : t("online_guest_wait_host")}
-                  </CustomText>
+                  </ImageBackground>
                 </View>
               </View>
+
+              <View
+                style={[
+                  { paddingHorizontal: horizontalPadding },
+                  styles.ctaBelowSettings,
+                ]}
+              >
+                <Animated.View
+                  style={{
+                    transform: [{ scale: playersPulse }],
+                  }}
+                  className="w-full"
+                >
+                  <View className="flex-row flex-wrap gap-2 justify-center">
+                    {Array.from({
+                      length: Math.max(6, participantCount),
+                    }).map((_, i) => {
+                      const active = i < participantCount;
+                      return (
+                        <Animated.View
+                          key={i}
+                          style={{
+                            transform: [
+                              {
+                                scale: i < SLOT_MAX ? slotScale[i] : 1,
+                              },
+                            ],
+                          }}
+                        >
+                          <ImageBackground
+                            source={backgrounds.bg005}
+                            resizeMode="stretch"
+                            imageStyle={{ borderRadius: 10 }}
+                            style={[
+                              styles.playerSlotBg,
+                              active
+                                ? styles.playerSlotBgActive
+                                : styles.playerSlotBgInactive,
+                            ]}
+                          >
+                            {active && i < SLOT_MAX ? (
+                              <Animated.View
+                                pointerEvents="none"
+                                style={[
+                                  StyleSheet.absoluteFill,
+                                  {
+                                    borderRadius: 10,
+                                    backgroundColor: "#ff9d00",
+                                    opacity: slotGlow[i],
+                                  },
+                                ]}
+                              />
+                            ) : null}
+                            <MaterialCommunityIcons
+                              name={active ? "account-check" : "account"}
+                              size={22}
+                              color={active ? "#b5f7c2" : "#d8d8d8"}
+                            />
+                          </ImageBackground>
+                        </Animated.View>
+                      );
+                    })}
+                  </View>
+                </Animated.View>
+
+                <CustomText
+                  variant="p-small"
+                  className="text-center mt-6 px-2"
+                  textColor="rgba(255,255,255,0.9)"
+                >
+                  {participantCount < MIN_ONLINE_PLAYERS
+                    ? t("online_min_players_hint", {
+                        min: MIN_ONLINE_PLAYERS,
+                      })
+                    : t("online_guest_wait_host")}
+                </CustomText>
+              </View>
             </View>
-          </ScrollView>
-        </ImageBackgroundWithLoadGate>
+          </View>
+        </ScrollView>
 
         {copyToastVisible ? (
           <Animated.View
@@ -652,7 +658,7 @@ export default function OnlineJoinScreen() {
           </Pressable>
         ) : null}
       </SafeAreaView>
-    </View>
+    </FullBleedStack>
   );
 }
 

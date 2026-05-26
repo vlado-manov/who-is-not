@@ -10,7 +10,9 @@ import { Image } from "expo-image";
 import AppImage from "../components/AppImage";
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
+import FullBleedStack from "../components/FullBleedStack";
 import ImageBackgroundWithLoadGate from "../components/ImageBackgroundWithLoadGate";
+import WarmBubblesOverlay from "../components/WarmBubblesOverlay";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { backgrounds } from "../../assets/backgrounds";
 import CustomText from "../components/common/CustomText";
@@ -24,6 +26,7 @@ import { useGameStore } from "../store/useGameStore";
 import { FontAwesome } from "@expo/vector-icons";
 import GameSettingsModal from "../components/modals/GameSettingsModal";
 import ScreenTopBar from "../components/common/ScreenTopBar";
+import { useUserSettingsSheet } from "../context/UserSettingsModalContext";
 import AnimatedLogoHero from "../components/AnimatedLogoHero";
 import AudioManager from "../utils/audioManager";
 import { game_images } from "../../assets/images";
@@ -47,6 +50,7 @@ const PlayersNumberScreen = () => {
   const startGameSession = useGameStore((s) => s.startGameSession);
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<Nav>();
+  const { openUserSettings } = useUserSettingsSheet();
   const { settings, updateSettings, user } = useAuthStore();
 
   /* ----------------------------- LOGO PICKER ----------------------------- */
@@ -162,174 +166,171 @@ const PlayersNumberScreen = () => {
   const s = panel.scale;
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+    <FullBleedStack
+      rootStyle={styles.root}
+      backdrop={
         <ImageBackgroundWithLoadGate
           source={backgrounds.bg024}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         >
-          <ScreenTopBar
-            variant="soloBackFromCenter"
-            horizontalPadding={pad}
-            topIconSize={topIconSize}
-            showBack
-            onSettings={() => {}}
-            onProfile={() => {}}
-            onBack={goBackToMenu}
-            backAccessibilityLabel={t("players_back_menu", {
-              defaultValue: "Menu",
-            })}
-          />
+          <WarmBubblesOverlay variant="normal" />
+        </ImageBackgroundWithLoadGate>
+      }
+    >
+      <SafeAreaView style={styles.safe} edges={["left", "right"]}>
+        <ScreenTopBar
+          variant="soloBackFromCenter"
+          horizontalPadding={pad}
+          topIconSize={topIconSize}
+          showBack
+          onSettings={() => openUserSettings()}
+          onProfile={() => {}}
+          onBack={goBackToMenu}
+          backAccessibilityLabel={t("players_back_menu", {
+            defaultValue: "Menu",
+          })}
+        />
 
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{
-              flexGrow: 1,
-              paddingHorizontal: pad,
-              paddingBottom: 24,
-            }}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View className="flex-1 items-center w-full">
-              {/* LOGO */}
-              <AnimatedLogoHero
-                logoSource={logoSource}
-                overlaySource={game_images.playersNumberLogoOverlay}
-                logoWidth={logo.width}
-                logoHeight={logo.height}
-                overlayLayout={storeOv}
-                marginTop={logoBlockMarginTop}
-                onPress={toggleSound}
-              />
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingHorizontal: pad,
+            paddingBottom: 24,
+          }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View className="flex-1 items-center w-full">
+            {/* LOGO */}
+            <AnimatedLogoHero
+              logoSource={logoSource}
+              overlaySource={game_images.playersNumberLogoOverlay}
+              logoWidth={logo.width}
+              logoHeight={logo.height}
+              overlayLayout={storeOv}
+              marginTop={logoBlockMarginTop}
+              onPress={toggleSound}
+            />
 
-              {/* CONTENT */}
-              <View className="w-full items-center px-2">
-                <CustomText variant="label" className="mb-4">
-                  {t("players_number_label_text")}
-                </CustomText>
+            {/* CONTENT */}
+            <View className="w-full items-center px-2">
+              <CustomText variant="label" className="mb-4">
+                {t("players_number_label_text")}
+              </CustomText>
 
-                {/* PLAYER COUNT CONTROL */}
-                <View className="relative">
-                  <AppImage
-                    source={game_images.pplCountContainer}
-                    contentFit="contain"
-                    style={{ width: panel.width, height: panel.height }}
-                  />
-
-                  {/* MINUS */}
-                  <Pressable
-                    onPress={decrement}
-                    onPressIn={minusAnim.pressIn}
-                    onPressOut={minusAnim.pressOut}
-                    disabled={players <= MIN_PLAYERS}
-                    style={{
-                      position: "absolute",
-                      left: 8 * s,
-                      bottom: 26 * s,
-                      width: 90 * s,
-                      height: 77 * s,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      opacity: players <= MIN_PLAYERS ? 0.5 : 1,
-                    }}
-                  >
-                    <AnimatedImage
-                      source={game_images.btnMinus}
-                      style={[
-                        { width: 80 * s, height: 77 * s },
-                        minusAnim.style,
-                      ]}
-                      contentFit="contain"
-                    />
-                  </Pressable>
-
-                  {/* COUNT */}
-                  <View
-                    style={{
-                      position: "absolute",
-                      left: 96 * s,
-                      right: 96 * s,
-                      bottom: 24 * s,
-                      justifyContent: "center",
-                      alignItems: "center",
-                    }}
-                  >
-                    <CustomText
-                      variant="h4"
-                      // className="text-black"
-                      style={{ fontSize: 50, color: "#2f5377" }}
-                    >
-                      {players}
-                    </CustomText>
-                  </View>
-
-                  {/* PLUS */}
-                  <Pressable
-                    onPress={increment}
-                    onPressIn={plusAnim.pressIn}
-                    onPressOut={plusAnim.pressOut}
-                    disabled={players >= MAX_PLAYERS}
-                    style={{
-                      position: "absolute",
-                      right: 8 * s,
-                      bottom: 26 * s,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      opacity: players >= MAX_PLAYERS ? 0.5 : 1,
-                    }}
-                  >
-                    <AnimatedImage
-                      source={game_images.btnPlus}
-                      style={[
-                        { width: 80 * s, height: 77 * s },
-                        plusAnim.style,
-                      ]}
-                      contentFit="contain"
-                    />
-                  </Pressable>
-                </View>
-
-                <CustomText variant="footnote" className="mb-4">
-                  {t("max_characters_players")}
-                </CustomText>
-
-                {/* CONTINUE */}
-                <CustomButton
-                  title={t("continue_btn")}
-                  fullWidth
-                  btnSize="sm"
-                  fontSize="sm"
-                  buttonClassName="mt-2"
-                  onPress={onContinue}
-                  backgroundImage={backgrounds.bg026}
-                  shadowColor="#005f07"
+              {/* PLAYER COUNT CONTROL */}
+              <View className="relative">
+                <AppImage
+                  source={game_images.pplCountContainer}
+                  contentFit="contain"
+                  style={{ width: panel.width, height: panel.height }}
                 />
 
-                {/* SETTINGS */}
-                <TouchableOpacity
-                  className="flex-row items-center gap-2 justify-center mt-4"
-                  onPress={() => {
-                    setGameSettingsVisible(true);
-                    AudioManager.playButtonClick();
+                {/* MINUS */}
+                <Pressable
+                  onPress={decrement}
+                  onPressIn={minusAnim.pressIn}
+                  onPressOut={minusAnim.pressOut}
+                  disabled={players <= MIN_PLAYERS}
+                  style={{
+                    position: "absolute",
+                    left: 8 * s,
+                    bottom: 26 * s,
+                    width: 90 * s,
+                    height: 77 * s,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    opacity: players <= MIN_PLAYERS ? 0.5 : 1,
                   }}
                 >
-                  <FontAwesome name="gear" size={20} color="white" />
-                  <CustomText variant="p">{t("game_settings")}</CustomText>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </ScrollView>
+                  <AnimatedImage
+                    source={game_images.btnMinus}
+                    style={[{ width: 80 * s, height: 77 * s }, minusAnim.style]}
+                    contentFit="contain"
+                  />
+                </Pressable>
 
-          {gameSettingsVisible && (
-            <GameSettingsModal
-              setGameSettingsVisible={setGameSettingsVisible}
-            />
-          )}
-        </ImageBackgroundWithLoadGate>
+                {/* COUNT */}
+                <View
+                  style={{
+                    position: "absolute",
+                    left: 96 * s,
+                    right: 96 * s,
+                    bottom: 24 * s,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <CustomText
+                    variant="h4"
+                    // className="text-black"
+                    style={{ fontSize: 50, color: "#2f5377" }}
+                  >
+                    {players}
+                  </CustomText>
+                </View>
+
+                {/* PLUS */}
+                <Pressable
+                  onPress={increment}
+                  onPressIn={plusAnim.pressIn}
+                  onPressOut={plusAnim.pressOut}
+                  disabled={players >= MAX_PLAYERS}
+                  style={{
+                    position: "absolute",
+                    right: 8 * s,
+                    bottom: 26 * s,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    opacity: players >= MAX_PLAYERS ? 0.5 : 1,
+                  }}
+                >
+                  <AnimatedImage
+                    source={game_images.btnPlus}
+                    style={[{ width: 80 * s, height: 77 * s }, plusAnim.style]}
+                    contentFit="contain"
+                  />
+                </Pressable>
+              </View>
+
+              <CustomText variant="footnote" className="mb-4">
+                {t("max_characters_players")}
+              </CustomText>
+
+              {/* CONTINUE */}
+              <CustomButton
+                title={t("continue_btn")}
+                fullWidth
+                btnSize="sm"
+                fontSize="sm"
+                buttonClassName="mt-2"
+                onPress={onContinue}
+                backgroundImage={backgrounds.bg026}
+                shadowColor="#005f07"
+              />
+
+              {/* SETTINGS */}
+              <TouchableOpacity
+                className="flex-row items-center gap-2 justify-center mt-4"
+                onPress={() => {
+                  setGameSettingsVisible(true);
+                  AudioManager.playButtonClick();
+                }}
+              >
+                <FontAwesome name="gear" size={20} color="white" />
+                <CustomText variant="p">{t("game_settings")}</CustomText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+
+        {gameSettingsVisible && (
+          <GameSettingsModal setGameSettingsVisible={setGameSettingsVisible} />
+        )}
       </SafeAreaView>
-    </View>
+    </FullBleedStack>
   );
 };
 

@@ -1,11 +1,13 @@
-import { View, TouchableOpacity, Animated } from "react-native";
+import { View, TouchableOpacity, Animated, Pressable } from "react-native";
 import React, { useRef, useState } from "react";
 import * as Clipboard from "expo-clipboard";
 import ProfileImageComponent from "./ProfileImageComponent";
+import ProfileChangeNameModal from "./ProfileChangeNameModal";
 import { useAuthStore } from "../../store/useUserStore";
 import CustomText from "../common/CustomText";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import AudioManager from "../../utils/audioManager";
 
 type Props = {
   setImagePickerVisible: React.Dispatch<React.SetStateAction<boolean>>;
@@ -18,6 +20,7 @@ const ProfileInfoComponent = ({ setImagePickerVisible }: Props) => {
   const userId = useAuthStore((s) => s.user.id);
 
   const [copied, setCopied] = useState(false);
+  const [nameModalVisible, setNameModalVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const handleCopy = async () => {
@@ -43,14 +46,32 @@ const ProfileInfoComponent = ({ setImagePickerVisible }: Props) => {
   return (
     <View className="items-center">
       <ProfileImageComponent setImagePickerVisible={setImagePickerVisible} />
-      <View className="flex-row gap-2 items-center">
+      <View className="flex-row gap-2 items-center justify-center">
         <CustomText
           variant="h4-headline"
           className="text-center font-opensans-bold"
         >
           {userName}
         </CustomText>
+        {authStatus !== "guest" && (
+          <Pressable
+            hitSlop={10}
+            onPress={() => {
+              AudioManager.playButtonClick();
+              setNameModalVisible(true);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t("profile_change_name_title")}
+          >
+            <Ionicons name="create-outline" size={24} color="rgba(255,255,255,0.9)" />
+          </Pressable>
+        )}
       </View>
+
+      <ProfileChangeNameModal
+        visible={nameModalVisible}
+        onClose={() => setNameModalVisible(false)}
+      />
 
       {authStatus === "guest" ? (
         <CustomText variant="p">{t("guest_playing")}</CustomText>

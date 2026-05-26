@@ -9,7 +9,9 @@ export interface IQuestion {
   /** Number of times this question has been used (globally). */
   used: number;
   isActive: boolean;
-  /** Questions sharing any group (and type) are related - odd one is picked from this pool. */
+  /** Source question pack slug used for round pairing logic. */
+  packSlug?: string;
+  /** Related pairing uses an exact same-group set match for the same question type. */
   relatedGroupIds?: string[];
   pack?: IPack;
   tr_bg?: string;

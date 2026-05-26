@@ -5,7 +5,6 @@ import { CreateGameStackParamList } from "./types";
 import DevGameExitOverlay from "../components/dev/DevGameExitOverlay";
 import PlayersNumberScreen from "../screens/PlayersNumberScreen";
 import HeroPickerScreen from "../screens/HeroPickerScreen";
-import SettingsScreen from "../screens/SettingsScreen";
 import LobbyScreen from "../screens/LobbyScreen";
 import OnlineHostScreen from "../screens/OnlineHostScreen";
 import OnlineJoinScreen from "../screens/OnlineJoinScreen";
@@ -41,17 +40,6 @@ export default function CreateGameStackNavigator() {
         name="HeroPicker"
         component={HeroPickerScreen}
         options={instantTransition}
-      />
-      <Stack.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{
-          cardStyleInterpolator: Transitions.slideFromRight,
-          gestureDirection: "horizontal",
-          gestureEnabled: true,
-          cardStyle: { backgroundColor: "transparent" },
-          cardOverlayEnabled: false,
-        }}
       />
       <Stack.Screen name="PassDevice" component={PassDeviceScreen} />
       <Stack.Screen

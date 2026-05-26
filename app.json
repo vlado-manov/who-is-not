@@ -30,6 +30,8 @@
       "bundler": "metro",
       "favicon": "./assets/images/icon.png"
     },
-    "plugins": ["expo-asset"]
+    "plugins": [
+      "expo-asset"
+    ]
   }
 }

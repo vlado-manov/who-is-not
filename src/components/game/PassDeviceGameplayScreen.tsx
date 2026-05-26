@@ -1,5 +1,5 @@
 // src/screens/Game/PassDeviceGameplayScreen.tsx
-import React, { useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   View,
   Pressable,
@@ -8,7 +8,9 @@ import {
   ScrollView,
 } from "react-native";
 import AppImage from "../AppImage";
+import FullBleedStack from "../FullBleedStack";
 import ImageBackgroundWithLoadGate from "../ImageBackgroundWithLoadGate";
+import WarmBubblesOverlay from "../WarmBubblesOverlay";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -37,16 +39,22 @@ const PassDeviceGameplayScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
   usePreventBack();
-  AudioManager.playBackgroundGame();
   const { playerIndex } = useRoute<R>().params;
+  const continuedRef = useRef(false);
+
+  useEffect(() => {
+    void AudioManager.playBackgroundGame();
+  }, []);
 
   const players = useGameStore((s) => s.players);
   const currentPlayer = players[playerIndex];
   const { settings, updateSettings } = useAuthStore();
 
-  const onContinue = () => {
+  const onContinue = useCallback(() => {
+    if (continuedRef.current) return;
+    continuedRef.current = true;
     navigation.navigate("Question", { playerIndex });
-  };
+  }, [navigation, playerIndex]);
 
   const logoSource = useMemo(() => {
     const sound = settings.soundEnabled ? "MusicOn" : "MusicOff";
@@ -73,11 +81,21 @@ const PassDeviceGameplayScreen = () => {
   const padH = horizontalPadding;
 
   return (
-    <SafeAreaView className="flex-1 bg-primary-700" edges={["right", "left"]}>
-      <ImageBackgroundWithLoadGate
-        source={backgrounds.bg027}
-        style={{ flex: 1 }}
-        resizeMode="cover"
+    <FullBleedStack
+      rootStyle={{ flex: 1, backgroundColor: "#0a0a0a" }}
+      backdrop={
+        <ImageBackgroundWithLoadGate
+          source={backgrounds.bg027}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        >
+          <WarmBubblesOverlay variant="intense" />
+        </ImageBackgroundWithLoadGate>
+      }
+    >
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: "transparent" }}
+        edges={["right", "left"]}
       >
         <ScrollView
           style={styles.scroll}
@@ -143,8 +161,8 @@ const PassDeviceGameplayScreen = () => {
             </CustomText>
           </View>
         </ScrollView>
-      </ImageBackgroundWithLoadGate>
-    </SafeAreaView>
+      </SafeAreaView>
+    </FullBleedStack>
   );
 };
 

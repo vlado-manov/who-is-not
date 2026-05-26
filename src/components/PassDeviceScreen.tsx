@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo, useRef } from "react";
-import { View, Pressable, useWindowDimensions, ScrollView } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import { View, Pressable, useWindowDimensions, ScrollView, StyleSheet } from "react-native";
 import AppImage from "./AppImage";
+import FullBleedStack from "./FullBleedStack";
 import ImageBackgroundWithLoadGate from "./ImageBackgroundWithLoadGate";
+import WarmBubblesOverlay from "./WarmBubblesOverlay";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -11,6 +13,7 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 
 import CustomText from "./common/CustomText";
+import BottomSkipAction from "./common/BottomSkipAction";
 import { backgrounds } from "../../assets/backgrounds";
 import { game_images } from "../../assets/images";
 import { CreateGameStackParamList } from "../navigation/types";
@@ -30,18 +33,25 @@ const PassDeviceScreen = () => {
   const navigation = useNavigation<Nav>();
   const { index } = useRoute<R>().params;
   usePreventBack();
-  AudioManager.playBackground();
   const { settings, updateSettings } = useAuthStore();
+  const continuedRef = useRef(false);
+
+  useEffect(() => {
+    void AudioManager.playBackground();
+  }, []);
 
   const target = useGameStore((s) => s.targetPlayersCount);
 
-  const onContinue = () => {
+  const onContinue = useCallback(() => {
+    if (continuedRef.current) return;
+    continuedRef.current = true;
+    void AudioManager.playHeroPickerEnd();
     if (target && index <= target) {
       navigation.navigate("HeroPicker", { index });
     } else {
       navigation.navigate("Lobby");
     }
-  };
+  }, [index, navigation, target]);
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -55,7 +65,7 @@ const PassDeviceScreen = () => {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, []);
+  }, [onContinue]);
 
   const logoSource = useMemo(() => {
     const sound = settings.soundEnabled ? "MusicOn" : "MusicOff";
@@ -82,30 +92,31 @@ const PassDeviceScreen = () => {
   const { logo, horizontalPadding } = useResponsive();
 
   return (
-    <SafeAreaView className="flex-1 bg-primary-700" edges={["right", "left"]}>
-      <ImageBackgroundWithLoadGate
-        source={backgrounds.bg024}
-        style={{ flex: 1 }}
-        resizeMode="cover"
-      >
-        <View
-          className="absolute right-4 z-50"
-          style={{ top: insets.top + 12, paddingRight: horizontalPadding }}
+    <FullBleedStack
+      rootStyle={{ flex: 1, backgroundColor: "#0a0a0a" }}
+      backdrop={
+        <ImageBackgroundWithLoadGate
+          source={backgrounds.bg024}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
         >
-          <Pressable
-            onPress={() => {
-              if (timeoutRef.current) {
-                clearTimeout(timeoutRef.current);
-              }
-              onContinue();
-            }}
-            hitSlop={16}
-          >
-            <CustomText className="h3-headline">
-              {t("skip", { defaultValue: "Skip" })}
-            </CustomText>
-          </Pressable>
-        </View>
+          <WarmBubblesOverlay variant="intense" />
+        </ImageBackgroundWithLoadGate>
+      }
+    >
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: "transparent" }}
+        edges={["right", "left"]}
+      >
+        <BottomSkipAction
+          label={t("skip", { defaultValue: "Skip" })}
+          onPress={() => {
+            if (timeoutRef.current) {
+              clearTimeout(timeoutRef.current);
+            }
+            onContinue();
+          }}
+        />
 
         <ScrollView
           style={{ flex: 1 }}
@@ -146,8 +157,8 @@ const PassDeviceScreen = () => {
             />
           </View>
         </ScrollView>
-      </ImageBackgroundWithLoadGate>
-    </SafeAreaView>
+      </SafeAreaView>
+    </FullBleedStack>
   );
 };
 

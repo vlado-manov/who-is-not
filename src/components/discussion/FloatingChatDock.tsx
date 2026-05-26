@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
@@ -21,7 +21,7 @@ import CustomButton from "../common/CustomButton";
 import { backgrounds } from "../../../assets/backgrounds";
 
 const { height: SCREEN_H } = Dimensions.get("window");
-const PANEL_MAX_H = Math.min(520, Math.round(SCREEN_H * 0.62));
+const PANEL_MAX_H = Math.min(860, Math.round(SCREEN_H * 0.92));
 
 export type ChatLine = {
   id: string;
@@ -59,6 +59,10 @@ export default function FloatingChatDock({
   const scrollRef = useRef<ScrollView | null>(null);
   const [draft, setDraft] = useState("");
   const [expanded, setExpanded] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const fabPulse = useRef(new Animated.Value(0)).current;
+  const fabFloat = useRef(new Animated.Value(0)).current;
+  const prevLenRef = useRef(messages.length);
 
   useEffect(() => {
     if (!expanded) return;
@@ -78,6 +82,62 @@ export default function FloatingChatDock({
     }, 80);
     return () => clearTimeout(id);
   }, [messages.length, expanded]);
+
+  useEffect(() => {
+    const prev = prevLenRef.current;
+    if (messages.length > prev) {
+      const incoming = messages.slice(prev).filter((m) => !m.mine).length;
+      if (!expanded && incoming > 0) {
+        setUnreadCount((c) => c + incoming);
+      }
+    }
+    prevLenRef.current = messages.length;
+  }, [messages, expanded]);
+
+  useEffect(() => {
+    if (expanded) setUnreadCount(0);
+  }, [expanded]);
+
+  useEffect(() => {
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(fabPulse, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(fabPulse, {
+          toValue: 0,
+          duration: 820,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    const floatLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(fabFloat, {
+          toValue: 1,
+          duration: 1050,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(fabFloat, {
+          toValue: 0,
+          duration: 1050,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulseLoop.start();
+    floatLoop.start();
+    return () => {
+      pulseLoop.stop();
+      floatLoop.stop();
+    };
+  }, [fabFloat, fabPulse]);
 
   const close = () => {
     Animated.timing(open, {
@@ -120,23 +180,57 @@ export default function FloatingChatDock({
   const panelBg = dark ? "rgba(22,14,28,0.97)" : "rgba(255,247,236,0.98)";
   const borderC = dark ? "rgba(120,80,140,0.6)" : "rgba(251,192,32,0.65)";
   const titleC = dark ? "#e8d4f0" : "#592410";
+  const fabBob = fabFloat.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -5],
+  });
+  const fabScale = fabPulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.08],
+  });
+  const badgeText = useMemo(
+    () => (unreadCount > 99 ? "99+" : String(unreadCount)),
+    [unreadCount]
+  );
 
   return (
     <>
-      <Pressable
-        onPress={() => setExpanded(true)}
+      <Animated.View
         style={[
-          styles.fab,
+          styles.fabWrap,
           {
             bottom: Math.max(insets.bottom, 12) + 8,
             right: 16,
+            transform: [{ translateY: fabBob }, { scale: fabScale }],
           },
         ]}
-        accessibilityRole="button"
-        accessibilityLabel={t(translationKeyTitle)}
       >
-        <Ionicons name="chatbubbles" size={26} color="#fff7ec" />
-      </Pressable>
+        <Pressable
+          onPress={() => setExpanded(true)}
+          style={[styles.fab, unreadCount > 0 && styles.fabUnread]}
+          accessibilityRole="button"
+          accessibilityLabel={t(translationKeyTitle)}
+        >
+          <Ionicons name="chatbubbles" size={27} color="#fff7ec" />
+          <Ionicons
+            name="sparkles"
+            size={14}
+            color="#fff0b3"
+            style={styles.fabSpark}
+          />
+          {unreadCount > 0 && (
+            <View style={styles.badge}>
+              <CustomText
+                variant="p-xsmall"
+                textColor="#fff"
+                className="text-center"
+              >
+                {badgeText}
+              </CustomText>
+            </View>
+          )}
+        </Pressable>
+      </Animated.View>
 
       {expanded && (
         <Modal
@@ -189,10 +283,10 @@ export default function FloatingChatDock({
                     <Pressable
                       onPress={close}
                       hitSlop={12}
-                      style={styles.closeBtn}
+                      style={styles.minBtn}
                       accessibilityRole="button"
                     >
-                      <Ionicons name="chevron-down" size={26} color={titleC} />
+                      <Ionicons name="remove-circle" size={26} color={titleC} />
                     </Pressable>
                   </View>
 
@@ -285,18 +379,45 @@ export default function FloatingChatDock({
 }
 
 const styles = StyleSheet.create({
-  fab: {
+  fabWrap: {
     position: "absolute",
     zIndex: 2000,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  },
+  fab: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(89, 36, 16, 0.92)",
-    borderWidth: 2,
+    backgroundColor: "rgba(119, 52, 24, 0.95)",
+    borderWidth: 2.5,
     borderColor: "rgba(251, 192, 32, 0.85)",
-    elevation: 12,
+    elevation: 14,
+  },
+  fabUnread: {
+    shadowColor: "#ffcb4a",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 12,
+  },
+  fabSpark: {
+    position: "absolute",
+    top: 10,
+    right: 9,
+  },
+  badge: {
+    position: "absolute",
+    top: -5,
+    right: -4,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#ff3b30",
+    borderWidth: 1.5,
+    borderColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
   },
   keyboardRoot: {
     flex: 1,
@@ -310,7 +431,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.52)",
   },
   panelWrap: {
-    maxHeight: PANEL_MAX_H + 80,
+    height: PANEL_MAX_H + 24,
+    justifyContent: "flex-end",
   },
   panel: {
     marginHorizontal: 12,
@@ -348,15 +470,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  closeBtn: {
+  minBtn: {
     width: 40,
     height: 40,
     alignItems: "center",
     justifyContent: "center",
   },
   scroll: {
-    maxHeight: PANEL_MAX_H - 200,
-    minHeight: 120,
+    flex: 1,
+    minHeight: 180,
   },
   scrollContent: {
     paddingHorizontal: 14,

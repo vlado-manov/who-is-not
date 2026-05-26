@@ -1,7 +1,6 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   View,
-  ImageBackground,
   TouchableOpacity,
   FlatList,
   TouchableWithoutFeedback,
@@ -11,10 +10,13 @@ import {
   ImageSourcePropType,
   useWindowDimensions,
   StyleSheet,
+  Animated,
+  Easing,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import AppImage from "../components/AppImage";
+import FullBleedStack from "../components/FullBleedStack";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { backgrounds } from "../../assets/backgrounds";
 import CustomText from "../components/common/CustomText";
 import ScreenTopBar from "../components/common/ScreenTopBar";
 import { useNavigation } from "@react-navigation/native";
@@ -24,8 +26,299 @@ import { OnboardingStackParamList } from "../navigation/types";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { htp_images } from "../../assets/images";
 import { useResponsive } from "../utils/responsive";
+import { useUserSettingsSheet } from "../context/UserSettingsModalContext";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Rules">;
+
+// ── Animated red → pink → orange background ───────────────────────────────────
+const HG0 = [
+  "rgba(185,28,28,0.52)",
+  "rgba(200,20,20,0.54)",
+  "rgba(160,18,18,0.50)",
+] as const;
+const HG1 = [
+  "rgba(220,38,38,0.52)",
+  "rgba(239,68,68,0.54)",
+  "rgba(185,28,28,0.50)",
+] as const;
+const HG2 = [
+  "rgba(234,88,12,0.50)",
+  "rgba(249,115,22,0.52)",
+  "rgba(220,60,10,0.50)",
+] as const;
+const HG3 = [
+  "rgba(219,39,119,0.48)",
+  "rgba(236,72,153,0.52)",
+  "rgba(190,24,93,0.48)",
+] as const;
+
+const HTP_BUBBLES = [
+  {
+    left: "4%",
+    size: 18,
+    dur: 6800,
+    delay: 0,
+    opacity: 0.45,
+    color: "#fca5a5",
+  },
+  {
+    left: "15%",
+    size: 34,
+    dur: 10200,
+    delay: 1800,
+    opacity: 0.25,
+    color: "#f87171",
+  },
+  {
+    left: "27%",
+    size: 12,
+    dur: 5400,
+    delay: 700,
+    opacity: 0.5,
+    color: "#fb923c",
+  },
+  {
+    left: "40%",
+    size: 28,
+    dur: 8400,
+    delay: 3000,
+    opacity: 0.3,
+    color: "#f9a8d4",
+  },
+  {
+    left: "54%",
+    size: 44,
+    dur: 12500,
+    delay: 5000,
+    opacity: 0.18,
+    color: "#fecdd3",
+  },
+  {
+    left: "66%",
+    size: 14,
+    dur: 5800,
+    delay: 400,
+    opacity: 0.48,
+    color: "#fdba74",
+  },
+  {
+    left: "77%",
+    size: 30,
+    dur: 9400,
+    delay: 6200,
+    opacity: 0.26,
+    color: "#fca5a5",
+  },
+  {
+    left: "88%",
+    size: 22,
+    dur: 7600,
+    delay: 2000,
+    opacity: 0.38,
+    color: "#fbcfe8",
+  },
+  {
+    left: "8%",
+    size: 46,
+    dur: 13800,
+    delay: 7500,
+    opacity: 0.14,
+    color: "#fed7aa",
+  },
+  {
+    left: "34%",
+    size: 10,
+    dur: 4400,
+    delay: 2800,
+    opacity: 0.52,
+    color: "#ffe4e6",
+  },
+  {
+    left: "51%",
+    size: 20,
+    dur: 7000,
+    delay: 900,
+    opacity: 0.4,
+    color: "#f97316",
+  },
+  {
+    left: "72%",
+    size: 8,
+    dur: 3800,
+    delay: 4400,
+    opacity: 0.54,
+    color: "#fb7185",
+  },
+  {
+    left: "22%",
+    size: 6,
+    dur: 3200,
+    delay: 6000,
+    opacity: 0.55,
+    color: "#fda4af",
+  },
+  {
+    left: "83%",
+    size: 16,
+    dur: 5600,
+    delay: 3600,
+    opacity: 0.42,
+    color: "#ea580c",
+  },
+] as const;
+
+function HtpBubble({
+  left,
+  size,
+  dur,
+  delay,
+  opacity,
+  color,
+}: {
+  left: string;
+  size: number;
+  dur: number;
+  delay: number;
+  opacity: number;
+  color: string;
+}) {
+  const { height } = useWindowDimensions();
+  const posY = useRef(new Animated.Value(0)).current;
+  const alpha = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const run = () => {
+      posY.setValue(0);
+      alpha.setValue(0);
+      Animated.parallel([
+        Animated.timing(posY, {
+          toValue: -(height + size * 2),
+          duration: dur,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+        Animated.sequence([
+          Animated.timing(alpha, {
+            toValue: opacity,
+            duration: dur * 0.12,
+            useNativeDriver: true,
+          }),
+          Animated.timing(alpha, {
+            toValue: opacity * 0.7,
+            duration: dur * 0.68,
+            useNativeDriver: true,
+          }),
+          Animated.timing(alpha, {
+            toValue: 0,
+            duration: dur * 0.2,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start(() => run());
+    };
+    const t = setTimeout(run, delay);
+    return () => clearTimeout(t);
+  }, [height, size, dur, delay, opacity, posY, alpha]);
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        bottom: -size,
+        left: left as any,
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: color,
+        opacity: alpha,
+        transform: [{ translateY: posY }],
+      }}
+    />
+  );
+}
+
+function AnimatedHtpBackground() {
+  const t1 = useRef(new Animated.Value(0.5)).current;
+  const t2 = useRef(new Animated.Value(0.8)).current;
+  const t3 = useRef(new Animated.Value(0.2)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(t1, {
+          toValue: 0,
+          duration: 2800,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(t1, {
+          toValue: 1,
+          duration: 2800,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(t2, {
+          toValue: 0,
+          duration: 3600,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(t2, {
+          toValue: 0.9,
+          duration: 3600,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(t3, {
+          toValue: 1,
+          duration: 4400,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(t3, {
+          toValue: 0,
+          duration: 4400,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+  }, [t1, t2, t3]);
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <LinearGradient
+        colors={["#1a0508", "#140304", "#180406"]}
+        style={StyleSheet.absoluteFill}
+      />
+      <LinearGradient colors={HG0} style={StyleSheet.absoluteFill} />
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: t1 }]}>
+        <LinearGradient colors={HG1} style={StyleSheet.absoluteFill} />
+      </Animated.View>
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: t2 }]}>
+        <LinearGradient colors={HG2} style={StyleSheet.absoluteFill} />
+      </Animated.View>
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: t3 }]}>
+        <LinearGradient colors={HG3} style={StyleSheet.absoluteFill} />
+      </Animated.View>
+      {/* Warm pink-red centre bloom */}
+      <LinearGradient
+        colors={["transparent", "rgba(244,63,94,0.16)", "transparent"]}
+        start={{ x: 0.5, y: 0.1 }}
+        end={{ x: 0.5, y: 0.9 }}
+        style={StyleSheet.absoluteFill}
+      />
+      {HTP_BUBBLES.map((b, i) => (
+        <HtpBubble key={i} {...b} />
+      ))}
+    </View>
+  );
+}
 
 type Step = {
   num: number;
@@ -172,6 +465,7 @@ function StepCard({
 
 const HowToPlayScreen = () => {
   const navigation = useNavigation<Nav>();
+  const { openUserSettings } = useUserSettingsSheet();
   const { t } = useTranslation();
   const { horizontalPadding, topIconSize } = useResponsive();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
@@ -206,100 +500,99 @@ const HowToPlayScreen = () => {
   };
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
-        <ImageBackground
-          source={backgrounds.bg023}
-          style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-        >
+    <FullBleedStack
+      rootStyle={styles.root}
+      backdrop={<AnimatedHtpBackground />}
+    >
+      <SafeAreaView style={styles.safe} edges={["left", "right"]}>
+        <View style={{ flex: 1 }}>
           <ScreenTopBar
             variant="soloBackFromCenter"
             horizontalPadding={horizontalPadding}
             topIconSize={topIconSize}
             showBack
-            onSettings={() => {}}
+            onSettings={() => openUserSettings()}
             onProfile={() => {}}
             onBack={() => navigateBackSafe(navigation)}
             backAccessibilityLabel={t("back_btn")}
           />
-        <ScrollView
-          contentContainerStyle={{
-            paddingTop: 72,
-            paddingBottom: Math.min(48, windowHeight * 0.06),
-            alignItems: "center",
-            flexGrow: 1,
-          }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View className="items-center w-full justify-center px-4">
-            <CustomText variant="h3-headline" className="text-center w-full">
-              {t("htp_heading_1")}
-            </CustomText>
-            <CustomText variant="h3" className="-rotate-3 text-center w-full">
-              {t("htp_heading_2")}
-            </CustomText>
-          </View>
-
-          <View style={{ flex: 1, marginTop: 32 }}>
-            <FlatList
-              ref={flatRef}
-              data={steps}
-              keyExtractor={(it) => `step-${it.num}`}
-              renderItem={({ item }) => (
-                <StepCard
-                  step={item}
-                  itemWidth={windowWidth}
-                  imageHeight={cardImageHeight}
-                  showPrev={index > 0}
-                  showNext={index < steps.length - 1}
-                  onPrev={() => goTo(index - 1)}
-                  onNext={() => goTo(index + 1)}
-                  t={t}
-                />
-              )}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              snapToInterval={windowWidth}
-              decelerationRate="fast"
-              getItemLayout={getItemLayout}
-              onViewableItemsChanged={onViewableItemsChanged}
-              viewabilityConfig={viewabilityConfig}
-              disableIntervalMomentum
-            />
-
-            <View className="w-full items-center justify-center flex-row">
-              {steps.map((_: Step, i: number) => {
-                const active = i === index;
-                return (
-                  <TouchableWithoutFeedback key={i} onPress={() => goTo(i)}>
-                    <View
-                      style={{
-                        width: 16,
-                        height: 16,
-                        borderRadius: 999,
-                        marginHorizontal: 6,
-                        backgroundColor: active
-                          ? "#fff"
-                          : "rgba(255,255,255,0.6)",
-                      }}
-                    />
-                  </TouchableWithoutFeedback>
-                );
-              })}
+          <ScrollView
+            contentContainerStyle={{
+              paddingTop: 72,
+              paddingBottom: 16,
+              alignItems: "center",
+              flexGrow: 1,
+            }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View className="items-center w-full justify-center px-4">
+              <CustomText variant="h3-headline" className="text-center w-full">
+                {t("htp_heading_1")}
+              </CustomText>
+              <CustomText variant="h3" className="-rotate-3 text-center w-full">
+                {t("htp_heading_2")}
+              </CustomText>
             </View>
-          </View>
-        </ScrollView>
-      </ImageBackground>
+
+            <View style={{ flex: 1, marginTop: 32 }}>
+              <FlatList
+                ref={flatRef}
+                data={steps}
+                keyExtractor={(it) => `step-${it.num}`}
+                renderItem={({ item }) => (
+                  <StepCard
+                    step={item}
+                    itemWidth={windowWidth}
+                    imageHeight={cardImageHeight}
+                    showPrev={index > 0}
+                    showNext={index < steps.length - 1}
+                    onPrev={() => goTo(index - 1)}
+                    onNext={() => goTo(index + 1)}
+                    t={t}
+                  />
+                )}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                snapToInterval={windowWidth}
+                decelerationRate="fast"
+                getItemLayout={getItemLayout}
+                onViewableItemsChanged={onViewableItemsChanged}
+                viewabilityConfig={viewabilityConfig}
+                disableIntervalMomentum
+              />
+
+              <View className="w-full items-center justify-center flex-row">
+                {steps.map((_: Step, i: number) => {
+                  const active = i === index;
+                  return (
+                    <TouchableWithoutFeedback key={i} onPress={() => goTo(i)}>
+                      <View
+                        style={{
+                          width: 16,
+                          height: 16,
+                          borderRadius: 999,
+                          marginHorizontal: 6,
+                          backgroundColor: active
+                            ? "#fff"
+                            : "rgba(255,255,255,0.6)",
+                        }}
+                      />
+                    </TouchableWithoutFeedback>
+                  );
+                })}
+              </View>
+            </View>
+          </ScrollView>
+        </View>
       </SafeAreaView>
-    </View>
+    </FullBleedStack>
   );
 };
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#0a0a0a" },
+  root: { flex: 1, backgroundColor: "#140304" },
   safe: { flex: 1, backgroundColor: "transparent" },
 });
 

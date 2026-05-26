@@ -36,7 +36,7 @@ export const SLIDE_DISTANCE = W * 1.2;
 /** Продължителност (ms) на появяването на балончето с цитат (translateY + opacity). */
 export const QUOTE_ENTER_DUR = 520;
 /** Интервал (ms) между поява на всяка буква при „печатане” на цитата. */
-export const TYPE_INTERVAL_MS = 28;
+export const TYPE_INTERVAL_MS = 38;
 /** Време (ms) да се държи финалния цитат преди да започне излизането (fade out + translateY нагоре). */
 export const READ_HOLD_MS = 1000;
 /** Продължителност (ms) на излизането на балончето (fade out + translateY). */

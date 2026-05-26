@@ -23,6 +23,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import AppImage from "../../components/AppImage";
+import FullBleedStack from "../../components/FullBleedStack";
 import ImageBackgroundWithLoadGate from "../../components/ImageBackgroundWithLoadGate";
 import { ScrollView } from "react-native-gesture-handler";
 import {
@@ -57,6 +58,7 @@ import {
   mpPhaseAnswers,
 } from "../../constants/onlineLobby";
 import OnlineWaitPlayersOverlay from "../../components/online/OnlineWaitPlayersOverlay";
+import { reportMultiplayerDiagnostic } from "../../utils/multiplayerDiagnostics";
 
 type Nav = StackNavigationProp<GameStackParamList, "Question">;
 type R = RouteProp<GameStackParamList, "Question">;
@@ -67,6 +69,7 @@ const OPEN_INPUT_MIN_FONT = 12;
 const INPUT_BACKGROUND = {
   uri: "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/efba9ddd-bff8-436b-8c3e-946f53c01a3b-input.webp",
 };
+const RATE_GROUP_ID = "rate";
 
 /* -------------------------------------------------------------------------- */
 /* Avatar Pick Button (LOCAL, GAME-SPECIFIC) */
@@ -99,6 +102,20 @@ const AvatarPickButton = ({
 
   const longPressTimeout = useRef<number | null>(null);
   const isLongPressActive = useRef(false);
+  const rotationLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimeout.current !== null) {
+        clearTimeout(longPressTimeout.current);
+        longPressTimeout.current = null;
+      }
+      rotationLoopRef.current?.stop();
+      rotationLoopRef.current = null;
+      scaleAnim.stopAnimation();
+      rotateAnim.stopAnimation();
+    };
+  }, [rotateAnim, scaleAnim]);
 
   /* -------------------- SCALE (avatar + button) -------------------- */
 
@@ -124,20 +141,24 @@ const AvatarPickButton = ({
     isLongPressActive.current = true;
     rotateAnim.setValue(0);
 
-    Animated.loop(
+    rotationLoopRef.current?.stop();
+    rotationLoopRef.current = Animated.loop(
       Animated.timing(rotateAnim, {
         toValue: 1,
         duration: 3000,
         easing: Easing.linear,
         useNativeDriver: true,
       }),
-    ).start();
+    );
+    rotationLoopRef.current.start();
   };
 
   const releaseSpin = () => {
     if (!isLongPressActive.current) return;
 
     isLongPressActive.current = false;
+    rotationLoopRef.current?.stop();
+    rotationLoopRef.current = null;
     rotateAnim.stopAnimation();
 
     Animated.sequence([
@@ -183,43 +204,47 @@ const AvatarPickButton = ({
   });
 
   return (
-    <Pressable onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}>
-      {/* SCALE WRAPPER (avatar + button) */}
+    <View
+      style={{
+        alignItems: "center",
+        width: buttonWidth,
+        maxWidth: "100%",
+      }}
+    >
       <Animated.View
         style={{
           alignItems: "center",
-          width: buttonWidth,
-          maxWidth: "100%",
+          width: "100%",
           transform: [{ scale: scaleAnim }],
         }}
       >
-        {/* ROTATE WRAPPER (avatar ONLY) */}
-        <Animated.View style={{ transform: [{ rotate }] }}>
-          <View
-            style={[
-              styles.avatarCircle,
-              {
-                shadowColor: color,
-                shadowOpacity: selected ? 0.9 : 0.4,
-                shadowRadius: selected ? 14 : 6,
-              },
-            ]}
-          >
-            {avatar && (
-              <AppImage
-                source={avatar}
-                style={{
-                  width: avatarDiameter,
-                  height: avatarDiameter,
-                  marginBottom: -20,
-                }}
-                contentFit="contain"
-              />
-            )}
-          </View>
-        </Animated.View>
+        <Pressable onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}>
+          <Animated.View style={{ transform: [{ rotate }] }}>
+            <View
+              style={[
+                styles.avatarCircle,
+                {
+                  shadowColor: color,
+                  shadowOpacity: selected ? 0.9 : 0.4,
+                  shadowRadius: selected ? 14 : 6,
+                },
+              ]}
+            >
+              {avatar && (
+                <AppImage
+                  source={avatar}
+                  style={{
+                    width: avatarDiameter,
+                    height: avatarDiameter,
+                    marginBottom: -20,
+                  }}
+                  contentFit="contain"
+                />
+              )}
+            </View>
+          </Animated.View>
+        </Pressable>
 
-        {/* BUTTON (NO ROTATION) */}
         <CustomButton
           title={name}
           appearance="tertiary"
@@ -234,7 +259,7 @@ const AvatarPickButton = ({
           shadowColor="#834400"
         />
       </Animated.View>
-    </Pressable>
+    </View>
   );
 };
 
@@ -293,7 +318,6 @@ const QuestionScreen = () => {
   const mode = useGameStore((s) => s.mode) as GameMode;
   const onlineIsHost = useGameStore((s) => s.onlineIsHost);
   const onlinePlayerId = useGameStore((s) => s.onlinePlayerId);
-  const onlineSpectating = useGameStore((s) => s.onlineSpectating);
   const lives = useGameStore((s) => s.lives);
   const players = useGameStore((s) => s.players);
   const heroes = useHeroesStore((s) => s.heroes);
@@ -326,19 +350,33 @@ const QuestionScreen = () => {
 
   const openInputMeasureWidth = Math.max(0, openInputRowWidth - 16);
 
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const numberInputRef = useRef<any>(null);
   const [rateSliderValue, setRateSliderValue] = useState(1);
   const sliderGestureRef = useRef(null);
   const numberHeroScale = useRef(new Animated.Value(1)).current;
   const [waitingAnswersSync, setWaitingAnswersSync] = useState(false);
+  const answerSubmittedRef = useRef(false);
 
   const answersPhase = mpPhaseAnswers(activeRoundNumber);
 
   const isEliminatedSpectator =
     mode === "ONLINE" &&
     onlinePlayerId != null &&
-    (onlineSpectating || (lives[onlinePlayerId] ?? 0) <= 0);
+    lives[onlinePlayerId] != null &&
+    lives[onlinePlayerId] <= 0;
+
+  const waitingForHostRound =
+    mode === "ONLINE" &&
+    !onlineIsHost &&
+    (!baseQuestionId || !oddQuestionId || !oddOneId);
+
+  useEffect(() => {
+    if (waitingForHostRound || isEliminatedSpectator) return;
+    void AudioManager.playBackgroundGame();
+    return () => {
+      void AudioManager.stopTensionLoop();
+    };
+  }, [waitingForHostRound, isEliminatedSpectator]);
 
   const specAnswerReadyRef = useRef(false);
   useEffect(() => {
@@ -350,7 +388,11 @@ const QuestionScreen = () => {
     specAnswerReadyRef.current = true;
     setWaitingAnswersSync(true);
     sendPlayerReady(answersPhase);
-  }, [answersPhase, isEliminatedSpectator]);
+    reportMultiplayerDiagnostic("answer_auto_ready_spectator", {
+      onlinePlayerId: onlinePlayerId ?? null,
+      answersPhase,
+    });
+  }, [answersPhase, isEliminatedSpectator, onlinePlayerId]);
 
   useMultiplayerPhaseGate({
     enabled: mode === "ONLINE" && waitingAnswersSync,
@@ -386,9 +428,14 @@ const QuestionScreen = () => {
     return gameQuestions.find((q) => q.id === targetId) ?? null;
   }, [currentPlayer, baseQuestionId, oddQuestionId, oddOneId, gameQuestions]);
 
-  const isNumber = question?.type === "number";
+  const isRate =
+    question?.type === "rate" ||
+    (question?.type === "number" &&
+      (question.relatedGroupIds ?? []).some(
+        (g) => g.trim().toLowerCase() === RATE_GROUP_ID,
+      ));
+  const isNumber = question?.type === "number" && !isRate;
   const isInput = question?.type === "input";
-  const isRate = question?.type === "rate";
   const isPick = question?.type === "pick";
 
   useEffect(() => {
@@ -418,6 +465,8 @@ const QuestionScreen = () => {
   }, []);
 
   React.useEffect(() => {
+    // Splash sound fires in sync with the plate flying in
+    void AudioManager.playRevealTitleSplash();
     Animated.sequence([
       Animated.parallel([
         Animated.timing(plateScale, {
@@ -479,11 +528,6 @@ const QuestionScreen = () => {
     ]).start();
   }, [isNumber, isInput, numberInputOpacity, numberInputScale]);
 
-  const waitingForHostRound =
-    mode === "ONLINE" &&
-    !onlineIsHost &&
-    (!baseQuestionId || !oddQuestionId || !oddOneId);
-
   if (!currentPlayer) return null;
 
   if (waitingForHostRound) {
@@ -499,13 +543,7 @@ const QuestionScreen = () => {
 
   if (isEliminatedSpectator) {
     return (
-      <SafeAreaView
-        className="flex-1 bg-primary-700 justify-center items-center px-6"
-        edges={["right", "left"]}
-      >
-        <CustomText variant="h6-headline" className="text-center text-white">
-          {t("spectator_waiting_phase")}
-        </CustomText>
+      <SafeAreaView className="flex-1 bg-primary-700" edges={["right", "left"]}>
         <OnlineWaitPlayersOverlay visible={waitingAnswersSync} />
       </SafeAreaView>
     );
@@ -539,6 +577,8 @@ const QuestionScreen = () => {
   const submitAnswerAndAdvance = (raw: string) => {
     const value = raw.trim().slice(0, 500);
     if (!value) return;
+    if (answerSubmittedRef.current) return;
+    answerSubmittedRef.current = true;
     setAnswer(currentPlayer.id, value);
     if (mode === "ONLINE") {
       sendMultiplayerRelay({
@@ -585,7 +625,6 @@ const QuestionScreen = () => {
   };
 
   const handlePickPlayer = (pickedId: string) => {
-    setSelectedPlayerId(pickedId);
     submitAnswerAndAdvance(pickedId);
   };
 
@@ -602,7 +641,7 @@ const QuestionScreen = () => {
     return hero?.rateImage ?? vanessa?.rateImage ?? null;
   };
 
-  const needsKeyboardLift = keyboardHeight > 0 && (isInput || isNumber);
+  const needsKeyboardLift = keyboardHeight > 0 && isInput;
   /** Android: KAV + window resize often fail with edge-to-edge; reserve bottom inset explicitly. */
   const androidKeyboardPad =
     Platform.OS === "android" && needsKeyboardLift
@@ -614,15 +653,25 @@ const QuestionScreen = () => {
       : 0;
 
   return (
-    <SafeAreaView className="flex-1" edges={["right", "left"]}>
-      <ImageBackgroundWithLoadGate
-        source={backgrounds.bg023}
-        style={{ flex: 1 }}
-        resizeMode="cover"
+    <FullBleedStack
+      rootStyle={{ flex: 1, backgroundColor: "#0a0a0a" }}
+      backdrop={
+        <ImageBackgroundWithLoadGate
+          source={backgrounds.bg023}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        />
+      }
+    >
+      <SafeAreaView
+        className="flex-1"
+        style={{ backgroundColor: "transparent" }}
+        edges={["right", "left"]}
       >
         <KeyboardAvoidingView
           style={styles.keyboardAvoiding}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
+          enabled={isInput}
           keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}
         >
           <View
@@ -736,7 +785,6 @@ const QuestionScreen = () => {
                               name={player.name}
                               avatar={characterData?.profileImage}
                               color={`#${characterData?.color ?? "ffffff"}`}
-                              selected={selectedPlayerId === player.id}
                               onPress={() => handlePickPlayer(player.id)}
                               avatarDiameter={pickLayout.avatarDiameter}
                               buttonWidth={pickLayout.buttonWidth}
@@ -944,7 +992,6 @@ const QuestionScreen = () => {
                               ref={numberInputRef}
                               value={numberAnswer}
                               onChangeText={handleNumberChange}
-                              onFocus={scrollAnswerIntoView}
                               keyboardType="numeric"
                               maxLength={4}
                               placeholder={t("question_number_placeholder")}
@@ -1008,11 +1055,11 @@ const QuestionScreen = () => {
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
-      </ImageBackgroundWithLoadGate>
       <OnlineWaitPlayersOverlay
         visible={mode === "ONLINE" && waitingAnswersSync}
       />
     </SafeAreaView>
+    </FullBleedStack>
   );
 };
 

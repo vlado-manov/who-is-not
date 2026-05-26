@@ -9,6 +9,18 @@ import {
   ImageBackgroundProps,
 } from "react-native";
 
+function containerWrapperStyle(
+  style: ImageBackgroundProps["style"] | undefined,
+): ImageBackgroundProps["style"] {
+  const flat = StyleSheet.flatten(style);
+  // `flex: 1` + `position: 'absolute'` (e.g. StyleSheet.absoluteFill) makes Yoga still
+  // count this view in flex layout and can collapse a sibling `SafeAreaView` to height 0.
+  if (flat?.position === "absolute") {
+    return style;
+  }
+  return [{ flex: 1 }, style];
+}
+
 type Props = Omit<ImageBackgroundProps, "onLoad"> & {
   /** Fallback при грешка – показваме съдържанието след timeout */
   loadTimeoutMs?: number;
@@ -52,7 +64,7 @@ export default function ImageBackgroundWithLoadGate({
   if (showChildrenWhileLoading) {
     const bgUnderlay = underlayColor ?? "transparent";
     return (
-      <View style={[{ flex: 1 }, style]}>
+      <View style={containerWrapperStyle(style)}>
         <View
           style={[
             StyleSheet.absoluteFillObject,
@@ -80,7 +92,7 @@ export default function ImageBackgroundWithLoadGate({
 
   const showContent = imageReady;
   return (
-    <View style={[{ flex: 1 }, style]}>
+    <View style={containerWrapperStyle(style)}>
       <View
         style={[
           StyleSheet.absoluteFillObject,

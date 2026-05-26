@@ -22,6 +22,7 @@ import { fetchQuestionPacks, type QuestionPackDto } from "../../api/questions";
 import { backgrounds } from "../../../assets/backgrounds";
 import AudioManager from "../../utils/audioManager";
 import { usePlateModalCardWidth } from "./usePlateModalCardWidth";
+import { useAuthStore } from "../../store/useUserStore";
 
 type Props = {
   setGameSettingsVisible: React.Dispatch<React.SetStateAction<boolean>>;
@@ -50,6 +51,7 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
   const plateWidth = usePlateModalCardWidth();
   const gameSettings = useGameStore((s) => s.gameSettings);
   const setGameSettings = useGameStore((s) => s.setGameSettings);
+  const userId = useAuthStore((s) => s.user.id);
 
   const [selectedSec, setSelectedSec] = useState<number>(
     gameSettings?.discussionSeconds ?? 120,
@@ -102,7 +104,7 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
 
   useEffect(() => {
     let cancelled = false;
-    fetchQuestionPacks()
+    fetchQuestionPacks({ userId })
       .then((list) => {
         if (!cancelled) {
           setAvailablePacks(list);
@@ -123,7 +125,7 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [userId]);
 
   const selectedLabel = useMemo(
     () => TIME_OPTIONS.find((o) => o.seconds === selectedSec)?.label ?? "2:00",
@@ -212,6 +214,7 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
                 variant="p"
                 className="text-center"
                 textColor="#762a05"
+                style={styles.modalTitle}
               >
                 {t("game_settings")}
               </CustomText>
@@ -467,6 +470,9 @@ const styles = StyleSheet.create({
     elevation: 14,
     width: "100%",
     alignSelf: "stretch",
+  },
+  modalTitle: {
+    marginBottom: 14,
   },
   namePlate: {
     borderRadius: 18,

@@ -7,7 +7,7 @@ export interface IUser {
   name: string;
   email?: string;
   avatarId: AvatarId;
-  provider?: "google" | "apple";
+  provider?: "google" | "apple" | "local";
   isGuest: boolean;
   lang?: "bg" | "en" | "fr" | "es";
   isPremium?: boolean;
@@ -19,5 +19,7 @@ export interface IUser {
   sfxLevel?: number;
   customQuestions?: string[];
   purchases?: IPurchase[];
+  purchasedProductIds?: string[];
+  unlockedCharacterIds?: string[];
   achievements?: IAchievement[];
 }

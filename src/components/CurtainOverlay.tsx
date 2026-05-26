@@ -723,43 +723,46 @@ export default function CurtainOverlay({
                     styles.startButtonWrap,
                     { opacity: startButtonOpacity },
                   ]}
+                  pointerEvents="none"
                 >
-                  <Pressable
-                    onPress={handleWelcomeStart}
-                    accessibilityRole="button"
-                    accessibilityLabel={t("start_btn")}
-                    style={styles.startLabelPressable}
+                  <Animated.View
+                    style={{
+                      transform: [
+                        {
+                          translateY: Animated.add(
+                            startButtonTranslateY,
+                            idleBounce,
+                          ),
+                        },
+                        { scale: startButtonScale },
+                        {
+                          rotate: idleRotate.interpolate({
+                            inputRange: [-1, 1],
+                            outputRange: ["-3deg", "3deg"],
+                          }),
+                        },
+                      ],
+                    }}
                   >
-                    <Animated.View
-                      style={{
-                        transform: [
-                          {
-                            translateY: Animated.add(
-                              startButtonTranslateY,
-                              idleBounce,
-                            ),
-                          },
-                          { scale: startButtonScale },
-                          {
-                            rotate: idleRotate.interpolate({
-                              inputRange: [-1, 1],
-                              outputRange: ["-3deg", "3deg"],
-                            }),
-                          },
-                        ],
-                      }}
+                    <CustomText
+                      variant="h2"
+                      className="text-center"
+                      textColor="#fff8e8"
+                      shadow
                     >
-                      <CustomText
-                        variant="h2"
-                        className="text-center"
-                        textColor="#fff8e8"
-                        shadow
-                      >
-                        {t("start_btn")}
-                      </CustomText>
-                    </Animated.View>
-                  </Pressable>
+                      {t("start_btn")}
+                    </CustomText>
+                  </Animated.View>
                 </Animated.View>
+              )}
+              {/* Full-screen tap target — active once loading is done */}
+              {welcomeCanStart && (
+                <Pressable
+                  onPress={handleWelcomeStart}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("start_btn")}
+                  style={StyleSheet.absoluteFillObject}
+                />
               )}
             </View>
           </Animated.View>
@@ -817,43 +820,46 @@ export default function CurtainOverlay({
         {welcomeCanStart && (
           <Animated.View
             style={[styles.startButtonWrap, { opacity: startButtonOpacity }]}
+            pointerEvents="none"
           >
-            <Pressable
-              onPress={handleWelcomeStart}
-              accessibilityRole="button"
-              accessibilityLabel={t("start_btn")}
-              style={styles.startLabelPressable}
+            <Animated.View
+              style={{
+                transform: [
+                  {
+                    translateY: Animated.add(
+                      startButtonTranslateY,
+                      idleBounce,
+                    ),
+                  },
+                  { scale: startButtonScale },
+                  {
+                    rotate: idleRotate.interpolate({
+                      inputRange: [-1, 1],
+                      outputRange: ["-3deg", "3deg"],
+                    }),
+                  },
+                ],
+              }}
             >
-              <Animated.View
-                style={{
-                  transform: [
-                    {
-                      translateY: Animated.add(
-                        startButtonTranslateY,
-                        idleBounce,
-                      ),
-                    },
-                    { scale: startButtonScale },
-                    {
-                      rotate: idleRotate.interpolate({
-                        inputRange: [-1, 1],
-                        outputRange: ["-3deg", "3deg"],
-                      }),
-                    },
-                  ],
-                }}
+              <CustomText
+                variant="h2"
+                className="text-center"
+                textColor="#fff8e8"
+                shadow
               >
-                <CustomText
-                  variant="h2"
-                  className="text-center"
-                  textColor="#fff8e8"
-                  shadow
-                >
-                  {t("start_btn")}
-                </CustomText>
-              </Animated.View>
-            </Pressable>
+                {t("start_btn")}
+              </CustomText>
+            </Animated.View>
           </Animated.View>
+        )}
+        {/* Full-screen tap target — active once loading is done */}
+        {welcomeCanStart && (
+          <Pressable
+            onPress={handleWelcomeStart}
+            accessibilityRole="button"
+            accessibilityLabel={t("start_btn")}
+            style={StyleSheet.absoluteFillObject}
+          />
         )}
       </Animated.View>
     );

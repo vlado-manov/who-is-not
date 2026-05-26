@@ -1,6 +1,7 @@
 // src/components/RoundScreen.tsx
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { View, ImageBackground, Dimensions, StyleSheet } from "react-native";
+import FullBleedStack from "./FullBleedStack";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
@@ -10,6 +11,7 @@ import CustomText from "./common/CustomText";
 import CustomButton from "./common/CustomButton";
 import TutorialOverlay, { getTutorialSteps } from "./TutorialOverlay";
 import { backgrounds } from "../../assets/backgrounds";
+import WarmBubblesOverlay from "./WarmBubblesOverlay";
 import { GameStackParamList } from "../navigation/types";
 import { useGameStore } from "../store/useGameStore";
 import AudioManager from "../utils/audioManager";
@@ -21,6 +23,14 @@ import { getOnlinePlayerIndex } from "../utils/onlinePlayerIndex";
 type Nav = StackNavigationProp<GameStackParamList, "Round">;
 
 const { width: W } = Dimensions.get("window");
+const ROUND_CYCLE_LENGTH = 11;
+const BONUS_ROUND_POSITIONS = new Set([3, 6, 10]);
+
+function isBonusRoundNumber(roundNumber: number): boolean {
+  if (roundNumber < 1) return false;
+  const cyclePosition = ((roundNumber - 1) % ROUND_CYCLE_LENGTH) + 1;
+  return BONUS_ROUND_POSITIONS.has(cyclePosition);
+}
 
 function BonusRoundOverlay({
   visible,
@@ -69,6 +79,7 @@ const RoundScreen = () => {
   const round = useGameStore((s) => s.round);
   const gameId = useGameStore((s) => s.gameId);
   const mode = useGameStore((s) => s.mode);
+  const onlineIsHost = useGameStore((s) => s.onlineIsHost);
   const setCurrentRoundId = useGameStore((s) => s.setCurrentRoundId);
   const players = useGameStore((s) => s.players);
   const onlinePlayerId = useGameStore((s) => s.onlinePlayerId);
@@ -77,11 +88,12 @@ const RoundScreen = () => {
   const settings = useAuthStore((s) => s.settings);
   const updateSettings = useAuthStore((s) => s.updateSettings);
   const trackRoundStartedMutation = useTrackRoundStartedMutation();
+  const shouldTrackLifecycle = mode !== "ONLINE" || onlineIsHost;
 
   const startRound = useGameStore((s) => s.startRound);
 
   const displayRound = (round || 0) + 1;
-  const isBonusRound = displayRound === 5;
+  const isBonusRound = isBonusRoundNumber(displayRound);
 
   /** Първи екран „Рунд X“ в играта (рунд 2); само за играчи без завършена игра преди това. */
   const shouldShowRoundTutorial =
@@ -99,7 +111,7 @@ const RoundScreen = () => {
     const roundId = `${gameId ?? "game_local"}_round_${roundIndex}`;
     setCurrentRoundId(roundId);
 
-    if (gameId) {
+    if (gameId && shouldTrackLifecycle) {
       try {
         await trackRoundStartedMutation.mutateAsync({
           gameId,
@@ -119,6 +131,7 @@ const RoundScreen = () => {
     round,
     gameId,
     mode,
+    shouldTrackLifecycle,
     userId,
     setCurrentRoundId,
     startRound,
@@ -157,7 +170,22 @@ const RoundScreen = () => {
   const tutorialSteps = React.useMemo(() => getTutorialSteps(t), [t]);
 
   return (
-    <SafeAreaView className="flex-1 bg-primary-700" edges={["right", "left"]}>
+    <FullBleedStack
+      rootStyle={{ flex: 1, backgroundColor: "#0a0a0a" }}
+      backdrop={
+        <ImageBackground
+          source={backgrounds.bg019}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        >
+          <WarmBubblesOverlay variant="normal" />
+        </ImageBackground>
+      }
+    >
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: "transparent" }}
+        edges={["right", "left"]}
+      >
       <TutorialOverlay
         visible={shouldShowRoundTutorial}
         onSkipAll={() =>
@@ -174,43 +202,38 @@ const RoundScreen = () => {
           onDone={() => setShowBonusTutorial(false)}
         />
       )}
-      <ImageBackground
-        source={backgrounds.bg019}
-        className="flex-1 relative"
-        resizeMode="cover"
-      >
-        <View className="flex-1 justify-center relative">
-          <View>
-            <CustomText variant="h2" className="text-center mb-2" shadow>
-              {t("round_label")}
-            </CustomText>
-            <CustomText className="text-center" variant="h0" shadow>
-              {displayRound}
-            </CustomText>
-          </View>
-          {mode !== "ONLINE" ? (
-            <View className="mb-16 px-16 absolute bottom-0 left-0 right-0">
-              <CustomText className="text-center mb-4">
-                <CustomText className="underline">{firstPlayerName}</CustomText>,
-                <CustomText>
-                  {" "}{t("round_start_hint")}
-                </CustomText>
-              </CustomText>
-              <CustomButton
-                title={t("start_btn")}
-                backgroundImage={backgrounds.bg026}
-                glow
-                glowColor="rgba(41,255,25,0.8)"
-                shadowColor="#005f07"
-                horizontalPadding={48}
-                fullWidth
-                onPress={onContinue}
-              />
-            </View>
-          ) : null}
+      <View className="flex-1 justify-center relative">
+        <View>
+          <CustomText variant="h2" className="text-center mb-2" shadow>
+            {t("round_label")}
+          </CustomText>
+          <CustomText className="text-center" variant="h0" shadow>
+            {displayRound}
+          </CustomText>
         </View>
-      </ImageBackground>
+        {mode !== "ONLINE" ? (
+          <View className="mb-16 px-16 absolute bottom-0 left-0 right-0">
+            <CustomText className="text-center mb-4">
+              <CustomText className="underline">{firstPlayerName}</CustomText>,
+              <CustomText>
+                {" "}{t("round_start_hint")}
+              </CustomText>
+            </CustomText>
+            <CustomButton
+              title={t("start_btn")}
+              backgroundImage={backgrounds.bg026}
+              glow
+              glowColor="rgba(41,255,25,0.8)"
+              shadowColor="#005f07"
+              horizontalPadding={48}
+              fullWidth
+              onPress={onContinue}
+            />
+          </View>
+        ) : null}
+      </View>
     </SafeAreaView>
+    </FullBleedStack>
   );
 };
 

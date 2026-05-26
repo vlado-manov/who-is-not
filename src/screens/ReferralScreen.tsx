@@ -7,12 +7,14 @@ import {
   StyleSheet,
   Share,
 } from "react-native";
+import FullBleedStack from "../components/FullBleedStack";
 import ImageBackgroundWithLoadGate from "../components/ImageBackgroundWithLoadGate";
 import React from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { backgrounds } from "../../assets/backgrounds";
 import CustomText from "../components/common/CustomText";
 import ScreenTopBar from "../components/common/ScreenTopBar";
+import { useUserSettingsSheet } from "../context/UserSettingsModalContext";
 import { useNavigation } from "@react-navigation/native";
 import { navigateBackSafe } from "../navigation/navigateBackSafe";
 import { StackNavigationProp } from "@react-navigation/stack";
@@ -29,6 +31,7 @@ type Nav = StackNavigationProp<OnboardingStackParamList, "Referral">;
 
 const ReferralScreen = () => {
   const navigation = useNavigation<Nav>();
+  const { openUserSettings } = useUserSettingsSheet();
   const { t } = useTranslation();
   const { horizontalPadding, topIconSize } = useResponsive();
   const user = useAuthStore((s) => s.user);
@@ -64,35 +67,45 @@ const ReferralScreen = () => {
   };
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+    <FullBleedStack
+      rootStyle={styles.root}
+      backdrop={
         <ImageBackgroundWithLoadGate
           source={backgrounds.bg023}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
-        >
-          <ScreenTopBar
-            horizontalPadding={horizontalPadding}
-            topIconSize={topIconSize}
-            showBack
-            onSettings={() => navigation.navigate("Settings")}
-            onProfile={() => navigation.navigate("Profile")}
-            onBack={() => navigateBackSafe(navigation)}
-            backAccessibilityLabel={t("back_btn")}
-          />
+        />
+      }
+    >
+      <SafeAreaView style={styles.safe} edges={["left", "right"]}>
+        <ScreenTopBar
+          horizontalPadding={horizontalPadding}
+          topIconSize={topIconSize}
+          showBack
+          onSettings={() => openUserSettings()}
+          onProfile={() => navigation.navigate("Profile")}
+          onBack={() => navigateBackSafe(navigation)}
+          backAccessibilityLabel={t("back_btn")}
+        />
         <ScrollView
           contentContainerStyle={{
             paddingTop: 72,
-            paddingBottom: 48,
+            paddingBottom: 16,
             flexGrow: 1,
             paddingHorizontal: 24,
           }}
         >
           <View className="items-center mb-8">
-            <CustomText variant="h3-headline" className="text-center text-white">
+            <CustomText
+              variant="h3-headline"
+              className="text-center text-white"
+            >
               {t("referral_invite")}
             </CustomText>
-            <CustomText variant="h3" className="-rotate-3 text-center text-white">
+            <CustomText
+              variant="h3"
+              className="-rotate-3 text-center text-white"
+            >
               {t("referral_friends")}
             </CustomText>
           </View>
@@ -175,8 +188,13 @@ const ReferralScreen = () => {
                             {c.title}
                           </CustomText>
                           <CustomText className="text-white/70 text-sm mt-1">
-                            {t("referral_invites_progress", { current: c.currentCount, required: c.requiredCount })}
-                            {c.rewardUnlocked ? ` ${t("referral_unlocked")}` : ""}
+                            {t("referral_invites_progress", {
+                              current: c.currentCount,
+                              required: c.requiredCount,
+                            })}
+                            {c.rewardUnlocked
+                              ? ` ${t("referral_unlocked")}`
+                              : ""}
                           </CustomText>
                         </View>
                       ))}
@@ -187,9 +205,8 @@ const ReferralScreen = () => {
             </>
           )}
         </ScrollView>
-      </ImageBackgroundWithLoadGate>
       </SafeAreaView>
-    </View>
+    </FullBleedStack>
   );
 };
 

@@ -1,4 +1,4 @@
-import { apiGet } from "./client";
+import { apiDelete, apiGet, apiPatch, apiPost } from "./client";
 import type { IQuestion, QuestionTypeApi } from "../types/question";
 
 type QuestionDto = {
@@ -7,6 +7,7 @@ type QuestionDto = {
   type: QuestionTypeApi;
   used: number;
   isActive: boolean;
+  packSlug: string;
   relatedGroupIds: string[];
 };
 
@@ -24,6 +25,7 @@ function toQuestion(d: QuestionDto): IQuestion {
     type: d.type,
     used: d.used,
     isActive: d.isActive,
+    packSlug: d.packSlug,
     relatedGroupIds: d.relatedGroupIds?.length ? d.relatedGroupIds : undefined,
   };
 }
@@ -35,6 +37,7 @@ function toQuestion(d: QuestionDto): IQuestion {
 export async function fetchQuestions(opts?: {
   packs?: string[];
   lang?: string;
+  userId?: string;
 }): Promise<IQuestion[]> {
   const parts: string[] = [];
   if (opts?.packs?.length) {
@@ -42,6 +45,9 @@ export async function fetchQuestions(opts?: {
   }
   if (opts?.lang) {
     parts.push(`lang=${encodeURIComponent(opts.lang)}`);
+  }
+  if (opts?.userId) {
+    parts.push(`userId=${encodeURIComponent(opts.userId)}`);
   }
   const qs = parts.join("&");
   const path = qs ? `/questions?${qs}` : "/questions";
@@ -70,8 +76,11 @@ function parsePacksPayload(input: unknown): QuestionPackDto[] {
 /**
  * Fetch question packs that have questions (for game settings). Only these can be selected.
  */
-export async function fetchQuestionPacks(): Promise<QuestionPackDto[]> {
-  const rows = await apiGet<QuestionPackDto[]>("/questions/packs", {
+export async function fetchQuestionPacks(opts?: {
+  userId?: string;
+}): Promise<QuestionPackDto[]> {
+  const qs = opts?.userId ? `?userId=${encodeURIComponent(opts.userId)}` : "";
+  const rows = await apiGet<QuestionPackDto[]>(`/questions/packs${qs}`, {
     skipAuth: true,
     parse: parsePacksPayload,
   });
@@ -114,4 +123,66 @@ export async function fetchRandomFunFact(
     skipAuth: true,
     parse: parseFunFactPayload,
   });
+}
+
+export type CustomQuestionDto = {
+  id: string;
+  type: "pick" | "number" | "rate" | "input";
+  text: string;
+  textBg?: string;
+  textFr?: string;
+  textEs?: string;
+  isActive: boolean;
+  relatedGroupIds?: string[];
+};
+
+export type CustomQuestionPackSummaryDto = {
+  hasCustomPack: boolean;
+  isPremium?: boolean;
+  counts?: Record<"pick" | "number" | "rate" | "input", number>;
+  limits: { perType: number };
+};
+
+export async function fetchUserCustomPackSummary(userId: string) {
+  return apiGet<CustomQuestionPackSummaryDto>(`/users/${encodeURIComponent(userId)}/custom-pack`, {
+    skipAuth: true,
+  });
+}
+
+export async function fetchUserCustomQuestions(userId: string, type?: string) {
+  const qs = type ? `?type=${encodeURIComponent(type)}` : "";
+  return apiGet<{ items: CustomQuestionDto[] }>(
+    `/users/${encodeURIComponent(userId)}/custom-questions${qs}`,
+    { skipAuth: true },
+  );
+}
+
+export async function createUserCustomQuestion(
+  userId: string,
+  input: Omit<CustomQuestionDto, "id" | "isActive"> & { isActive?: boolean },
+) {
+  return apiPost<CustomQuestionDto>(
+    `/users/${encodeURIComponent(userId)}/custom-questions`,
+    input,
+    { skipAuth: true },
+  );
+}
+
+export async function updateUserCustomQuestion(
+  userId: string,
+  questionId: string,
+  input: Partial<Omit<CustomQuestionDto, "id">>,
+) {
+  return apiPatch<CustomQuestionDto>(
+    `/users/${encodeURIComponent(userId)}/custom-questions/${encodeURIComponent(questionId)}`,
+    input,
+    { skipAuth: true },
+  );
+}
+
+export async function deleteUserCustomQuestion(userId: string, questionId: string) {
+  return apiDelete<{ success: boolean }>(
+    `/users/${encodeURIComponent(userId)}/custom-questions/${encodeURIComponent(questionId)}`,
+    { skipAuth: true },
+  );
 }

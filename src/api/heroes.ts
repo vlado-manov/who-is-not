@@ -15,6 +15,7 @@ type CharacterDto = {
   displayOrder: number;
   isActive: boolean;
   premium: boolean;
+  unlocked?: boolean;
   isSeasonal: boolean;
   isPromo: boolean;
   price: number | null;
@@ -22,6 +23,9 @@ type CharacterDto = {
   profileImageUrl: string | null;
   rateImageUrl?: string | null;
   mainImageUrl: string | null;
+  secondaryImageUrl?: string | null;
+  finalWinnerImageUrl?: string | null;
+  finalLoserImageUrl?: string | null;
   medias?: MediaDto[];
   winImages: Array<{ url: string; variant: string | null }>;
   loseImages: Array<{ url: string; variant: string | null }>;
@@ -72,10 +76,11 @@ function parseCharactersPayload(input: unknown): CharacterDto[] {
   return input as CharacterDto[];
 }
 
-export async function fetchCharacters(lang?: string): Promise<ICharacter[]> {
-  const path = lang
-    ? `/characters?lang=${encodeURIComponent(lang)}`
-    : "/characters";
+export async function fetchCharacters(lang?: string, userId?: string): Promise<ICharacter[]> {
+  const parts: string[] = [];
+  if (lang) parts.push(`lang=${encodeURIComponent(lang)}`);
+  if (userId) parts.push(`userId=${encodeURIComponent(userId)}`);
+  const path = parts.length ? `/characters?${parts.join("&")}` : "/characters";
   const rows = await apiGet<CharacterDto[]>(path, {
     skipAuth: true,
     parse: parseCharactersPayload,
@@ -109,10 +114,13 @@ export async function fetchCharacters(lang?: string): Promise<ICharacter[]> {
       isPromo: row.isPromo,
       price: row.price ?? 0,
       discountPrice: row.discountPrice ?? 0,
-      unlocked: !row.premium,
+      unlocked: row.unlocked ?? !row.premium,
       background: backgrounds.bg023,
       main_image: asImage(row.mainImageUrl, fallbackMain),
+      secondaryImage: asImage(row.secondaryImageUrl),
       profileImage: asImage(row.profileImageUrl, fallbackAvatar),
+      finalWinnerImage: asImage(row.finalWinnerImageUrl, null),
+      finalLoserImage: asImage(row.finalLoserImageUrl, null),
       rateImage: (() => {
         const rateUrl = getRateUrlFromRow(row) ?? vanessaRateUrl;
         return asImage(rateUrl, null);
@@ -206,9 +214,13 @@ export function collectCharacterImageUris(list: ICharacter[]): string[] {
     const main = getImageUri(hero.main_image);
     const profile = getImageUri(hero.profileImage);
     const rate = getImageUri(hero.rateImage);
+    const finalWinner = getImageUri(hero.finalWinnerImage);
+    const finalLoser = getImageUri(hero.finalLoserImage);
     if (main) uris.push(main);
     if (profile) uris.push(profile);
     if (rate) uris.push(rate);
+    if (finalWinner) uris.push(finalWinner);
+    if (finalLoser) uris.push(finalLoser);
     uris.push(...collectUrisFromImages(hero.winImages));
     uris.push(...collectUrisFromImages(hero.loseImages));
     if (hero.winImagesByVariant) {

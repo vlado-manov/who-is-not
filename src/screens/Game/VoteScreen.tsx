@@ -27,6 +27,7 @@ import { sendPlayerReady } from "../../api/multiplayerSync";
 import { sendMultiplayerRelay } from "../../api/multiplayerRelay";
 import { mpPhaseVotes, VOTE_CAST_MESSAGE_TYPE } from "../../constants/onlineLobby";
 import OnlineWaitPlayersOverlay from "../../components/online/OnlineWaitPlayersOverlay";
+import { reportMultiplayerDiagnostic } from "../../utils/multiplayerDiagnostics";
 
 type R = RouteProp<GameStackParamList, "Vote">;
 type Nav = StackNavigationProp<GameStackParamList, "Vote">;
@@ -42,7 +43,6 @@ const VoteScreen = () => {
   const round = useGameStore((s) => s.round);
   const mode = useGameStore((s) => s.mode) as GameMode;
   const onlinePlayerId = useGameStore((s) => s.onlinePlayerId);
-  const onlineSpectating = useGameStore((s) => s.onlineSpectating);
   const lives = useGameStore((s) => s.lives);
   const activeRoundNumber = (round ?? 0) + 1;
   const votesPhase = mpPhaseVotes(activeRoundNumber);
@@ -60,7 +60,10 @@ const VoteScreen = () => {
     },
   });
 
-  const voter = players[voterIndex];
+  const voter =
+    mode === "ONLINE"
+      ? players.find((p) => p.id === onlinePlayerId) ?? players[voterIndex]
+      : players[voterIndex];
   const isImposterVoter = Boolean(voter && oddOneId && voter.id === oddOneId);
 
   const otherPlayers = useMemo(
@@ -71,7 +74,19 @@ const VoteScreen = () => {
   const isEliminatedSpectator =
     mode === "ONLINE" &&
     onlinePlayerId != null &&
-    (onlineSpectating || (lives[onlinePlayerId] ?? 0) <= 0);
+    lives[onlinePlayerId] != null &&
+    lives[onlinePlayerId] <= 0;
+
+  useEffect(() => {
+    if (mode !== "ONLINE") return;
+    if (onlinePlayerId && voter?.id === onlinePlayerId) return;
+    reportMultiplayerDiagnostic("vote_screen_player_mismatch", {
+      onlinePlayerId: onlinePlayerId ?? null,
+      voterId: voter?.id ?? null,
+      routeVoterIndex: voterIndex,
+      playersCount: players.length,
+    });
+  }, [mode, onlinePlayerId, players.length, voter?.id, voterIndex]);
 
   const specVoteReadyRef = useRef(false);
   useEffect(() => {
@@ -81,6 +96,7 @@ const VoteScreen = () => {
   useEffect(() => {
     if (!isEliminatedSpectator || !voter || specVoteReadyRef.current) return;
     specVoteReadyRef.current = true;
+    const voterId = onlinePlayerId ?? voter.id;
     const targetId =
       voter.id === oddOneId
         ? otherPlayers[0]?.id ??
@@ -88,12 +104,18 @@ const VoteScreen = () => {
           oddOneId ??
           voter.id
         : oddOneId ?? voter.id;
-    setVote(voter.id, targetId);
+    setVote(voterId, targetId);
     sendMultiplayerRelay({ type: VOTE_CAST_MESSAGE_TYPE, targetId });
     setWaitingVotesSync(true);
     sendPlayerReady(votesPhase);
+    reportMultiplayerDiagnostic("vote_auto_cast_spectator", {
+      voterId,
+      targetId,
+      votesPhase,
+    });
   }, [
     isEliminatedSpectator,
+    onlinePlayerId,
     oddOneId,
     otherPlayers,
     players,
@@ -123,40 +145,32 @@ const VoteScreen = () => {
 
   if (isEliminatedSpectator) {
     return (
-      <SafeAreaView className="flex-1" edges={["right", "left"]}>
-        <ImageBackgroundWithLoadGate
-          source={backgrounds.bg023}
-          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-          resizeMode="cover"
-        >
-          <CustomText
-            variant="h6-headline"
-            className="text-center px-6"
-            textColor="#fff7ec"
-          >
-            {t("spectator_waiting_phase")}
-          </CustomText>
-        </ImageBackgroundWithLoadGate>
-        <OnlineWaitPlayersOverlay
-          visible={mode === "ONLINE" && waitingVotesSync}
-        />
+      <SafeAreaView className="flex-1 bg-primary-700" edges={["right", "left"]}>
+        <OnlineWaitPlayersOverlay visible={mode === "ONLINE" && waitingVotesSync} />
       </SafeAreaView>
     );
   }
 
   const handleVote = (targetId: string) => {
-    setVote(voter.id, targetId);
+    const voterId =
+      mode === "ONLINE" && onlinePlayerId ? onlinePlayerId : voter.id;
+    setVote(voterId, targetId);
 
     if (mode === "ONLINE") {
       sendMultiplayerRelay({ type: VOTE_CAST_MESSAGE_TYPE, targetId });
       setWaitingVotesSync(true);
       sendPlayerReady(votesPhase);
+      reportMultiplayerDiagnostic("vote_cast_local", {
+        voterId,
+        targetId,
+        votesPhase,
+      });
       return;
     }
 
     const isLast = voterIndex >= players.length - 1;
     if (!isLast) {
-      navigation.navigate("PassDeviceVote", {
+      navigation.navigate("VoteNow", {
         voterIndex: voterIndex + 1,
       });
     } else {
@@ -235,10 +249,9 @@ const VoteScreen = () => {
                   return (
                     <View key={player.id} style={styles.cell}>
                       <Pressable
+                        accessibilityRole="button"
                         onPress={() => handleVote(player.id)}
-                        style={{
-                          width: "100%",
-                        }}
+                        style={styles.avatarPressable}
                       >
                         <View style={styles.avatarWrapper}>
                           {character?.profileImage && (
@@ -249,21 +262,21 @@ const VoteScreen = () => {
                             />
                           )}
                         </View>
-
-                        <CustomButton
-                          title={player.name}
-                          appearance="tertiary"
-                          btnSize="xs"
-                          fontSize="sm"
-                          backgroundImage={backgrounds.bg018}
-                          glow
-                          fullWidth
-                          buttonClassName="-mt-4"
-                          glowColor="rgba(255,204,0,1)"
-                          shadowColor="#834400"
-                          onPress={() => handleVote(player.id)}
-                        />
                       </Pressable>
+
+                      <CustomButton
+                        title={player.name}
+                        appearance="tertiary"
+                        btnSize="xs"
+                        fontSize="sm"
+                        backgroundImage={backgrounds.bg018}
+                        glow
+                        fullWidth
+                        buttonClassName="-mt-4"
+                        glowColor="rgba(255,204,0,1)"
+                        shadowColor="#834400"
+                        onPress={() => handleVote(player.id)}
+                      />
                     </View>
                   );
                 })}
@@ -300,6 +313,10 @@ const styles = StyleSheet.create({
   cell: {
     width: "50%",
     paddingHorizontal: 16,
+    alignItems: "center",
+  },
+  avatarPressable: {
+    width: "100%",
     alignItems: "center",
   },
   avatarWrapper: {

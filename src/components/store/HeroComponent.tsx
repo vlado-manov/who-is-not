@@ -5,11 +5,10 @@ import {
   StyleSheet,
   ImageSourcePropType,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import AppImage from "../AppImage";
 import CustomText from "../common/CustomText";
 import { ICharacter } from "../../types/character";
-import CustomButton from "../common/CustomButton";
-import { useTranslation } from "react-i18next";
 
 type Props = {
   item: ICharacter;
@@ -21,102 +20,125 @@ type Props = {
 const toSrc = (img: string | ImageSourcePropType): ImageSourcePropType =>
   typeof img === "string" ? { uri: img } : (img as ImageSourcePropType);
 
-export default function HeroComponent({
-  item,
-  size = 118,
-  onPress,
-  disabled,
-}: Props) {
-  const { t } = useTranslation();
+export default function HeroComponent({ item, size = 120, onPress, disabled }: Props) {
   const price = item.discountPrice > 0 ? item.discountPrice : item.price;
-  const hasDiscount = item.discountPrice > 0 && item.discountPrice < item.price;
 
   return (
     <Pressable
       onPress={() => onPress?.(item)}
       disabled={disabled}
-      style={styles.wrap}
+      style={({ pressed }) => [styles.wrap, pressed && styles.pressed]}
     >
-      <CustomText
-        variant="h3-headline"
-        className="text-center mb-2"
-        textColor="text-white"
+      <LinearGradient
+        colors={["#1e1033", "#2d1555"]}
+        style={[styles.card, { width: size + 32 }]}
       >
-        {item.name}
-      </CustomText>
-
-      <View style={[{ width: size, height: size, borderRadius: size / 2 }]}>
-        <AppImage
-          source={toSrc(item.profileImage || item.main_image)}
-          contentFit="cover"
-          style={{ width: "100%", height: "100%" }}
-        />
-      </View>
-      <View className="relative">
-        {/* Price pill */}
-        {/* <View className="absolute -bottom-8 left-0 z-50 justify-center items-center flex text-center">
-          {item.adFree && (
-            <View style={styles.adsPill}>
-              <CustomText
-                variant="footnote"
-                className="text-center"
-                textColor="text-white"
-              >
-                watch 3 ads
-              </CustomText>
-            </View>
-          )}
-        </View> */}
-        <View className="-mt-8">
-          {!item.adFree ? (
-            <CustomButton
-              title={`$ ${price.toFixed(2)}`}
-              btnSize="sm"
-              onPress={() => onPress?.(item)}
-            />
-          ) : (
-            <CustomButton
-              title={t("free")}
-              btnSize="sm"
-              onPress={() => onPress?.(item)}
-            />
-          )}
+        {/* Premium crown */}
+        <View style={styles.crownBadge}>
+          <CustomText style={styles.crownText}>★ HERO</CustomText>
         </View>
-      </View>
+
+        {/* Hero image */}
+        <View style={[styles.imageRing, { width: size, height: size, borderRadius: size / 2 }]}>
+          <AppImage
+            source={toSrc(item.profileImage || item.main_image)}
+            contentFit="cover"
+            style={{ width: "100%", height: "100%" }}
+          />
+        </View>
+
+        {/* Name */}
+        <CustomText
+          variant="h3-headline"
+          style={styles.name}
+          numberOfLines={1}
+        >
+          {item.name}
+        </CustomText>
+
+        {/* Price + unlock button */}
+        <Pressable
+          onPress={() => onPress?.(item)}
+          disabled={disabled}
+          style={styles.unlockBtn}
+        >
+          <LinearGradient
+            colors={["#FFD43B", "#F76B1C"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.unlockGradient}
+          >
+            <CustomText style={styles.unlockText}>
+              ${price.toFixed(2)} UNLOCK
+            </CustomText>
+          </LinearGradient>
+        </Pressable>
+      </LinearGradient>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: {
-    alignItems: "center",
-    justifyContent: "flex-start",
-    marginHorizontal: 12,
+    marginHorizontal: 6,
   },
-  priceWrap: {
-    alignItems: "center",
+  pressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.97 }],
   },
-  adsPill: {
-    backgroundColor: "#22C55E",
+  card: {
+    borderRadius: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,212,59,0.2)",
+  },
+  crownBadge: {
+    backgroundColor: "rgba(255,212,59,0.15)",
+    borderRadius: 8,
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: "rgba(255,212,59,0.3)",
   },
-  pricePill: {
-    backgroundColor: "#F0522C",
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
+  crownText: {
+    color: "#FFD43B",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+  },
+  imageRing: {
+    borderWidth: 2.5,
+    borderColor: "#FFD43B",
+    overflow: "hidden",
+    shadowColor: "#FFD43B",
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
     elevation: 6,
   },
-  rowCenter: { flexDirection: "row", alignItems: "center" },
+  name: {
+    color: "#fff",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  unlockBtn: {
+    alignSelf: "stretch",
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+  unlockGradient: {
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: 10,
+  },
+  unlockText: {
+    color: "#1a0533",
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 0.3,
+  },
 });

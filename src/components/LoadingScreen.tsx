@@ -12,7 +12,9 @@ import { Image } from "expo-image";
 import AppImage from "./AppImage";
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
+import FullBleedStack from "./FullBleedStack";
 import ImageBackgroundWithLoadGate from "./ImageBackgroundWithLoadGate";
+import WarmBubblesOverlay from "./WarmBubblesOverlay";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -181,156 +183,166 @@ const LoadingScreen = ({
   const logo = getLogoBox(windowWidth, pad);
   const htp = getHtpOverlay(logo.width);
 
-  const content = (
-    <ImageBackgroundWithLoadGate
-        source={backgroundSource}
-        style={{ flex: 1 }}
-        resizeMode="cover"
-      >
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={[
-            styles.scrollContent,
-            {
-              paddingHorizontal: pad,
-            },
-            fullScreenWithStatusBar && {
-              paddingTop: Math.max(insets.top, 8) + 8,
-              paddingBottom: Math.max(insets.bottom, 16),
-            },
-          ]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Animated.View
-            style={[
-              styles.contentInner,
+  const scrollContent = (
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={[
+        styles.scrollContent,
+        {
+          paddingHorizontal: pad,
+        },
+        fullScreenWithStatusBar && {
+          paddingTop: Math.max(insets.top, 8) + 8,
+          paddingBottom: Math.max(insets.bottom, 16),
+        },
+      ]}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Animated.View
+        style={[
+          styles.contentInner,
+          {
+            transform: [
               {
-                transform: [
-                  {
-                    translateX: screenShake.interpolate({
-                      inputRange: [-1, 1],
-                      outputRange: [-8, 8],
-                    }),
-                  },
-                ],
+                translateX: screenShake.interpolate({
+                  inputRange: [-1, 1],
+                  outputRange: [-8, 8],
+                }),
               },
-            ]}
-          >
-            <View style={styles.brandBlock}>
-              <Pressable onPress={toggleSound}>
-                <View
-                  style={{
-                    width: logo.width,
-                    height: logo.height,
-                    position: "relative",
-                  }}
-                >
+            ],
+          },
+        ]}
+      >
+        <View style={styles.brandBlock}>
+          <Pressable onPress={toggleSound}>
+            <View
+              style={{
+                width: logo.width,
+                height: logo.height,
+                position: "relative",
+              }}
+            >
+              <AppImage
+                key={frameIndex}
+                source={frames[frameIndex]}
+                style={{
+                  width: htp.width,
+                  height: htp.height,
+                  position: "absolute",
+                  top: htp.top,
+                  left: htp.left,
+                  opacity: 0.95,
+                }}
+                contentFit="contain"
+              />
+              <View
+                style={{
+                  width: htp.width,
+                  height: htp.height,
+                  position: "absolute",
+                  top: htp.top,
+                  left: htp.left,
+                }}
+              >
+                {frames.map((frame, index) => (
                   <AppImage
-                    key={frameIndex}
-                    source={frames[frameIndex]}
+                    key={index}
+                    source={frame}
                     style={{
-                      width: htp.width,
-                      height: htp.height,
                       position: "absolute",
-                      top: htp.top,
-                      left: htp.left,
-                      opacity: 0.95,
+                      width: "100%",
+                      height: "100%",
+                      opacity: frameIndex === index ? 1 : 0,
                     }}
                     contentFit="contain"
                   />
-                  <View
-                    style={{
-                      width: htp.width,
-                      height: htp.height,
-                      position: "absolute",
-                      top: htp.top,
-                      left: htp.left,
-                    }}
-                  >
-                    {frames.map((frame, index) => (
-                      <AppImage
-                        key={index}
-                        source={frame}
-                        style={{
-                          position: "absolute",
-                          width: "100%",
-                          height: "100%",
-                          opacity: frameIndex === index ? 1 : 0,
-                        }}
-                        contentFit="contain"
-                      />
-                    ))}
-                  </View>
+                ))}
+              </View>
 
-                  <AppImage
-                    source={logoSource}
-                    style={{
-                      width: logo.width,
-                      height: logo.height,
-                      opacity: 0,
-                      zIndex: 199,
-                    }}
-                    contentFit="contain"
-                  />
-                  <AnimatedImage
-                    source={logoSource}
-                    style={{
-                      width: logo.width,
-                      height: logo.height,
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      zIndex: 199,
-                      opacity: logoOpacity,
-                      transform: [{ scale: logoScale }],
-                    }}
-                    contentFit="contain"
-                  />
-                </View>
-              </Pressable>
+              <AppImage
+                source={logoSource}
+                style={{
+                  width: logo.width,
+                  height: logo.height,
+                  opacity: 0,
+                  zIndex: 199,
+                }}
+                contentFit="contain"
+              />
+              <AnimatedImage
+                source={logoSource}
+                style={{
+                  width: logo.width,
+                  height: logo.height,
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  zIndex: 199,
+                  opacity: logoOpacity,
+                  transform: [{ scale: logoScale }],
+                }}
+                contentFit="contain"
+              />
             </View>
-            <View style={styles.textBlock}>
-              <CustomText variant="h5-headline" className="text-center">
-                {t(titleKey)}
-              </CustomText>
+          </Pressable>
+        </View>
+        <View style={styles.textBlock}>
+          <CustomText variant="h5-headline" className="text-center">
+            {t(titleKey)}
+          </CustomText>
 
-              <CustomText variant="p-small" className="mt-2 px-2 text-center">
-                {t(hint1Key)}
-              </CustomText>
-              <CustomText variant="p-small" className="mt-2 px-2 text-center">
-                {t(hint2Key)}
-              </CustomText>
-            </View>
-          </Animated.View>
-        </ScrollView>
-      </ImageBackgroundWithLoadGate>
+          <CustomText variant="p-small" className="mt-2 px-2 text-center">
+            {t(hint1Key)}
+          </CustomText>
+          <CustomText variant="p-small" className="mt-2 px-2 text-center">
+            {t(hint2Key)}
+          </CustomText>
+        </View>
+      </Animated.View>
+    </ScrollView>
+  );
+
+  const fullBleedBackground = (
+    <ImageBackgroundWithLoadGate
+      source={backgroundSource}
+      style={StyleSheet.absoluteFill}
+      resizeMode="cover"
+    >
+      <WarmBubblesOverlay variant="intense" />
+    </ImageBackgroundWithLoadGate>
   );
 
   if (overlay) {
     return (
       <View style={styles.overlay} pointerEvents="auto">
-        {content}
+        <FullBleedStack
+          rootStyle={{ flex: 1 }}
+          backdrop={fullBleedBackground}
+        >
+          {scrollContent}
+        </FullBleedStack>
       </View>
     );
   }
 
   if (fullScreenWithStatusBar) {
     return (
-      <View style={styles.container} className="flex-1">
-        {content}
-      </View>
+      <FullBleedStack rootStyle={styles.container} backdrop={fullBleedBackground}>
+        {scrollContent}
+      </FullBleedStack>
     );
   }
 
   return (
-    <SafeAreaView
-      style={styles.container}
-      className="flex-1"
-      edges={["right", "left"]}
-    >
-      {content}
-    </SafeAreaView>
+    <FullBleedStack rootStyle={styles.container} backdrop={fullBleedBackground}>
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: "transparent" }}
+        edges={["right", "left"]}
+      >
+        {scrollContent}
+      </SafeAreaView>
+    </FullBleedStack>
   );
 };
 

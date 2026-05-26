@@ -1,31 +1,21 @@
-import React, { useEffect } from "react";
+import React, { useCallback } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { GameStackParamList } from "../../navigation/types";
-import LoadingScreen from "../../components/LoadingScreen";
+import PreRevealLoadingLayer from "../../components/PreRevealLoadingLayer";
+import { usePreventBack } from "../../hooks/usePreventBack";
 
 type PreRevealNavProp = StackNavigationProp<GameStackParamList, "PreReveal">;
 
 const PreRevealScreen = () => {
   const navigation = useNavigation<PreRevealNavProp>();
+  usePreventBack();
 
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      navigation.replace("Reveal");
-    }, 3000);
-
-    return () => clearTimeout(timeout);
+  const onDone = useCallback(() => {
+    navigation.replace("Reveal");
   }, [navigation]);
 
-  return (
-    <LoadingScreen
-      skipIntroAnimation
-      useGameMusic
-      titleKey="pre_reveal_loading"
-      hint1Key="pre_reveal_suspense"
-      hint2Key="pre_reveal_dont_you"
-    />
-  );
+  return <PreRevealLoadingLayer onDone={onDone} />;
 };
 
 export default PreRevealScreen;

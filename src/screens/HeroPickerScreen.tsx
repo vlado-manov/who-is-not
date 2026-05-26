@@ -16,6 +16,7 @@ import {
   Keyboard,
   useWindowDimensions,
   Platform,
+  StyleSheet,
 } from "react-native";
 import {
   SafeAreaView,
@@ -25,6 +26,7 @@ import CustomText from "../components/common/CustomText";
 import CustomButton from "../components/common/CustomButton";
 import { useTranslation } from "react-i18next";
 import {
+  CommonActions,
   CompositeNavigationProp,
   RouteProp,
   useNavigation,
@@ -46,7 +48,9 @@ import { QuoteBubble } from "./HeroPicker/QuoteBubble";
 import { HeroPickerHeader } from "./HeroPicker/HeroPickerHeader";
 import { HeroStage } from "./HeroPicker/HeroStage";
 import { HeroPickerFooter } from "./HeroPicker/HeroPickerFooter";
-import HeroPickerBackground from "./HeroPicker/HeroPickerBackground";
+import FullBleedStack from "../components/FullBleedStack";
+import { useUserSettingsSheet } from "../context/UserSettingsModalContext";
+import { HeroPickerBackdrop } from "./HeroPicker/HeroPickerBackground";
 import Round1TransitionOverlay from "../components/Round1TransitionOverlay";
 import TutorialOverlay, {
   getTutorialSteps,
@@ -111,6 +115,7 @@ import OnlineWaitPlayersOverlay from "../components/online/OnlineWaitPlayersOver
 import { ActivityIndicator, Alert, ImageBackground } from "react-native";
 import { Image } from "expo-image";
 import AppImage from "../components/AppImage";
+import WarmBubblesOverlay from "../components/WarmBubblesOverlay";
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
@@ -126,6 +131,7 @@ export default function HeroPickerScreen() {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const route = useRoute<HeroRoute>();
   const navigation = useNavigation<HeroNav>();
+  const { openUserSettings } = useUserSettingsSheet();
   const { index } = route.params;
   usePreventBack(index >= 1);
   const { t } = useTranslation();
@@ -201,12 +207,15 @@ export default function HeroPickerScreen() {
   const [unlockedIds, setUnlockedIds] = useState<Set<string>>(
     () => new Set(heroes.filter((h) => h.unlocked).map((h) => h.id)),
   );
+  // Keep a ref to the userId so the rebuild effect can compare
+  const prevUserIdRef = useRef<string | null>(null);
   const taken = useGameStore((s) => s.takenCharacters);
   const gameId = useGameStore((s) => s.gameId);
   const mode = useGameStore((s) => s.mode);
   const userId = useAuthStore((s) => s.user.id);
   const target = useGameStore((s) => s.targetPlayersCount);
   const assignCharacter = useGameStore((s) => s.assignCharacter);
+  const resetGame = useGameStore((s) => s.reset);
   const gameSettings = useGameStore((s) => s.gameSettings);
   const setGameQuestions = useGameStore((s) => s.setGameQuestions);
   const startGameSession = useGameStore((s) => s.startGameSession);
@@ -220,7 +229,12 @@ export default function HeroPickerScreen() {
   const startRound = useGameStore((s) => s.startRound);
   const players = useGameStore((s) => s.players);
   const onlinePlayerId = useGameStore((s) => s.onlinePlayerId);
+  const onlineIsHost = useGameStore((s) => s.onlineIsHost);
   const onlineWsToken = useGameStore((s) => s.onlineWsToken);
+  const userUnlockedCharacterIds = useAuthStore(
+    (s) => s.user.unlockedCharacterIds ?? [],
+  );
+  const shouldTrackLifecycle = mode !== "ONLINE" || onlineIsHost;
   const orderedHeroIdsRef = useRef<string[] | null>(null);
   useEffect(() => {
     return () => {
@@ -277,12 +291,27 @@ export default function HeroPickerScreen() {
   }, []);
 
   useEffect(() => {
-    setUnlockedIds((prev) => {
-      const next = new Set(prev);
+    // Rebuild from scratch each time heroes or the logged-in user changes.
+    // We never accumulate because stale IDs from a previous session / old
+    // backend response could leak heroes the user hasn't actually purchased.
+    const userChanged = prevUserIdRef.current !== userId;
+    prevUserIdRef.current = userId;
+
+    setUnlockedIds(() => {
+      const next = new Set<string>();
+      // Free (non-premium) heroes are always unlocked.
+      // Premium heroes are only unlocked when the backend says so (h.unlocked).
       heroes.filter((h) => h.unlocked).forEach((h) => next.add(h.id));
+      // Merge explicit character IDs from auth store (e.g. returned on login).
+      userUnlockedCharacterIds.forEach((id) => next.add(id));
       return next;
     });
-  }, [heroes]);
+
+    // If the user changed, force-reset the ordered list so it's re-sorted.
+    if (userChanged) {
+      orderedHeroIdsRef.current = null;
+    }
+  }, [heroes, userUnlockedCharacterIds, userId]);
 
   const viewingHeroIdRef = useRef<string | null>(null);
   useEffect(() => {
@@ -517,6 +546,9 @@ export default function HeroPickerScreen() {
   const bubbleScale = useRef(new Animated.Value(0.98)).current;
   const typeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const holdTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const quoteExitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const cleanupTimers = () => {
     if (typeIntervalRef.current) {
@@ -527,10 +559,18 @@ export default function HeroPickerScreen() {
       clearTimeout(holdTimeoutRef.current);
       holdTimeoutRef.current = null;
     }
+    if (quoteExitTimeoutRef.current) {
+      clearTimeout(quoteExitTimeoutRef.current);
+      quoteExitTimeoutRef.current = null;
+    }
   };
 
   useEffect(() => {
-    return () => cleanupTimers();
+    return () => {
+      cleanupTimers();
+      AudioManager.stopKeyboardLoop();
+      AudioManager.restoreBackground(0.35);
+    };
   }, []);
 
   // Skip бутон: появява се с анимация когато започва финалният цитат
@@ -604,9 +644,11 @@ export default function HeroPickerScreen() {
       ) ?? "en";
     (async () => {
       try {
-        const result = await fetchQuestions({ packs: packSlugs, lang }).then(
-          (q) => ({ questions: q }),
-        );
+        const result = await fetchQuestions({
+          packs: packSlugs,
+          lang,
+          userId,
+        }).then((q) => ({ questions: q }));
         if (!result?.questions?.length) {
           Alert.alert("Error", "No questions loaded. Check your connection.");
           setShowRound1Transition(false);
@@ -615,17 +657,19 @@ export default function HeroPickerScreen() {
         }
         setGameQuestions(result.questions);
         const gameIdForTrack = existingGameId ?? startGameSession(mode);
-        try {
-          await trackGameStartedMutation.mutateAsync({
-            gameId: gameIdForTrack,
-            mode,
-            playersCount: Math.max(playersCount || 1, 1),
-            language: i18n.language,
-            userId,
-            packs: packSlugs,
-          });
-        } catch (e) {
-          console.warn("track GAME_STARTED failed", e);
+        if (shouldTrackLifecycle) {
+          try {
+            await trackGameStartedMutation.mutateAsync({
+              gameId: gameIdForTrack,
+              mode,
+              playersCount: Math.max(playersCount || 1, 1),
+              language: i18n.language,
+              userId,
+              packs: packSlugs,
+            });
+          } catch (e) {
+            console.warn("track GAME_STARTED failed", e);
+          }
         }
       } catch (e) {
         console.warn("fetchQuestions failed", e);
@@ -640,6 +684,7 @@ export default function HeroPickerScreen() {
     existingGameId,
     startGameSession,
     mode,
+    shouldTrackLifecycle,
     playersCount,
     userId,
     trackGameStartedMutation,
@@ -649,7 +694,7 @@ export default function HeroPickerScreen() {
     if (!players?.length) return;
     const roundId = `${gameId ?? "game_local"}_round_1`;
     setCurrentRoundId(roundId);
-    if (gameId) {
+    if (gameId && shouldTrackLifecycle) {
       try {
         await trackRoundStartedMutation.mutateAsync({
           gameId,
@@ -671,6 +716,7 @@ export default function HeroPickerScreen() {
     players?.length,
     gameId,
     mode,
+    shouldTrackLifecycle,
     userId,
     setCurrentRoundId,
     startRound,
@@ -682,7 +728,7 @@ export default function HeroPickerScreen() {
     if (!players?.length) return;
     const roundId = `${gameId ?? "game_local"}_round_1`;
     setCurrentRoundId(roundId);
-    if (gameId) {
+    if (gameId && shouldTrackLifecycle) {
       try {
         await trackRoundStartedMutation.mutateAsync({
           gameId,
@@ -706,6 +752,7 @@ export default function HeroPickerScreen() {
     onlinePlayerId,
     gameId,
     mode,
+    shouldTrackLifecycle,
     userId,
     setCurrentRoundId,
     startRound,
@@ -773,6 +820,7 @@ export default function HeroPickerScreen() {
       clearInterval(typeIntervalRef.current);
       typeIntervalRef.current = null;
     }
+    const safeText = text.trim() || t("hero_picker_quote_fallback");
     // 🔉 START: duck + keyboard ВЕДНАГА
     AudioManager.duckBackground(0.12);
     AudioManager.startKeyboardLoop();
@@ -782,9 +830,9 @@ export default function HeroPickerScreen() {
 
     typeIntervalRef.current = setInterval(() => {
       i += 1;
-      setQuoteTyped(text.slice(0, i));
+      setQuoteTyped(safeText.slice(0, i));
 
-      if (i >= text.length) {
+      if (i >= safeText.length) {
         if (typeIntervalRef.current) {
           clearInterval(typeIntervalRef.current);
           typeIntervalRef.current = null;
@@ -798,6 +846,7 @@ export default function HeroPickerScreen() {
   };
 
   const runCoordinatedSequence = (text: string, shouldNavigate = true) => {
+    cleanupTimers();
     setIsAnimating(true);
     overlayOpacity.setValue(0);
     bubbleOpacity.setValue(0);
@@ -837,7 +886,8 @@ export default function HeroPickerScreen() {
       // 👇 ТОВА Е САМО ЗА ФИНАЛНИЯ ЦИТАТ
       holdTimeoutRef.current = setTimeout(() => {
         bounceTwice();
-        setTimeout(() => {
+        quoteExitTimeoutRef.current = setTimeout(() => {
+          quoteExitTimeoutRef.current = null;
           Animated.parallel([
             Animated.timing(bubbleOpacity, {
               toValue: 0,
@@ -852,7 +902,7 @@ export default function HeroPickerScreen() {
           ]).start(() => {
             AudioManager.playHeroPickerEnd();
             setIsAnimating(false);
-            navigateNext();
+            if (shouldNavigate) navigateNext();
           });
         }, 520);
       }, READ_HOLD_MS);
@@ -898,7 +948,7 @@ export default function HeroPickerScreen() {
       const selectedQuotes = hero.quotes_selected?.length
         ? hero.quotes_selected
         : [t("hero_picker_quote_fallback")];
-      const q = randomOf(selectedQuotes);
+      const q = randomOf(selectedQuotes) || t("hero_picker_quote_fallback");
       setQuoteMode("final");
       quoteModeRef.current = "final";
       runCoordinatedSequenceRef.current(q);
@@ -1075,7 +1125,7 @@ export default function HeroPickerScreen() {
     const selectedQuotes = lockedHero!.quotes_selected?.length
       ? lockedHero!.quotes_selected
       : [t("hero_picker_quote_fallback")];
-    const q = randomOf(selectedQuotes);
+    const q = randomOf(selectedQuotes) || t("hero_picker_quote_fallback");
 
     setQuoteMode("final");
     quoteModeRef.current = "final";
@@ -1160,322 +1210,378 @@ export default function HeroPickerScreen() {
 
   return (
     <KeyboardAvoidingView enabled={false} style={{ flex: 1 }}>
-      <SafeAreaView className="flex-1" edges={["right", "left"]}>
-        {showRound1Content ? (
-          <ImageBackground
-            source={backgrounds.bg019}
-            className="flex-1 relative"
-            resizeMode="cover"
-          >
-            <TutorialOverlay
-              visible={showRound1Tutorial}
-              onSkipAll={() => setShowRound1Tutorial(false)}
-              onDoneAll={() => setShowRound1Tutorial(false)}
-              steps={round1TutorialSteps}
-            />
-            <View className="flex-1 justify-center relative">
-              <View>
-                <CustomText variant="h2" className="text-center mb-2" shadow>
-                  {t("round_label")}
-                </CustomText>
-                <CustomText className="text-center" variant="h0" shadow>
-                  1
-                </CustomText>
-              </View>
-              <View className="mb-16 px-16 absolute bottom-0 left-0 right-0">
-                <CustomText className="text-center mb-4">
-                  <CustomText className="underline">
-                    {firstPlayerName}
-                  </CustomText>
-                  ,<CustomText> {t("round_start_hint")}</CustomText>
-                </CustomText>
-                <CustomButton
-                  title={t("start_btn")}
-                  backgroundImage={backgrounds.bg026}
-                  glow
-                  glowColor="rgba(41,255,25,0.8)"
-                  shadowColor="#005f07"
-                  horizontalPadding={48}
-                  fullWidth
-                  onPress={onRound1Start}
-                  disabled={mode === "ONLINE" && waitingRound1Players}
-                />
-              </View>
-            </View>
-          </ImageBackground>
-        ) : (
-          <HeroPickerBackground
-            showOverlay={selected || isNaming || onlineHeroClaimLoading}
-            overlayOpacity={overlayOpacity}
-            styles={styles}
-          >
-            {showConfetti && (
-              <View
-                pointerEvents="none"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: SCREEN_WIDTH,
-                  height: SCREEN_HEIGHT,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  zIndex: 999,
-                }}
-              >
-                <LottieView
-                  source={lottie.confettiTop} // ⬅️ важно: burst animation
-                  autoPlay
-                  loop={false}
-                  resizeMode="cover"
-                  style={{
-                    width: SCREEN_WIDTH * 1.4,
-                    height: SCREEN_WIDTH * 1.4,
-                  }}
-                />
-              </View>
-            )}
-
-            <QuoteBubble
-              visible={selected || isNaming}
-              text={quoteTyped}
-              opacity={bubbleOpacity}
-              translateY={bubbleTranslateY}
-              scale={bubbleScale}
+      <FullBleedStack
+        rootStyle={{ flex: 1 }}
+        backdrop={
+          showRound1Content ? (
+            <ImageBackground
+              source={backgrounds.bg019}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
+            >
+              <WarmBubblesOverlay variant="normal" />
+            </ImageBackground>
+          ) : (
+            <HeroPickerBackdrop
+              showOverlay={selected || isNaming || onlineHeroClaimLoading}
+              overlayOpacity={overlayOpacity}
               styles={styles}
             />
-            {!selected && !isNaming && !onlineHeroClaimLoading && (
-              <View
-                style={{
-                  position: "absolute",
-                  top: insets.top + 8,
-                  left: 16,
-                  zIndex: 30,
-                }}
-              >
-                <Pressable
-                  onPressIn={settingsAnim.pressIn}
-                  onPressOut={settingsAnim.pressOut}
-                  onPress={() => {
-                    AudioManager.playButtonClick();
-                    navigation.navigate("Settings");
-                  }}
-                >
-                  <AnimatedImage
-                    source={game_images.settingsIcon}
-                    style={[{ width: 56, height: 56 }, settingsAnim.style]}
-                    contentFit="contain"
+          )
+        }
+      >
+        <SafeAreaView
+          style={{ flex: 1, backgroundColor: "transparent" }}
+          edges={["right", "left"]}
+        >
+          {showRound1Content ? (
+            <>
+              <TutorialOverlay
+                visible={showRound1Tutorial}
+                onSkipAll={() => setShowRound1Tutorial(false)}
+                onDoneAll={() => setShowRound1Tutorial(false)}
+                steps={round1TutorialSteps}
+              />
+              <View className="flex-1 justify-center relative">
+                <View>
+                  <CustomText variant="h2" className="text-center mb-2" shadow>
+                    {t("round_label")}
+                  </CustomText>
+                  <CustomText className="text-center" variant="h0" shadow>
+                    1
+                  </CustomText>
+                </View>
+                <View className="mb-16 px-16 absolute bottom-0 left-0 right-0">
+                  <CustomText className="text-center mb-4">
+                    <CustomText className="underline">
+                      {firstPlayerName}
+                    </CustomText>
+                    ,<CustomText> {t("round_start_hint")}</CustomText>
+                  </CustomText>
+                  <CustomButton
+                    title={t("start_btn")}
+                    backgroundImage={backgrounds.bg026}
+                    glow
+                    glowColor="rgba(41,255,25,0.8)"
+                    shadowColor="#005f07"
+                    horizontalPadding={48}
+                    fullWidth
+                    onPress={onRound1Start}
+                    disabled={mode === "ONLINE" && waitingRound1Players}
                   />
-                </Pressable>
+                </View>
               </View>
-            )}
-            <View
-              style={{
-                flex: 1,
-                width: "100%",
-                position: "relative",
-                paddingHorizontal: 16,
-              }}
-            >
-              <View
-                pointerEvents="box-none"
-                style={{
-                  zIndex: 20,
-                  opacity:
-                    isNaming || selected || onlineHeroClaimLoading ? 0 : 1,
-                }}
-              >
-                <HeroPickerHeader />
-              </View>
-              <View
-                style={{
-                  marginTop: titleToHeroGapPx,
-                  flex: 1,
-                  minHeight: 0,
-                  overflow: "visible",
-                  zIndex: 15,
-                  position: "relative",
-                }}
-              >
+            </>
+          ) : (
+            <View style={styles.contentLayer} pointerEvents="box-none">
+              {showConfetti && (
                 <View
                   pointerEvents="none"
                   style={{
                     position: "absolute",
-                    left: -16,
-                    right: -16,
-                    bottom: bottomArtBottomPx,
-                    height: `${Math.round(HERO_PICKER_BOTTOM_ART_HEIGHT_RATIO * 102)}%`,
-                    zIndex: 0,
+                    top: 0,
+                    left: 0,
+                    width: SCREEN_WIDTH,
+                    height: SCREEN_HEIGHT,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    zIndex: 999,
                   }}
                 >
-                  <AppImage
-                    source={game_images.heroPickerBottom}
-                    contentFit="cover"
+                  <LottieView
+                    source={lottie.confettiTop} // ⬅️ важно: burst animation
+                    autoPlay
+                    loop={false}
+                    resizeMode="cover"
                     style={{
-                      width: "100%",
-                      height: "100%",
-                      opacity: isNameInputFocused ? 0 : 1,
+                      width: SCREEN_WIDTH * 1.4,
+                      height: SCREEN_WIDTH * 1.4,
                     }}
                   />
                 </View>
-                <HeroStage
-                  key={displayHero.id}
-                  hero={displayHero}
-                  heroScale={heroScale}
-                  opacity={opacity}
-                  translateX={translateX}
-                  panResponder={
-                    !isNaming && !selected ? panResponder : undefined
-                  }
-                  canInteract={
-                    !isNaming &&
-                    !selected &&
-                    !isAnimating &&
-                    !onlineHeroClaimLoading &&
-                    availableHeroes.length > 1
-                  }
-                  previewing={previewing}
-                  onPrev={onPrev}
-                  onNext={onNext}
-                  leftArrowAnim={leftArrowAnim}
-                  rightArrowAnim={rightArrowAnim}
-                  styles={styles}
-                  onPlayLockAnim={(fn) => {
-                    lockAnimMapRef.current[displayHero.id] = fn;
-                  }}
-                  onUnlockVisualComplete={() => {
-                    setUnlockedIds((prev) => {
-                      const next = new Set(prev);
-                      next.add(displayHero.id);
-                      return next;
-                    });
-                    setShowConfetti(true);
-                    setTimeout(() => setShowConfetti(false), 1800);
-                  }}
-                />
-              </View>
+              )}
+
+              <QuoteBubble
+                visible={selected || isNaming}
+                text={quoteTyped}
+                opacity={bubbleOpacity}
+                translateY={bubbleTranslateY}
+                scale={bubbleScale}
+                styles={styles}
+              />
+              {!selected && !isNaming && !onlineHeroClaimLoading && (
+                <>
+                  {/* Settings — top left */}
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: insets.top + 8,
+                      left: 16,
+                      zIndex: 30,
+                    }}
+                  >
+                    <Pressable
+                      onPressIn={settingsAnim.pressIn}
+                      onPressOut={settingsAnim.pressOut}
+                      onPress={() => {
+                        AudioManager.playButtonClick();
+                        openUserSettings({
+                          fromHeroPicker: true,
+                          onHeroSetupExit: () => {
+                            AudioManager.stopBackground();
+                            resetGame();
+                            let rootNavigation: any = navigation;
+                            while (rootNavigation.getParent?.()) {
+                              rootNavigation = rootNavigation.getParent();
+                            }
+                            rootNavigation.dispatch(
+                              CommonActions.reset({
+                                index: 0,
+                                routes: [
+                                  {
+                                    name: "Onboarding",
+                                    params: {
+                                      screen: "Welcome",
+                                      params: { skipCurtain: true },
+                                    },
+                                  },
+                                ],
+                              }),
+                            );
+                          },
+                        });
+                      }}
+                    >
+                      <AnimatedImage
+                        source={game_images.settingsIcon}
+                        style={[{ width: 56, height: 56 }, settingsAnim.style]}
+                        contentFit="contain"
+                      />
+                    </Pressable>
+                  </View>
+                </>
+              )}
 
               <View
                 style={{
-                  marginTop: heroToFooterGapPx,
-                  paddingBottom: footerBottomPad,
-                  zIndex: 25,
-                  alignItems: "center",
+                  flex: 1,
                   width: "100%",
                   position: "relative",
+                  paddingHorizontal: 16,
                 }}
               >
-                {selected && quoteMode === "final" ? (
-                  <Animated.View
-                    pointerEvents="auto"
+                <View
+                  pointerEvents="box-none"
+                  style={{
+                    zIndex: 20,
+                    opacity:
+                      isNaming || selected || onlineHeroClaimLoading ? 0 : 1,
+                  }}
+                >
+                  <HeroPickerHeader />
+                </View>
+                <View
+                  style={{
+                    marginTop: titleToHeroGapPx,
+                    flex: 1,
+                    minHeight: 0,
+                    overflow: "visible",
+                    zIndex: 15,
+                    position: "relative",
+                  }}
+                >
+                  <View
+                    pointerEvents="none"
                     style={{
                       position: "absolute",
-                      left: 16,
-                      right: 16,
-                      bottom: footerBottomPad,
-                      zIndex: 26,
-                      opacity: skipOpacity,
-                      transform: [
-                        { translateY: Animated.add(skipTranslateY, footerTranslateY) },
-                        { scale: skipScale },
-                        { translateY: 6 },
-                      ],
+                      left: -16,
+                      right: -16,
+                      bottom: bottomArtBottomPx,
+                      height: `${Math.round(HERO_PICKER_BOTTOM_ART_HEIGHT_RATIO * 102)}%`,
+                      zIndex: 0,
                     }}
                   >
-                    <CustomButton
-                      title={t("hero_picker_skip")}
-                      onPress={onSkip}
-                      backgroundImage={backgrounds.bg026}
-                      fullWidth
-                      horizontalPadding={28}
-                      btnSize="sm"
-                      fontSize="sm"
-                      shadowColor="#005f07"
+                    <AppImage
+                      source={game_images.heroPickerBottom}
+                      contentFit="cover"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        opacity: isNameInputFocused ? 0 : 1,
+                      }}
                     />
-                  </Animated.View>
-                ) : null}
-                <HeroPickerFooter
-                  hero={displayHero}
-                  isNaming={isNaming}
-                  playerName={playerName}
-                  disabled={
-                    selected || claimSubmitting || onlineHeroClaimLoading
-                  }
-                  inputRef={nameInputRef}
-                  onChangeName={(v) => setPlayerName(v)}
-                  onConfirm={isNaming ? onConfirmName : handleFooterConfirm}
-                  styles={styles}
+                  </View>
+                  <HeroStage
+                    key={displayHero.id}
+                    hero={displayHero}
+                    heroScale={heroScale}
+                    opacity={opacity}
+                    translateX={translateX}
+                    selected={selected || isNaming}
+                    panResponder={
+                      !isNaming && !selected ? panResponder : undefined
+                    }
+                    canInteract={
+                      !isNaming &&
+                      !selected &&
+                      !isAnimating &&
+                      !onlineHeroClaimLoading &&
+                      availableHeroes.length > 1
+                    }
+                    previewing={previewing}
+                    onPrev={onPrev}
+                    onNext={onNext}
+                    leftArrowAnim={leftArrowAnim}
+                    rightArrowAnim={rightArrowAnim}
+                    styles={styles}
+                    onPlayLockAnim={(fn) => {
+                      lockAnimMapRef.current[displayHero.id] = fn;
+                    }}
+                    onUnlockVisualComplete={() => {
+                      setUnlockedIds((prev) => {
+                        const next = new Set(prev);
+                        next.add(displayHero.id);
+                        return next;
+                      });
+                      setShowConfetti(true);
+                      setTimeout(() => setShowConfetti(false), 1800);
+                    }}
+                  />
+                </View>
+
+                <View
                   style={{
-                    opacity: selected ? 0 : 1,
-                    pointerEvents: selected ? "none" : "auto",
+                    marginTop: heroToFooterGapPx,
+                    paddingBottom: footerBottomPad,
+                    zIndex: 25,
+                    alignItems: "center",
                     width: "100%",
+                    position: "relative",
                   }}
-                  keyboardLiftStyle={{
-                    transform: [{ translateY: footerTranslateY }],
-                  }}
-                  onInputFocus={() => setIsNameInputFocused(true)}
-                  onInputBlur={() => setIsNameInputFocused(false)}
-                />
-              </View>
-            </View>
-            {onlineHeroClaimLoading ? (
-              <View
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  zIndex: 1000,
-                  backgroundColor: "rgba(0,0,0,0.45)",
-                }}
-              >
-                <ActivityIndicator size="small" color="#ffffff" />
-              </View>
-            ) : null}
-            {heroSnipedNotice && mode === "ONLINE" ? (
-              <View
-                pointerEvents="none"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  zIndex: 3000,
-                  backgroundColor: "rgba(0,0,0,0.72)",
-                  paddingHorizontal: 32,
-                }}
-              >
-                <CustomText
-                  variant="h5"
-                  className="text-center text-white mb-2"
                 >
-                  {t("hero_picker_sniped_title")}
-                </CustomText>
-                <CustomText variant="p" className="text-center text-white/90">
-                  {t("hero_picker_sniped_hint")}
-                </CustomText>
+                  {selected && quoteMode === "final" ? (
+                    <Animated.View
+                      pointerEvents="auto"
+                      style={{
+                        position: "absolute",
+                        left: 16,
+                        right: 16,
+                        bottom: footerBottomPad,
+                        zIndex: 26,
+                        opacity: skipOpacity,
+                        transform: [
+                          {
+                            translateY: Animated.add(
+                              skipTranslateY,
+                              footerTranslateY,
+                            ),
+                          },
+                          { scale: skipScale },
+                          { translateY: 6 },
+                        ],
+                      }}
+                    >
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={onSkip}
+                        hitSlop={{ top: 18, right: 28, bottom: 18, left: 28 }}
+                        style={({ pressed }) => [
+                          staticStyles.skipTextBtn,
+                          pressed && staticStyles.skipTextBtnPressed,
+                        ]}
+                      >
+                        <CustomText
+                          variant="p"
+                          className="text-center font-semibold"
+                        >
+                          {t("hero_picker_skip")}
+                        </CustomText>
+                      </Pressable>
+                    </Animated.View>
+                  ) : null}
+                  <HeroPickerFooter
+                    hero={displayHero}
+                    isNaming={isNaming}
+                    playerName={playerName}
+                    disabled={
+                      selected || claimSubmitting || onlineHeroClaimLoading
+                    }
+                    inputRef={nameInputRef}
+                    onChangeName={(v) => setPlayerName(v)}
+                    onConfirm={isNaming ? onConfirmName : handleFooterConfirm}
+                    styles={styles}
+                    style={{
+                      opacity: selected ? 0 : 1,
+                      pointerEvents: selected ? "none" : "auto",
+                      width: "100%",
+                    }}
+                    keyboardLiftStyle={{
+                      transform: [{ translateY: footerTranslateY }],
+                    }}
+                    onInputFocus={() => setIsNameInputFocused(true)}
+                    onInputBlur={() => setIsNameInputFocused(false)}
+                  />
+                </View>
               </View>
-            ) : null}
-          </HeroPickerBackground>
-        )}
-        <OnlineWaitPlayersOverlay
-          visible={
-            mode === "ONLINE" &&
-            (waitingRound1Players || waitingForHeroIntroOthers)
-          }
-          messageKey={
-            waitingForHeroIntroOthers
-              ? "online_wait_hero_intro"
-              : "online_wait_other_players"
-          }
-        />
-      </SafeAreaView>
+              {onlineHeroClaimLoading ? (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    zIndex: 1000,
+                    backgroundColor: "rgba(0,0,0,0.45)",
+                  }}
+                >
+                  <ActivityIndicator size="small" color="#ffffff" />
+                </View>
+              ) : null}
+              {heroSnipedNotice && mode === "ONLINE" ? (
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    zIndex: 3000,
+                    backgroundColor: "rgba(0,0,0,0.72)",
+                    paddingHorizontal: 32,
+                  }}
+                >
+                  <CustomText
+                    variant="h5"
+                    className="text-center text-white mb-2"
+                  >
+                    {t("hero_picker_sniped_title")}
+                  </CustomText>
+                  <CustomText variant="p" className="text-center text-white/90">
+                    {t("hero_picker_sniped_hint")}
+                  </CustomText>
+                </View>
+              ) : null}
+            </View>
+          )}
+          <OnlineWaitPlayersOverlay
+            visible={
+              mode === "ONLINE" &&
+              (waitingRound1Players || waitingForHeroIntroOthers)
+            }
+            messageKey={
+              waitingForHeroIntroOthers
+                ? "online_wait_hero_intro"
+                : "online_wait_other_players"
+            }
+          />
+        </SafeAreaView>
+      </FullBleedStack>
       {showRound1Transition && (
         <Round1TransitionOverlay
           onDone={onRound1TransitionDone}
@@ -1485,3 +1591,23 @@ export default function HeroPickerScreen() {
     </KeyboardAvoidingView>
   );
 }
+
+const staticStyles = StyleSheet.create({
+  skipTextBtn: {
+    alignSelf: "center",
+    minWidth: 116,
+    minHeight: 44,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.36)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.28)",
+  },
+  skipTextBtnPressed: {
+    opacity: 0.74,
+    transform: [{ scale: 0.98 }],
+  },
+});

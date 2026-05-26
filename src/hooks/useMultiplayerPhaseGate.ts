@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { subscribeMpPhaseAllReady } from "../api/multiplayerSync";
+import { reportMultiplayerDiagnostic } from "../utils/multiplayerDiagnostics";
 
 /**
  * When `enabled` and server broadcasts `mp_phase_all_ready` for `phase`, runs `onReady` once per event.
@@ -15,8 +16,12 @@ export function useMultiplayerPhaseGate(opts: {
 
   useEffect(() => {
     if (!enabled || !phase) return;
+    reportMultiplayerDiagnostic("phase_gate_waiting", { phase });
     const unsub = subscribeMpPhaseAllReady((p) => {
-      if (p === phase) onReadyRef.current();
+      if (p === phase) {
+        reportMultiplayerDiagnostic("phase_gate_ready", { phase: p });
+        onReadyRef.current();
+      }
     });
     return unsub;
   }, [enabled, phase]);

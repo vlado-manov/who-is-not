@@ -4,7 +4,6 @@ import {
   View,
   FlatList,
   Dimensions,
-  TouchableOpacity,
   TouchableWithoutFeedback,
   ViewToken,
   FlatListProps,
@@ -13,6 +12,7 @@ import {
 import AppImage from "./AppImage";
 import CustomText from "./common/CustomText";
 import CustomButton from "./common/CustomButton";
+import BottomSkipAction from "./common/BottomSkipAction";
 import { backgrounds } from "../../assets/backgrounds";
 import { htp_images } from "../../assets/images";
 import { useTranslation } from "react-i18next";
@@ -94,13 +94,7 @@ export default function TutorialOverlay({ visible, onSkipAll, onDoneAll, steps }
     <View className="absolute inset-0 z-[99] items-center justify-center">
       <View className="inset-0 absolute bg-[rgba(0,0,0,0.85)] w-full h-full" />
 
-      <View className="absolute top-20 right-12 z-[100]">
-        <TouchableOpacity onPress={onSkipAll}>
-          <CustomText variant="p" className="underline">
-            {t("skip")}
-          </CustomText>
-        </TouchableOpacity>
-      </View>
+      <BottomSkipAction label={t("skip")} onPress={onSkipAll} />
 
       <View style={{ width: W, paddingTop: 24 }}>
         <FlatList

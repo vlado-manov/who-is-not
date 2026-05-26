@@ -133,7 +133,7 @@ export function seedPreReveal() {
   seedResultsScreen();
 }
 
-export function seedReveal() {
+export function seedRevealLose() {
   seedDevLabBase();
   useGameStore.getState().set({
     answers: {
@@ -149,6 +149,30 @@ export function seedReveal() {
     round: 0,
     currentRoundId: "dev_round_1",
   });
+}
+
+/** Impostor (p2) wins — voters did not catch them. */
+export function seedRevealWin() {
+  seedDevLabBase();
+  useGameStore.getState().set({
+    answers: {
+      [DEV_IDS.local]: "A",
+      [DEV_IDS.p2]: "B",
+      [DEV_IDS.p3]: "C",
+    },
+    votes: {
+      [DEV_IDS.local]: DEV_IDS.p3,
+      [DEV_IDS.p3]: DEV_IDS.local,
+    },
+    phase: "reveal",
+    round: 0,
+    currentRoundId: "dev_round_win",
+  });
+}
+
+/** @deprecated Use seedRevealLose */
+export function seedReveal() {
+  seedRevealLose();
 }
 
 /**
@@ -180,6 +204,66 @@ export function seedPlayerDeathContinue() {
 
 export function seedPlayerDeathGameOver() {
   seedDevLabBase();
+}
+
+/**
+ * Demo: fires state changes after the death screen animation finishes (~5s).
+ * The base offset of 6 000 ms ensures every event lands after the feed hook
+ * has subscribed. Events are staggered at varying intervals so the feed
+ * populates gradually, one line at a time.
+ *
+ * Timeline (ms from seed call):
+ *   T+6 000  phase → voting        → "Players are voting"
+ *   T+7 800  p3 loses life         → "Bot Bob lost a life — 2 remaining"
+ *   T+10 200 round 2 + new Q       → "Round 2" + question text
+ *   T+11 900 phase → voting        → "Players are voting"
+ *   T+13 700 p2 loses life         → "Bot Alice lost a life — 1 remaining"
+ *   T+16 300 round 3 + new Q       → "Round 3" + question text
+ *   T+18 100 phase → voting        → "Players are voting"
+ *   T+20 000 p3 loses life         → "Bot Bob lost a life — 1 remaining"
+ *   T+22 600 p2 eliminated         → "Bot Alice was eliminated"
+ *   T+25 000 round 4 + new Q       → "Round 4" + question text
+ *   T+26 800 phase → voting        → "Players are voting"
+ *   T+29 200 p3 eliminated         → "Bot Bob was eliminated"
+ */
+export function seedPlayerDeathWatchDemo() {
+  const vanessaId = resolveVanessaId();
+  const store = useGameStore.getState();
+  store.reset();
+  store.set({
+    mode: "LOCAL",
+    gameId: `dev_${Date.now()}`,
+    phase: "answering",
+    round: 1,
+    players: threePlayers(vanessaId),
+    takenCharacters: [vanessaId],
+    gameSettings: defaultSettings(),
+    gameQuestions: DEV_STUB_QUESTIONS,
+    currentBaseQuestionId: "dev-q1",
+    currentOddQuestionId: "dev-q2",
+    oddOneId: DEV_IDS.p2,
+    isBonusRound: false,
+    questionType: "pick",
+    lives: {
+      [DEV_IDS.local]: 0,
+      [DEV_IDS.p2]: 2,
+      [DEV_IDS.p3]: 3,
+    },
+  });
+
+  const s = useGameStore.getState;
+  setTimeout(() => s().set({ phase: "voting" }),                                                       6_000);
+  setTimeout(() => s().set({ lives: { [DEV_IDS.local]: 0, [DEV_IDS.p2]: 2, [DEV_IDS.p3]: 2 } }),    7_800);
+  setTimeout(() => s().set({ round: 2, phase: "answering", currentBaseQuestionId: "dev-q2" }),        10_200);
+  setTimeout(() => s().set({ phase: "voting" }),                                                       11_900);
+  setTimeout(() => s().set({ lives: { [DEV_IDS.local]: 0, [DEV_IDS.p2]: 1, [DEV_IDS.p3]: 2 } }),    13_700);
+  setTimeout(() => s().set({ round: 3, phase: "answering", currentBaseQuestionId: "dev-q1" }),        16_300);
+  setTimeout(() => s().set({ phase: "voting" }),                                                       18_100);
+  setTimeout(() => s().set({ lives: { [DEV_IDS.local]: 0, [DEV_IDS.p2]: 1, [DEV_IDS.p3]: 1 } }),    20_000);
+  setTimeout(() => s().set({ lives: { [DEV_IDS.local]: 0, [DEV_IDS.p2]: 0, [DEV_IDS.p3]: 1 } }),    22_600);
+  setTimeout(() => s().set({ round: 4, phase: "answering", currentBaseQuestionId: "dev-q2" }),        25_000);
+  setTimeout(() => s().set({ phase: "voting" }),                                                       26_800);
+  setTimeout(() => s().set({ lives: { [DEV_IDS.local]: 0, [DEV_IDS.p2]: 0, [DEV_IDS.p3]: 0 } }),    29_200);
 }
 
 export function seedWinnerCelebration() {
@@ -222,7 +306,6 @@ export function seedWinnerEliminatedOnline() {
     onlineIsHost: false,
     onlineWsToken: "dev",
     onlineHostSecret: null,
-    onlineSpectating: false,
     phase: "result",
     round: 3,
     players: threePlayers(vanessaId),

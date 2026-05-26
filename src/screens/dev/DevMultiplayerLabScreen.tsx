@@ -8,10 +8,12 @@ import { StackNavigationProp } from "@react-navigation/stack";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 
+import FullBleedStack from "../../components/FullBleedStack";
 import ImageBackgroundWithLoadGate from "../../components/ImageBackgroundWithLoadGate";
 import CustomButton from "../../components/common/CustomButton";
 import CustomText from "../../components/common/CustomText";
 import ScreenTopBar from "../../components/common/ScreenTopBar";
+import { useUserSettingsSheet } from "../../context/UserSettingsModalContext";
 import {
   CreateGameStackParamList,
   GameStackParamList,
@@ -31,12 +33,14 @@ import {
   seedRoundBonusScreen,
   seedPlayerDeathContinue,
   seedPlayerDeathGameOver,
+  seedPlayerDeathWatchDemo,
   seedPreReveal,
   seedQuestionScreen,
   seedQuestionScreenOfType,
   seedResultsScreen,
   seedResultsScreenOfType,
-  seedReveal,
+  seedRevealLose,
+  seedRevealWin,
   seedRoundScreen,
   seedStandingsScreen,
   seedVoteNow,
@@ -55,6 +59,7 @@ type Row = { label: string; onPress: () => void };
 
 export default function DevMultiplayerLabScreen() {
   const navigation = useNavigation<Nav>();
+  const { openUserSettings } = useUserSettingsSheet();
   const { t } = useTranslation();
   const { horizontalPadding, topIconSize } = useResponsive();
 
@@ -181,19 +186,16 @@ export default function DevMultiplayerLabScreen() {
         go(seedPassDeviceGameplay, "PassDeviceGameplay", { playerIndex: 2 }),
     },
     {
-      label: "Pass device — vote handoff (voter 0)",
-      onPress: () =>
-        go(seedVoteScreen, "PassDeviceVote", { voterIndex: 0 }),
+      label: "Vote Now — voter 0",
+      onPress: () => go(seedVoteScreen, "VoteNow", { voterIndex: 0 }),
     },
     {
-      label: "Pass device — vote handoff (voter 1)",
-      onPress: () =>
-        go(seedVoteScreen, "PassDeviceVote", { voterIndex: 1 }),
+      label: "Vote Now — voter 1",
+      onPress: () => go(seedVoteScreen, "VoteNow", { voterIndex: 1 }),
     },
     {
-      label: "Pass device — vote handoff (voter 2)",
-      onPress: () =>
-        go(seedVoteScreen, "PassDeviceVote", { voterIndex: 2 }),
+      label: "Vote Now — voter 2",
+      onPress: () => go(seedVoteScreen, "VoteNow", { voterIndex: 2 }),
     },
     {
       label: "Results — pick (answers revealed)",
@@ -220,7 +222,7 @@ export default function DevMultiplayerLabScreen() {
     },
     {
       label: "Vote Now",
-      onPress: () => go(seedVoteNow, "VoteNow"),
+      onPress: () => go(seedVoteNow, "VoteNow", { voterIndex: 0 }),
     },
     {
       label: "Vote (voter 0)",
@@ -239,8 +241,12 @@ export default function DevMultiplayerLabScreen() {
       onPress: () => go(seedPreReveal, "PreReveal"),
     },
     {
-      label: "Reveal",
-      onPress: () => go(seedReveal, "Reveal"),
+      label: "Reveal (win)",
+      onPress: () => go(seedRevealWin, "Reveal"),
+    },
+    {
+      label: "Reveal (lose)",
+      onPress: () => go(seedRevealLose, "Reveal"),
     },
     {
       label: "Lives reveal (long)",
@@ -260,6 +266,14 @@ export default function DevMultiplayerLabScreen() {
         go(seedPlayerDeathGameOver, "PlayerDeath", {
           variant: "gameOver",
           deadPlayerId: DEV_IDS.p2,
+        }),
+    },
+    {
+      label: "Player death — watch feed (auto events)",
+      onPress: () =>
+        go(seedPlayerDeathWatchDemo, "PlayerDeath", {
+          variant: "continue",
+          deadPlayerId: DEV_IDS.local,
         }),
     },
     {
@@ -292,18 +306,22 @@ export default function DevMultiplayerLabScreen() {
   ];
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+    <FullBleedStack
+      rootStyle={styles.root}
+      backdrop={
         <ImageBackgroundWithLoadGate
           source={backgrounds.bg023}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
-        >
+        />
+      }
+    >
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
           <ScreenTopBar
             horizontalPadding={horizontalPadding}
             topIconSize={topIconSize}
             showBack
-            onSettings={() => navigation.navigate("Settings")}
+            onSettings={() => openUserSettings()}
             onProfile={() => navigation.navigate("Profile")}
             onBack={() => navigation.navigate("MenuPlay")}
             backAccessibilityLabel={t("back_btn")}
@@ -336,9 +354,8 @@ export default function DevMultiplayerLabScreen() {
               </View>
             ))}
           </ScrollView>
-        </ImageBackgroundWithLoadGate>
       </SafeAreaView>
-    </View>
+    </FullBleedStack>
   );
 }
 

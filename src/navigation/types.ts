@@ -7,8 +7,10 @@ export type OnboardingStackParamList = {
   Store: undefined;
   Profile: undefined;
   Referral: undefined;
-  Settings: undefined;
   Rules: undefined;
+  Privacy: undefined;
+  Terms: undefined;
+  Support: undefined;
   /** __DEV__ only — open seeded Game screens without a real multiplayer session. */
   DevMultiplayerLab: undefined;
 };
@@ -17,7 +19,6 @@ export type CreateGameStackParamList = {
   PlayersNumber: undefined;
   Name: { index: number };
   HeroPicker: { playerId?: string; index: number };
-  Settings: undefined;
   PassDevice: { index: number };
   Lobby: undefined;
   /** Online: host creates room, share join code (API + WebSocket). */
@@ -30,8 +31,7 @@ export type GameStackParamList = {
   PassDeviceGameplay: { playerIndex: number };
   Question: { playerIndex: number };
   Results: undefined;
-  VoteNow: undefined;
-  PassDeviceVote: { voterIndex: number };
+  VoteNow: { voterIndex: number };
   Vote: { voterIndex: number };
   VoteResults: undefined;
   PreReveal: undefined;
