@@ -30,4 +30,12 @@ export const backgrounds = {
   bg029: { uri: `${R2}/62640c5a-b953-4641-a7ce-f1b2e73138be-bg029.webp` },
   bg030: { uri: `${R2}/e2e9083e-b7c8-4399-8ac6-0d6aa8b0f4f1-bg030.webp` },
   bgheroes01: `${R2}/ba09f448-5270-4b9b-84d1-aaac8869f4b4-bg-heroes01.webp`,
+
+  // Tablet variants (width >= 768)
+  bg004t: { uri: `${R2}/17237e5b-bfe8-4d99-bbb3-56752efd7e46-E4935A9E-38C4-4158-A44A-952A4B047F03.webp` },
+  bg019t: { uri: `${R2}/3da39fea-74cb-41fc-bcfe-928b9bff3b33-C6FBDADC-24D4-4CAE-BDDB-D436AD544BC2.webp` },
+  bg023t: { uri: `${R2}/ddc0374b-64cd-4ab5-94ba-645dbb3bc713-BB124CF2-65A7-477D-B58D-6C1E6E56C03A.webp` },
+  bg029t: { uri: `${R2}/c1bbcb26-60ff-4a1c-ac31-bc665cc4a0cf-3BC23129-D335-4B46-BAD3-ECD6C457CCA6.webp` },
+  bg030t: { uri: `${R2}/bb1ce8e9-580b-45f8-9430-651807adef4f-C888418D-32C7-4581-8ACD-42A68D2A0943.webp` },
+  winnerBgt: { uri: `${R2}/a2fbeb9b-8fe5-4e82-9e45-d9c83d2ef780-83DEAB58-3BFA-4C8B-BAA3-F14D3DECDCD6.webp` },
 };

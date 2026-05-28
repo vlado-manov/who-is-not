@@ -73,6 +73,7 @@ export default function CustomText({
 }: Props) {
   const { width } = useWindowDimensions();
   const { style: restStyle, ...textRest } = rest;
+  const isTablet = width >= 768;
 
   const headingSingleLineShrink =
     !allowWrap && SINGLE_LINE_SHRINK_VARIANTS.has(variant);
@@ -125,7 +126,7 @@ export default function CustomText({
   }, [variant]);
 
   const scale = responsive ? Math.min(1, width / 390) : 1;
-  const fontSize = Math.round(baseSize * scale);
+  const fontSize = Math.round(baseSize * scale) + (isTablet ? 2 : 0);
 
   const fontClass = useMemo(() => {
     switch (variant) {

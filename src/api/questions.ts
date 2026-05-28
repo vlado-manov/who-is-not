@@ -64,6 +64,7 @@ export type QuestionPackDto = {
   slug: string;
   title: string;
   questionsCount: number;
+  isFree?: boolean;
 };
 
 function parsePacksPayload(input: unknown): QuestionPackDto[] {

@@ -111,6 +111,7 @@ export function useResponsive() {
   const topIconSize = Math.min(56, Math.max(40, windowWidth * 0.13));
   const isCompactHeight = windowHeight < 700;
   const isShortScreen = windowHeight < 560;
+  const isTablet = windowWidth >= 768 && windowWidth > windowHeight;
   const logoBlockMarginTop = getLogoBlockMarginTop(topIconSize);
 
   return {
@@ -124,5 +125,6 @@ export function useResponsive() {
     logoBlockMarginTop,
     isCompactHeight,
     isShortScreen,
+    isTablet,
   };
 }

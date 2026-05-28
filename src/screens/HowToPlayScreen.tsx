@@ -393,7 +393,7 @@ function StepCard({
         paddingTop: 8,
       }}
     >
-      <View style={{ width: "80%", position: "relative" }}>
+      <View style={{ width: "80%", maxWidth: 480, position: "relative" }}>
         <View
           className="bg-primary-500 rounded-2xl items-center justify-center"
           style={{
@@ -469,6 +469,7 @@ const HowToPlayScreen = () => {
   const { t } = useTranslation();
   const { horizontalPadding, topIconSize } = useResponsive();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isTablet = windowWidth >= 768;
   const steps = React.useMemo(() => getHtpSteps(t), [t]);
   const [index, setIndex] = useState(0);
   const flatRef = useRef<FlatList<Step>>(null);
@@ -526,7 +527,10 @@ const HowToPlayScreen = () => {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <View className="items-center w-full justify-center px-4">
+            <View
+              className="items-center justify-center px-4"
+              style={[{ width: "100%" }, isTablet && { maxWidth: 560 }]}
+            >
               <CustomText variant="h3-headline" className="text-center w-full">
                 {t("htp_heading_1")}
               </CustomText>

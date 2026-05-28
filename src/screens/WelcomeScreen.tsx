@@ -54,6 +54,7 @@ export default function WelcomeScreen() {
     windowHeight,
     windowWidth,
     isShortScreen,
+    isTablet,
   } = useResponsive();
 
   /** ~P30 Pro and similar; when they can't stay on one row, stack diagonally. */
@@ -108,7 +109,7 @@ export default function WelcomeScreen() {
       rootStyle={styles.root}
       backdrop={
         <ImageBackgroundWithLoadGate
-          source={backgrounds.bg023}
+          source={isTablet ? backgrounds.bg023t : backgrounds.bg023}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         >
@@ -171,7 +172,7 @@ export default function WelcomeScreen() {
             <View
               style={{
                 width: "100%",
-                maxWidth: 420,
+                maxWidth: isTablet ? 560 : 420,
                 alignSelf: "center",
                 paddingTop: 20,
                 paddingBottom: stackStoreAndRulebook ? 8 : 64,
@@ -206,7 +207,7 @@ export default function WelcomeScreen() {
                 flexDirection: stackStoreAndRulebook ? "column" : "row",
                 gap: buttonsVerticalGap,
                 width: "100%",
-                maxWidth: 420,
+                maxWidth: isTablet ? 560 : 420,
                 alignSelf: "center",
                 alignItems: "stretch",
                 marginTop: stackStoreAndRulebook ? buttonsVerticalGap : 16,

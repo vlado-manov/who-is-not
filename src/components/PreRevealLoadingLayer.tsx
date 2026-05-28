@@ -24,6 +24,9 @@ const PRE_REVEAL_BG_DEFAULT =
 /** Taller / large format (e.g. 1320×2868 class) */
 const PRE_REVEAL_BG_TALL =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/d54269d6-7963-4249-a9e0-56d64daa6ec6-IMG_4090.webp";
+/** Tablet (width >= 768) */
+const PRE_REVEAL_BG_TABLET =
+  "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/6fb679b7-e1c8-482e-a1d0-3a3624b430e0-tabletLoadingReveal.webp";
 
 /** Same texture strip as CurtainOverlay welcomeInitial loader */
 const WELCOME_LOADER_FILL_URI =
@@ -39,6 +42,9 @@ function usePreRevealBackgroundUri(): string {
   const w = Math.min(width, height);
   const h = Math.max(width, height);
   const isPortrait = height >= width;
+  if (width >= 768 && width > height) {
+    return PRE_REVEAL_BG_TABLET;
+  }
   if (isPortrait && h / Math.max(1, w) >= 2) {
     return PRE_REVEAL_BG_TALL;
   }

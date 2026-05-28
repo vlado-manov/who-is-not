@@ -8,6 +8,7 @@ import {
   Easing,
   ImageSourcePropType,
   Dimensions,
+  useWindowDimensions,
 } from "react-native";
 import AppImage from "../../components/AppImage";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -48,6 +49,8 @@ const RevealScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   usePreventBack();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isTablet = windowWidth >= 768 && windowWidth > windowHeight;
   const animatedTitleScale = useRef(new Animated.Value(50)).current;
   const animatedTitleTranslateY = useRef(new Animated.Value(0)).current;
   const animatedTitleRotate = useRef(new Animated.Value(0)).current;
@@ -601,7 +604,9 @@ const RevealScreen = () => {
   /* ASSETS */
   /* -------------------------------------------------------------------------- */
 
-  const backgroundImage = impostorLost ? backgrounds.bg030 : backgrounds.bg029;
+  const backgroundImage = impostorLost
+    ? (isTablet ? backgrounds.bg030t : backgrounds.bg030)
+    : (isTablet ? backgrounds.bg029t : backgrounds.bg029);
 
   const titleImage: ImageSourcePropType = useMemo(() => {
     const seed = `${revealVisualSeed}-title`;
@@ -922,22 +927,7 @@ const RevealScreen = () => {
 
         {/* QUESTION FRAME */}
         <View style={styles.questionWrap}>
-          {/* <Image
-            source={questionFrameImage}
-            resizeMode="contain"
-            style={styles.questionFrame}
-          />
-
-          <View style={styles.questionTextOverlay}>
-            <CustomText
-              variant="h5-headline"
-              className="text-center px-8"
-              textColor="#313131"
-            >
-              {imposterQuestion?.text}
-            </CustomText>
-          </View> */}
-          <View style={{ paddingHorizontal: 40, width: "100%" }}>
+          <View style={[{ paddingHorizontal: 40, width: "100%" }, isTablet && styles.tabletContentWrap]}>
             <Animated.View
               style={{
                 transform: [{ translateY: plateTranslateY }],
@@ -995,6 +985,11 @@ const styles = StyleSheet.create({
   bg: {
     flex: 1,
     justifyContent: "space-between",
+  },
+  tabletContentWrap: {
+    maxWidth: 560,
+    alignSelf: "center",
+    width: "100%",
   },
 
   topTitleWrap: {

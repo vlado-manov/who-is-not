@@ -60,6 +60,7 @@ export default function OnlineJoinScreen() {
     logo,
     storeIconOverlay,
     logoBlockMarginTop,
+    isTablet,
   } = useResponsive();
   const { settings, updateSettings } = useAuthStore();
   const navigation = useNavigation<Nav>();
@@ -339,10 +340,11 @@ export default function OnlineJoinScreen() {
           contentContainerStyle={{
             flexGrow: 1,
             paddingBottom: 16,
+            alignItems: isTablet ? "center" : undefined,
           }}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={{ width: "100%" }}>
+          <View style={[{ width: "100%" }, isTablet && { maxWidth: 560 }]}>
             <View
               style={{
                 paddingHorizontal: horizontalPadding,

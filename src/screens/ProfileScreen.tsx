@@ -296,7 +296,7 @@ const ProfileScreen = () => {
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
-  const { horizontalPadding, topIconSize } = useResponsive();
+  const { horizontalPadding, topIconSize, isTablet } = useResponsive();
 
   return (
     <FullBleedStack
@@ -321,8 +321,10 @@ const ProfileScreen = () => {
             contentContainerStyle={{
               paddingTop: 72,
               paddingBottom: 16,
+              alignItems: isTablet ? "center" : undefined,
             }}
           >
+            <View style={[{ width: "100%" }, isTablet && { maxWidth: 560 }]}>
             <View className="relative">
               <View className="items-center w-full justify-center px-4 mt-2">
                 <CustomText
@@ -479,6 +481,7 @@ const ProfileScreen = () => {
                   </CustomText>
                 </TouchableOpacity>
               </View>
+            </View>
             </View>
           </ScrollView>
           {imagePickerVisible && (

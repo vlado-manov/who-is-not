@@ -77,10 +77,12 @@ export default function OnlineHostScreen() {
     logo,
     storeIconOverlay,
     logoBlockMarginTop,
+    isTablet,
   } = useResponsive();
   const plateModalWidth = usePlateModalCardWidth();
   const { settings, updateSettings } = useAuthStore();
   const userId = useAuthStore((s) => s.user.id);
+  const isPremium = useAuthStore((s) => s.user.isPremium);
   const navigation = useNavigation<Nav>();
   const { openUserSettings } = useUserSettingsSheet();
   const applyOnlinePartySession = useGameStore(
@@ -201,13 +203,16 @@ export default function OnlineHostScreen() {
     fetchQuestionPacks({ userId })
       .then((packs) => {
         if (cancelled) return;
-        setAvailablePacks(packs);
+        const accessible = packs.filter(
+          (p) => isMainPack(p.slug) || p.isFree === true || isPremium,
+        );
+        setAvailablePacks(accessible);
         setSelectedSlugs((prev) => {
-          if (packs.length === 0) return prev;
-          const valid = prev.filter((s) => packs.some((p) => p.slug === s));
+          if (accessible.length === 0) return prev;
+          const valid = prev.filter((s) => accessible.some((p) => p.slug === s));
           if (valid.length > 0) return valid;
-          const main = packs.find((p) => isMainPack(p.slug));
-          return [main?.slug ?? packs[0].slug];
+          const main = accessible.find((p) => isMainPack(p.slug));
+          return [main?.slug ?? accessible[0].slug];
         });
       })
       .catch(() => {
@@ -219,7 +224,7 @@ export default function OnlineHostScreen() {
     return () => {
       cancelled = true;
     };
-  }, [gameSettings?.selectedPacks, userId]);
+  }, [gameSettings?.selectedPacks, userId, isPremium]);
 
   const handleCreateRoom = useCallback(async () => {
     setCreateError(null);
@@ -530,10 +535,11 @@ export default function OnlineHostScreen() {
           contentContainerStyle={{
             flexGrow: 1,
             paddingBottom: 16,
+            alignItems: isTablet ? "center" : undefined,
           }}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={{ width: "100%" }}>
+          <View style={[{ width: "100%" }, isTablet && { maxWidth: 560 }]}>
             <View
               style={{
                 paddingHorizontal: horizontalPadding,

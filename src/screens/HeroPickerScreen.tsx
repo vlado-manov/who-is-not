@@ -129,6 +129,7 @@ function randomOf<T>(arr: T[]): T {
 }
 export default function HeroPickerScreen() {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isTablet = windowWidth >= 768 && windowWidth > windowHeight;
   const route = useRoute<HeroRoute>();
   const navigation = useNavigation<HeroNav>();
   const { openUserSettings } = useUserSettingsSheet();
@@ -1215,7 +1216,7 @@ export default function HeroPickerScreen() {
         backdrop={
           showRound1Content ? (
             <ImageBackground
-              source={backgrounds.bg019}
+              source={windowWidth >= 768 && windowWidth > windowHeight ? backgrounds.bg019t : backgrounds.bg019}
               style={StyleSheet.absoluteFill}
               resizeMode="cover"
             >
@@ -1243,7 +1244,7 @@ export default function HeroPickerScreen() {
                 steps={round1TutorialSteps}
               />
               <View className="flex-1 justify-center relative">
-                <View>
+                <View style={isTablet ? { maxWidth: 560, alignSelf: "center", width: "100%" } : undefined}>
                   <CustomText variant="h2" className="text-center mb-2" shadow>
                     {t("round_label")}
                   </CustomText>
@@ -1251,24 +1252,26 @@ export default function HeroPickerScreen() {
                     1
                   </CustomText>
                 </View>
-                <View className="mb-16 px-16 absolute bottom-0 left-0 right-0">
-                  <CustomText className="text-center mb-4">
-                    <CustomText className="underline">
-                      {firstPlayerName}
+                <View className="mb-16 absolute bottom-0 left-0 right-0">
+                  <View style={isTablet ? { maxWidth: 560, alignSelf: "center", width: "100%", paddingHorizontal: 64 } : { paddingHorizontal: 64 }}>
+                    <CustomText className="text-center mb-4">
+                      <CustomText className="underline">
+                        {firstPlayerName}
+                      </CustomText>
+                      ,<CustomText> {t("round_start_hint")}</CustomText>
                     </CustomText>
-                    ,<CustomText> {t("round_start_hint")}</CustomText>
-                  </CustomText>
-                  <CustomButton
-                    title={t("start_btn")}
-                    backgroundImage={backgrounds.bg026}
-                    glow
-                    glowColor="rgba(41,255,25,0.8)"
-                    shadowColor="#005f07"
-                    horizontalPadding={48}
-                    fullWidth
-                    onPress={onRound1Start}
-                    disabled={mode === "ONLINE" && waitingRound1Players}
-                  />
+                    <CustomButton
+                      title={t("start_btn")}
+                      backgroundImage={backgrounds.bg026}
+                      glow
+                      glowColor="rgba(41,255,25,0.8)"
+                      shadowColor="#005f07"
+                      horizontalPadding={48}
+                      fullWidth
+                      onPress={onRound1Start}
+                      disabled={mode === "ONLINE" && waitingRound1Players}
+                    />
+                  </View>
                 </View>
               </View>
             </>
@@ -1368,6 +1371,7 @@ export default function HeroPickerScreen() {
                   width: "100%",
                   position: "relative",
                   paddingHorizontal: 16,
+                  ...(isTablet ? { maxWidth: 560, alignSelf: "center" } : {}),
                 }}
               >
                 <View

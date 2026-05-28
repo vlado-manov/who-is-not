@@ -80,6 +80,7 @@ const ResultsScreen = () => {
   usePreventBack();
   const { t } = useTranslation();
   const { width: screenW, height: screenH } = useWindowDimensions();
+  const isTablet = screenW >= 768 && screenW > screenH;
 
   /* ── Store selectors ────────────────────────────────────────────────────── */
   const players = useGameStore((s) => s.players);
@@ -939,7 +940,7 @@ const ResultsScreen = () => {
       rootStyle={{ flex: 1, backgroundColor: "#0a0a0a" }}
       backdrop={
         <ImageBackgroundWithLoadGate
-          source={backgrounds.bg023}
+          source={isTablet ? backgrounds.bg023t : backgrounds.bg023}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         />
@@ -956,12 +957,14 @@ const ResultsScreen = () => {
             paddingVertical: 96,
             paddingBottom: 140,
             gap: 32,
+            alignItems: isTablet ? "center" : undefined,
           }}
         >
           {/* ── QUESTION HEADER — animates in during "title" phase ─────────── */}
           <Animated.View
             style={[
               { paddingHorizontal: 24 },
+              isTablet && { width: "100%", maxWidth: 560 },
               {
                 opacity: titleOp,
                 transform: [
@@ -1132,7 +1135,7 @@ const ResultsScreen = () => {
 
           {/* ── PICK: who voted for whom ──────────────────────────────────── */}
           {questionType === "pick" && (
-            <View className="px-6 gap-8">
+            <View className="px-6 gap-8" style={isTablet ? { width: "100%", maxWidth: 560 } : undefined}>
               {votePairs.map(({ voter, target }, idx) => {
                 const voterImg = getAvatar(voter);
                 const targetImg = getAvatar(target);
@@ -1201,7 +1204,7 @@ const ResultsScreen = () => {
 
           {/* ── RATE / NUMBER: 2-per-row grid ─────────────────────────────── */}
           {(questionType === "rate" || questionType === "number") && (
-            <View className="px-6" style={styles.rateNumberContainer}>
+            <View className="px-6" style={[styles.rateNumberContainer, isTablet && { width: "100%", maxWidth: 560 }]}>
               {answerRows.map((row, rowIdx) => (
                 <View
                   key={`row-${rowIdx}`}
@@ -1269,7 +1272,7 @@ const ResultsScreen = () => {
 
           {/* ── INPUT: player + answer plate ──────────────────────────────── */}
           {questionType === "input" && (
-            <View className="px-6" style={styles.inputAnswersContainer}>
+            <View className="px-6" style={[styles.inputAnswersContainer, isTablet && { width: "100%", maxWidth: 560 }]}>
               {answerEntries.map(({ player, answer }, idx) => {
                 const avatar = getAvatar(player);
                 return (

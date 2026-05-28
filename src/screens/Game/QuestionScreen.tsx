@@ -267,7 +267,9 @@ const AvatarPickButton = ({
 
 const QuestionScreen = () => {
   const { t } = useTranslation();
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isTablet = windowWidth >= 768 && windowWidth > windowHeight;
+  const numCols = isTablet ? 3 : 2;
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -280,7 +282,7 @@ const QuestionScreen = () => {
     const outerPad = 0;
     const cellPadH = 4;
     const rowWidth = Math.max(0, windowWidth - outerPad * 2);
-    const cellWidth = rowWidth / 2;
+    const cellWidth = rowWidth / numCols;
     const innerWidth = Math.max(40, cellWidth - cellPadH * 2);
     const target = Math.round(Math.min(164, Math.max(48, innerWidth * 0.88)));
     const avatarDiameter = Math.min(
@@ -291,7 +293,7 @@ const QuestionScreen = () => {
       Math.min(18, Math.max(11, innerWidth / 8.2)),
     );
     return { avatarDiameter, buttonWidth: innerWidth, titleFontPx };
-  }, [windowWidth]);
+  }, [windowWidth, numCols]);
 
   /** Scales with screen; slot position uses % of hero so layout stays aligned on all sizes. */
   const numberFieldFontSize = useMemo(
@@ -407,11 +409,11 @@ const QuestionScreen = () => {
 
   const playerRows = useMemo<Player[][]>(() => {
     const rows: Player[][] = [];
-    for (let i = 0; i < players.length; i += 2) {
-      rows.push(players.slice(i, i + 2));
+    for (let i = 0; i < players.length; i += numCols) {
+      rows.push(players.slice(i, i + numCols));
     }
     return rows;
-  }, [players]);
+  }, [players, numCols]);
 
   const question: IQuestion | null = useMemo(() => {
     if (
@@ -657,7 +659,7 @@ const QuestionScreen = () => {
       rootStyle={{ flex: 1, backgroundColor: "#0a0a0a" }}
       backdrop={
         <ImageBackgroundWithLoadGate
-          source={backgrounds.bg023}
+          source={isTablet ? backgrounds.bg023t : backgrounds.bg023}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         />
@@ -699,16 +701,19 @@ const QuestionScreen = () => {
               }}
             >
           <Animated.View
-            style={{
-              transform: [
-                {
-                  translateX: screenShake.interpolate({
-                    inputRange: [-1, 1],
-                    outputRange: [-8, 8],
-                  }),
-                },
-              ],
-            }}
+            style={[
+              {
+                transform: [
+                  {
+                    translateX: screenShake.interpolate({
+                      inputRange: [-1, 1],
+                      outputRange: [-8, 8],
+                    }),
+                  },
+                ],
+              },
+              isTablet && { maxWidth: 560, alignSelf: "center", width: "100%" },
+            ]}
           >
             <View style={{ paddingHorizontal: 24 }}>
               <Animated.View
@@ -770,7 +775,10 @@ const QuestionScreen = () => {
             </View>
             {/* CONTENT */}
             {isPick && (
-              <View className="px-6" style={{ marginTop: 64 }}>
+              <View
+                className="px-6"
+                style={{ marginTop: 64 }}
+              >
                 {playerRows.map((row, rowIndex) => (
                   <View key={`row-${rowIndex}`} style={styles.row}>
                     {row.map((player) => {
@@ -779,7 +787,10 @@ const QuestionScreen = () => {
                       );
 
                       return (
-                        <View key={player.id} style={styles.cell}>
+                        <View
+                          key={player.id}
+                          style={[styles.cell, isTablet && styles.cellTablet]}
+                        >
                           <View>
                             <AvatarPickButton
                               name={player.name}
@@ -1088,6 +1099,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, // ≈ 32px gap
     alignItems: "center",
     justifyContent: "center",
+  },
+  cellTablet: {
+    width: "33.33%",
   },
 
   nameDivider: {

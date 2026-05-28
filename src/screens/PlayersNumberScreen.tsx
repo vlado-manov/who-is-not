@@ -5,6 +5,7 @@ import {
   Animated,
   ScrollView,
   StyleSheet,
+  useWindowDimensions,
 } from "react-native";
 import { Image } from "expo-image";
 import AppImage from "../components/AppImage";
@@ -155,6 +156,8 @@ const PlayersNumberScreen = () => {
   const minusAnim = usePressAnimation();
   const plusAnim = usePressAnimation();
 
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isTablet = windowWidth >= 768 && windowWidth > windowHeight;
   const {
     logo,
     horizontalPadding: pad,
@@ -215,7 +218,7 @@ const PlayersNumberScreen = () => {
             />
 
             {/* CONTENT */}
-            <View className="w-full items-center px-2">
+            <View style={[{ width: "100%", alignItems: "center", paddingHorizontal: 8 }, isTablet && { maxWidth: 560, alignSelf: "center" }]}>
               <CustomText variant="label" className="mb-4">
                 {t("players_number_label_text")}
               </CustomText>

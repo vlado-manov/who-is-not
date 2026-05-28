@@ -45,6 +45,7 @@ const MenuPlayScreen = () => {
     windowHeight,
     windowWidth,
     isShortScreen,
+    isTablet,
   } = useResponsive();
 
   const menuLayout = useMemo(() => {
@@ -105,7 +106,7 @@ const MenuPlayScreen = () => {
       rootStyle={styles.root}
       backdrop={
         <ImageBackgroundWithLoadGate
-          source={backgrounds.bg023}
+          source={isTablet ? backgrounds.bg023t : backgrounds.bg023}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         >
@@ -173,7 +174,7 @@ const MenuPlayScreen = () => {
           <View
             style={{
               width: "100%",
-              maxWidth: 420,
+              maxWidth: isTablet ? 560 : 420,
               alignSelf: "center",
               gap: menuLayout.gap,
               marginTop: menuLayout.sectionMarginTop,

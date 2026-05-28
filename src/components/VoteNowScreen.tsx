@@ -78,6 +78,7 @@ const VoteNowScreen = () => {
   const screenShake = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isTablet = windowWidth >= 768 && windowWidth > windowHeight;
   const pad = getHorizontalPadding(windowWidth);
   const logoBox = getLogoBox(windowWidth, pad);
   const { voteMark, deco } = useMemo(() => {
@@ -194,7 +195,7 @@ const VoteNowScreen = () => {
       rootStyle={{ flex: 1, backgroundColor: "#0a0a0a" }}
       backdrop={
         <ImageBackgroundWithLoadGate
-          source={backgrounds.bg023}
+          source={isTablet ? backgrounds.bg023t : backgrounds.bg023}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         >

@@ -15,6 +15,11 @@
     },
     "ios": {
       "supportsTablet": true,
+      "requireFullScreen": true,
+      "infoPlist": {
+        "UISupportedInterfaceOrientations": ["UIInterfaceOrientationPortrait"],
+        "UISupportedInterfaceOrientations~ipad": ["UIInterfaceOrientationPortrait"]
+      },
       "icon": "./assets/images/icon.png"
     },
     "android": {

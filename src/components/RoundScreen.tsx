@@ -1,6 +1,6 @@
 // src/components/RoundScreen.tsx
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { View, ImageBackground, Dimensions, StyleSheet } from "react-native";
+import { View, ImageBackground, Dimensions, StyleSheet, useWindowDimensions } from "react-native";
 import FullBleedStack from "./FullBleedStack";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
@@ -75,6 +75,8 @@ const RoundScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   usePreventBack();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isTablet = windowWidth >= 768 && windowWidth > windowHeight;
 
   const round = useGameStore((s) => s.round);
   const gameId = useGameStore((s) => s.gameId);
@@ -174,7 +176,7 @@ const RoundScreen = () => {
       rootStyle={{ flex: 1, backgroundColor: "#0a0a0a" }}
       backdrop={
         <ImageBackground
-          source={backgrounds.bg019}
+          source={isTablet ? backgrounds.bg019t : backgrounds.bg019}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         >
@@ -203,7 +205,7 @@ const RoundScreen = () => {
         />
       )}
       <View className="flex-1 justify-center relative">
-        <View>
+        <View style={isTablet ? styles.tabletCenter : undefined}>
           <CustomText variant="h2" className="text-center mb-2" shadow>
             {t("round_label")}
           </CustomText>
@@ -212,23 +214,25 @@ const RoundScreen = () => {
           </CustomText>
         </View>
         {mode !== "ONLINE" ? (
-          <View className="mb-16 px-16 absolute bottom-0 left-0 right-0">
-            <CustomText className="text-center mb-4">
-              <CustomText className="underline">{firstPlayerName}</CustomText>,
-              <CustomText>
-                {" "}{t("round_start_hint")}
+          <View className="mb-16 absolute bottom-0 left-0 right-0">
+            <View style={isTablet ? styles.tabletBottomBar : { paddingHorizontal: 64 }}>
+              <CustomText className="text-center mb-4">
+                <CustomText className="underline">{firstPlayerName}</CustomText>,
+                <CustomText>
+                  {" "}{t("round_start_hint")}
+                </CustomText>
               </CustomText>
-            </CustomText>
-            <CustomButton
-              title={t("start_btn")}
-              backgroundImage={backgrounds.bg026}
-              glow
-              glowColor="rgba(41,255,25,0.8)"
-              shadowColor="#005f07"
-              horizontalPadding={48}
-              fullWidth
-              onPress={onContinue}
-            />
+              <CustomButton
+                title={t("start_btn")}
+                backgroundImage={backgrounds.bg026}
+                glow
+                glowColor="rgba(41,255,25,0.8)"
+                shadowColor="#005f07"
+                horizontalPadding={48}
+                fullWidth
+                onPress={onContinue}
+              />
+            </View>
           </View>
         ) : null}
       </View>
@@ -240,6 +244,17 @@ const RoundScreen = () => {
 export default RoundScreen;
 
 const styles = StyleSheet.create({
+  tabletCenter: {
+    alignSelf: "center",
+    width: "100%",
+    maxWidth: 560,
+  },
+  tabletBottomBar: {
+    alignSelf: "center",
+    width: "100%",
+    maxWidth: 560,
+    paddingHorizontal: 32,
+  },
   bonusOverlayRoot: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 99,

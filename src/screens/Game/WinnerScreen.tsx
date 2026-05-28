@@ -54,6 +54,8 @@ type Nav = StackNavigationProp<GameStackParamList, "Winner">;
 
 const WINNER_BG_URI =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/3a93c0b5-d3f5-4f42-a996-6c58992cc8ae-IMG_4043.webp";
+const WINNER_BG_TABLET_URI =
+  "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/a2fbeb9b-8fe5-4e82-9e45-d9c83d2ef780-83DEAB58-3BFA-4C8B-BAA3-F14D3DECDCD6.webp";
 const WINNER_TEXT_EN_URI =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/1aea25ff-4f32-458c-9623-59374130ff96-winnerText_en.webp";
 const WINNER_TEXT_BG_URI =
@@ -83,7 +85,9 @@ export default function WinnerScreen() {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const { i18n, t } = useTranslation();
-  const { height: windowHeight } = useWindowDimensions();
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  const isTablet = windowWidth >= 768 && windowWidth > windowHeight;
+  const tabletBtnPad = isTablet ? Math.max(8, Math.floor((windowWidth - 560) / 2)) : 8;
   usePreventBack();
 
   const players = useGameStore((s) => s.players);
@@ -956,7 +960,7 @@ export default function WinnerScreen() {
   return (
     <SafeAreaView className="flex-1" edges={["right", "left"]}>
       <ImageBackground
-        source={{ uri: WINNER_BG_URI }}
+        source={{ uri: isTablet ? WINNER_BG_TABLET_URI : WINNER_BG_URI }}
         style={styles.bg}
         resizeMode="cover"
       >
@@ -1152,6 +1156,7 @@ export default function WinnerScreen() {
                 paddingTop: insets.top + titleTopOffset,
                 paddingHorizontal: 8,
               },
+              isTablet && styles.mainStageLayoutTablet,
             ]}
           >
             <Animated.View
@@ -1240,6 +1245,7 @@ export default function WinnerScreen() {
               style={[
                 styles.revealButtonWrap,
                 {
+                  paddingHorizontal: tabletBtnPad,
                   opacity: revealBtnOpacity,
                   transform: [{ translateY: revealBtnY }],
                 },
@@ -1358,6 +1364,7 @@ export default function WinnerScreen() {
                 styles.buttonsWrap,
                 {
                   paddingBottom: insets.bottom + 14,
+                  paddingHorizontal: tabletBtnPad,
                   opacity: buttonsOpacity,
                   transform: [{ translateY: buttonsY }],
                 },
@@ -1464,6 +1471,11 @@ const styles = StyleSheet.create({
     width: "100%",
     position: "relative",
   },
+  mainStageLayoutTablet: {
+    maxWidth: 560,
+    alignSelf: "center",
+    width: "100%",
+  },
   topTitleWrap: {
     zIndex: 6,
     alignItems: "center",
@@ -1519,15 +1531,15 @@ const styles = StyleSheet.create({
   },
   buttonsWrap: {
     position: "absolute",
-    left: 8,
-    right: 8,
+    left: 0,
+    right: 0,
     bottom: 0,
     zIndex: 8,
   },
   revealButtonWrap: {
     position: "absolute",
-    left: 8,
-    right: 8,
+    left: 0,
+    right: 0,
     top: "50%",
     marginTop: -26,
     zIndex: 9,

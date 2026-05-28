@@ -64,7 +64,7 @@ const LoadingScreen = ({
   hint2Key = "loading_hint_2",
   useGameMusic = false,
   fullScreenWithStatusBar = false,
-  backgroundSource = backgrounds.bg023,
+  backgroundSource,
 }: LoadingScreenProps) => {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -178,7 +178,9 @@ const LoadingScreen = ({
     ]).start();
   }, [skipIntroAnimation]);
 
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isTablet = windowWidth >= 768 && windowWidth > windowHeight;
+  const effectiveBackground = backgroundSource ?? (isTablet ? backgrounds.bg023t : backgrounds.bg023);
   const pad = getHorizontalPadding(windowWidth);
   const logo = getLogoBox(windowWidth, pad);
   const htp = getHtpOverlay(logo.width);
@@ -305,7 +307,7 @@ const LoadingScreen = ({
 
   const fullBleedBackground = (
     <ImageBackgroundWithLoadGate
-      source={backgroundSource}
+      source={effectiveBackground}
       style={StyleSheet.absoluteFill}
       resizeMode="cover"
     >

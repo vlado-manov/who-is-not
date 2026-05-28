@@ -622,8 +622,9 @@ function SupportCard() {
     ).start();
   }, [fadeAnim, pulseAnim]);
 
-  // icon occupies 40% of card inner width (card = screenW - 40 due to marginH 20 each side)
-  const iconW = (screenW - 40) * 0.4;
+  // icon occupies 40% of card inner width (card = capped width - 40 due to marginH 20 each side)
+  const effectiveW = Math.min(screenW, 560);
+  const iconW = (effectiveW - 40) * 0.4;
 
   return (
     <Animated.View style={[supportStyles.wrap, { opacity: fadeAnim }]}>
@@ -690,7 +691,7 @@ const StoreScreen = () => {
   const navigation = useNavigation<Nav>();
   const { openUserSettings } = useUserSettingsSheet();
   const { t } = useTranslation();
-  const { horizontalPadding, topIconSize } = useResponsive();
+  const { horizontalPadding, topIconSize, isTablet } = useResponsive();
   const userId = useAuthStore((s) => s.user.id);
   const isPremium = useAuthStore((s) => s.user.isPremium);
 
@@ -805,7 +806,10 @@ const StoreScreen = () => {
         />
 
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[
+            styles.scroll,
+            isTablet && { alignItems: "center" },
+          ]}
           showsVerticalScrollIndicator={false}
           scrollEventThrottle={16}
           onScroll={Animated.event(
@@ -813,77 +817,79 @@ const StoreScreen = () => {
             { useNativeDriver: false },
           )}
         >
-          {/* ── Store Header — logo + character ───────────────────── */}
-          <StoreHeader />
+          <View style={[{ width: "100%" }, isTablet && { maxWidth: 560 }]}>
+            {/* ── Store Header — logo + character ───────────────────── */}
+            <StoreHeader />
 
-          {/* ── Premium ───────────────────────────────────────────────── */}
-          {!isPremium && (
-            <>
-              <SectionHeader
-                emoji="⚡"
-                title={t("store_go_premium")}
-                subtitle={t("store_go_premium_subtitle")}
-                delay={100}
-              />
-              <PremiumComponent
-                onSelect={handlePremiumBuy}
-                loading={isLoading}
-              />
-            </>
-          )}
+            {/* ── Premium ───────────────────────────────────────────────── */}
+            {!isPremium && (
+              <>
+                <SectionHeader
+                  emoji="⚡"
+                  title={t("store_go_premium")}
+                  subtitle={t("store_go_premium_subtitle")}
+                  delay={100}
+                />
+                <PremiumComponent
+                  onSelect={handlePremiumBuy}
+                  loading={isLoading}
+                />
+              </>
+            )}
 
-          {isPremium && (
-            <View style={styles.premiumOwned}>
-              <CustomText style={styles.premiumOwnedText}>
-                {t("store_premium_owned")}
-              </CustomText>
-            </View>
-          )}
+            {isPremium && (
+              <View style={styles.premiumOwned}>
+                <CustomText style={styles.premiumOwnedText}>
+                  {t("store_premium_owned")}
+                </CustomText>
+              </View>
+            )}
 
-          {/* ── Heroes ────────────────────────────────────────────────── */}
-          {paidHeroes.length > 0 && (
-            <>
-              <SectionHeader
-                emoji="⚔️"
-                title={t("store_heroes_section")}
-                subtitle={t("store_heroes_subtitle", {
-                  count: paidHeroes.length,
-                })}
-                delay={180}
-              />
-              <HeroSliderComponent
-                data={paidHeroes}
-                itemSize={128}
-                gap={12}
-                sidePadding={20}
-                onSelect={handleHeroBuy}
-              />
-            </>
-          )}
+            {/* ── Heroes ────────────────────────────────────────────────── */}
+            {paidHeroes.length > 0 && (
+              <>
+                <SectionHeader
+                  emoji="⚔️"
+                  title={t("store_heroes_section")}
+                  subtitle={t("store_heroes_subtitle", {
+                    count: paidHeroes.length,
+                  })}
+                  delay={180}
+                />
+                <HeroSliderComponent
+                  data={paidHeroes}
+                  itemSize={128}
+                  gap={12}
+                  sidePadding={20}
+                  onSelect={handleHeroBuy}
+                />
+              </>
+            )}
 
-          {/* ── Bundles ───────────────────────────────────────────────── */}
-          <SectionHeader
-            emoji="🎁"
-            title={t("store_bundles_section")}
-            subtitle={t("store_bundles_subtitle")}
-            delay={260}
-          />
-          {BUNDLES.map((bundle, i) => (
-            <BundleComponent
-              key={bundle.id}
-              item={bundle}
-              onSelect={handleBundleBuy}
-              delay={300 + i * 100}
-              scrollY={scrollY}
+            {/* ── Bundles ───────────────────────────────────────────────── */}
+            <SectionHeader
+              emoji="🎁"
+              title={t("store_bundles_section")}
+              subtitle={t("store_bundles_subtitle")}
+              delay={260}
             />
-          ))}
+            {BUNDLES.map((bundle, i) => (
+              <BundleComponent
+                key={bundle.id}
+                item={bundle}
+                onSelect={handleBundleBuy}
+                delay={300 + i * 100}
+                scrollY={scrollY}
+              />
+            ))}
 
-          {/* ── Footer ────────────────────────────────────────────────── */}
-          <SupportCard />
-          <RestoreRow
-            onRestore={handleRestore}
-            isLoading={isLoading && state === "loading"}
-          />
+            {/* ── Footer ────────────────────────────────────────────────── */}
+            <SupportCard />
+            <RestoreRow
+              onRestore={handleRestore}
+              isLoading={isLoading && state === "loading"}
+            />
+          </View>
         </ScrollView>
 
         {/* ── Overlays ──────────────────────────────────────────────── */}

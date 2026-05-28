@@ -6,6 +6,7 @@ import {
   ImageBackground,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  useWindowDimensions,
 } from "react-native";
 import AppImage from "../../components/AppImage";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -41,6 +42,8 @@ const StandingsScreen = () => {
   const navigation = useNavigation<Nav>();
   usePreventBack();
   const { t } = useTranslation();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isTablet = windowWidth >= 768 && windowWidth > windowHeight;
 
   const players = useGameStore((s) => s.players);
   const heroes = useHeroesStore((s) => s.heroes);
@@ -78,7 +81,7 @@ const StandingsScreen = () => {
   const topStandingImage = (topCharacter as any)?.standingImage;
   const topStandingBackground =
     // (topCharacter as any)?.standingBackground ||
-    backgrounds.bg023;
+    isTablet ? backgrounds.bg023t : backgrounds.bg023;
 
   const handleStartNextRound = () => {
     goToNextRound();
@@ -151,11 +154,13 @@ const StandingsScreen = () => {
             contentContainerStyle={{
               paddingTop: 32,
               paddingHorizontal: 16,
-              paddingBottom: 120, // място за фиксирания бутон
+              paddingBottom: 120,
+              alignItems: isTablet ? "center" : undefined,
             }}
             onScroll={onScroll}
             scrollEventThrottle={16}
           >
+            <View style={isTablet ? { width: "100%", maxWidth: 560 } : { width: "100%" }}>
             {/* Топ играч + standing image с име върху снимката */}
             {topStandingImage && topPlayer && (
               <View className="w-full my-8 relative">
@@ -164,27 +169,15 @@ const StandingsScreen = () => {
                   resizeMode="contain"
                   style={{
                     width: "100%",
-                    // aspectRatio за да държим стабилна височина
                     aspectRatio: 0.8,
                     justifyContent: "flex-end",
                     paddingBottom: 16,
                   }}
                 >
-                  {/* <View className="absolute top-20 z-50 left-1/2 -translate-x-1/2"> */}
-                  {/* <CustomText variant="h5" className="text-center uppercase">
-                      {topPlayer.name} - {formatScore(topPlayer.score)}pt
-                      {topPlayer.score === 1 ? "" : "s"}
-                    </CustomText> */}
-                  {/* {topCharacter?.name ? (
-                      <CustomText variant="p-small" className="text-center">
-                        leading as {topCharacter.name}
-                      </CustomText>
-                    ) : null} */}
-                  {/* </View> */}
                 </ImageBackground>
               </View>
             )}
-            <View className=" w-full gap-2">
+            <View className="w-full gap-2">
               {/* Класиране (без първия ако има hero секция) */}
               {listPlayers.map((p, index) => {
                 const place =
@@ -194,21 +187,8 @@ const StandingsScreen = () => {
                 return (
                   <View
                     key={p.id}
-                    // className="flex-row items-center justify-between bg-black/40 rounded-full pr-8"
-                    className="flex-row gap-2  flex-1 bg-black/40 rounded-full px-8 py-4 justify-between"
+                    className="flex-row gap-2 flex-1 bg-black/40 rounded-full px-8 py-4 justify-between"
                   >
-                    {/* <View
-                        className={`w-[60px] h-[60px] items-center justify-center rounded-full `}
-                      >
-                        ${COLOR_CLASSES[index % COLOR_CLASSES.length]}
-                        <CustomText
-                          variant="h4"
-                          className="text-center"
-                            textColor={`${COLOR_CLASSES[index % COLOR_CLASSES.length]}`}
-                        >
-                          {place}
-                        </CustomText>
-                      </View> */}
                     <View className="flex-row gap-4 items-center">
                       <CustomText variant="h4">{place}</CustomText>
                       {character?.profileImage && (
@@ -224,7 +204,7 @@ const StandingsScreen = () => {
                         </CustomText>
                       </View>
                     </View>
-                      <View className="flex-row justify-between items-center">
+                    <View className="flex-row justify-between items-center">
                       <CustomText variant="h4" textColor="white">
                         ❤️ {p.lives}
                       </CustomText>
@@ -233,7 +213,7 @@ const StandingsScreen = () => {
                 );
               })}
             </View>
-            {/* End game + Start next round (когато сме стигнали дъното) */}
+            {/* End game */}
             <View className="mt-20 px-4">
               <CustomButton
                 title={t("end_game")}
@@ -242,15 +222,18 @@ const StandingsScreen = () => {
                 onPress={handleEndGame}
               />
             </View>
+            </View>
           </ScrollView>
 
-          {/* Фиксиран бутон – показва се само когато НЕ сме в дъното */}
-          <View className="absolute bottom-8 left-0 right-0 px-8">
-            <CustomButton
-              title={t("start_next_round")}
-              fullWidth
-              onPress={handleStartNextRound}
-            />
+          {/* Фиксиран бутон */}
+          <View className="absolute bottom-8 left-0 right-0">
+            <View style={isTablet ? { maxWidth: 560, alignSelf: "center", width: "100%", paddingHorizontal: 32 } : { paddingHorizontal: 32 }}>
+              <CustomButton
+                title={t("start_next_round")}
+                fullWidth
+                onPress={handleStartNextRound}
+              />
+            </View>
           </View>
         </View>
       </ImageBackground>

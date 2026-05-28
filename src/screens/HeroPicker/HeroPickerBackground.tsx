@@ -1,4 +1,4 @@
-import { Animated, View, ImageBackground, StyleSheet } from "react-native";
+import { Animated, View, ImageBackground, StyleSheet, useWindowDimensions } from "react-native";
 import { createHeroPickerStyles } from "../styles/heroPicker.styles";
 import { backgrounds } from "../../../assets/backgrounds";
 import WarmBubblesOverlay from "../../components/WarmBubblesOverlay";
@@ -14,9 +14,11 @@ export function HeroPickerBackdrop({
   overlayOpacity,
   styles,
 }: BackdropProps) {
+  const { width, height } = useWindowDimensions();
+  const isTablet = width >= 768 && width > height;
   return (
     <ImageBackground
-      source={backgrounds.bg004}
+      source={isTablet ? backgrounds.bg004t : backgrounds.bg004}
       style={StyleSheet.absoluteFill}
       resizeMode="cover"
     >

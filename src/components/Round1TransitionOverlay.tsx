@@ -1,12 +1,11 @@
 // src/components/Round1TransitionOverlay.tsx
-// Единен overlay: затваряне → countdown 3 2 1 GO → отваряне (без прекъсване)
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
-  Dimensions,
   Easing,
   StyleSheet,
   View,
+  useWindowDimensions,
 } from "react-native";
 import AppImage from "./AppImage";
 import { LinearGradient } from "expo-linear-gradient";
@@ -14,10 +13,10 @@ import CustomText from "./common/CustomText";
 import { images } from "../../assets/images";
 import AudioManager from "../utils/audioManager";
 
-const { height: H, width: W } = Dimensions.get("window");
 const OVERSHOOT_PX = 120;
 const CLOSE_MS = 1000;
 const OPEN_MS = 2000;
+const CURTAIN_MAX_W = 560;
 
 type Props = {
   onDone: () => void;
@@ -28,9 +27,15 @@ export default function Round1TransitionOverlay({
   onDone,
   onCountdownStart,
 }: Props) {
+  const { width: W, height: H } = useWindowDimensions();
+  const isTablet = W >= 768;
+  const curtainW = isTablet ? Math.min(W, CURTAIN_MAX_W) : W;
+
   const topY = useRef(new Animated.Value(-H / 2 - OVERSHOOT_PX)).current;
   const botY = useRef(new Animated.Value(H / 2 + OVERSHOOT_PX)).current;
   const gradientOpacity = useRef(new Animated.Value(0)).current;
+  // On tablet the black side fill must be opaque from the very first frame.
+  const bgOpacity = useRef(new Animated.Value(isTablet ? 1 : 0)).current;
   const [countdownText, setCountdownText] = useState<string | null>(null);
   const countOpacity = useRef(new Animated.Value(0)).current;
   const countScale = useRef(new Animated.Value(1)).current;
@@ -78,13 +83,13 @@ export default function Round1TransitionOverlay({
       onCountdownStartRef.current?.();
       AudioManager.playCount();
       await doStep("3");
-      await new Promise((r) => setTimeout(r, 175));
+      await new Promise<void>((r) => setTimeout(() => r(), 175));
       await doStep("2");
-      await new Promise((r) => setTimeout(r, 175));
+      await new Promise<void>((r) => setTimeout(() => r(), 175));
       await doStep("1");
-      await new Promise((r) => setTimeout(r, 175));
+      await new Promise<void>((r) => setTimeout(() => r(), 175));
       await doStep("GO!", 1.7);
-      await new Promise((r) => setTimeout(r, 175));
+      await new Promise<void>((r) => setTimeout(() => r(), 175));
       await new Promise<void>((res) => {
         Animated.timing(countOpacity, {
           toValue: 0,
@@ -99,7 +104,7 @@ export default function Round1TransitionOverlay({
     const openCurtains = () => {
       AudioManager.playCurtainSound();
       setTimeout(() => AudioManager.playBackgroundGame(), 1000);
-      Animated.parallel([
+      const anims: Animated.CompositeAnimation[] = [
         Animated.timing(topY, {
           toValue: -H / 2 - OVERSHOOT_PX,
           duration: OPEN_MS,
@@ -118,7 +123,18 @@ export default function Round1TransitionOverlay({
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
-      ]).start(({ finished }) => {
+      ];
+      if (isTablet) {
+        anims.push(
+          Animated.timing(bgOpacity, {
+            toValue: 0,
+            duration: OPEN_MS * 0.7,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        );
+      }
+      Animated.parallel(anims).start(({ finished }) => {
         if (finished) onDoneRef.current();
       });
     };
@@ -145,13 +161,47 @@ export default function Round1TransitionOverlay({
     ]).start(async ({ finished }) => {
       if (!finished) return;
       await runCount();
-      await new Promise((r) => setTimeout(r, 800));
+      await new Promise<void>((r) => setTimeout(() => r(), 800));
       openCurtains();
     });
-  }, [topY, botY, gradientOpacity, countOpacity, countScale]);
+  }, [topY, botY, gradientOpacity, bgOpacity, countOpacity, countScale]);
+
+  const topHalf = (
+    <Animated.View
+      style={[styles.half, styles.topHalf, { transform: [{ translateY: topY }] }]}
+    >
+      <AppImage
+        source={curtainTopSource}
+        contentFit={isTablet ? "cover" : "contain"}
+        style={[styles.curtainImage, { bottom: -117, width: curtainW, height: "100%" }]}
+      />
+    </Animated.View>
+  );
+
+  const botHalf = (
+    <Animated.View
+      style={[styles.half, styles.bottomHalf, { transform: [{ translateY: botY }] }]}
+    >
+      <AppImage
+        source={curtainBottomSource}
+        contentFit={isTablet ? "cover" : "contain"}
+        style={[styles.curtainImage, { top: -117, width: curtainW, height: "100%" }]}
+      />
+    </Animated.View>
+  );
 
   return (
     <View style={styles.container} pointerEvents="box-none">
+      {/* Tablet: black fill that covers the area outside the centered curtain column.
+          Starts fully opaque (sides are black from the first frame) and fades out
+          as the curtains open. */}
+      {isTablet && (
+        <Animated.View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { backgroundColor: "black", opacity: bgOpacity }]}
+        />
+      )}
+
       <Animated.View
         style={[styles.gradientOverlay, { opacity: gradientOpacity }]}
       >
@@ -166,32 +216,22 @@ export default function Round1TransitionOverlay({
           style={StyleSheet.absoluteFill}
         />
       </Animated.View>
-      <Animated.View
-        style={[
-          styles.half,
-          styles.topHalf,
-          { transform: [{ translateY: topY }] },
-        ]}
-      >
-        <AppImage
-          source={curtainTopSource}
-          contentFit="contain"
-          style={[styles.curtainImage, { bottom: -117, width: W, height: "100%" }]}
-        />
-      </Animated.View>
-      <Animated.View
-        style={[
-          styles.half,
-          styles.bottomHalf,
-          { transform: [{ translateY: botY }] },
-        ]}
-      >
-        <AppImage
-          source={curtainBottomSource}
-          contentFit="contain"
-          style={[styles.curtainImage, { top: -117, width: W, height: "100%" }]}
-        />
-      </Animated.View>
+
+      {isTablet ? (
+        // Center a fixed-width column; absolute halves inside are relative to it.
+        <View style={styles.curtainCenter} pointerEvents="box-none">
+          <View style={{ width: curtainW, flex: 1, position: "relative", overflow: "visible" }}>
+            {topHalf}
+            {botHalf}
+          </View>
+        </View>
+      ) : (
+        <>
+          {topHalf}
+          {botHalf}
+        </>
+      )}
+
       {countdownText ? (
         <View style={styles.countdownWrap} pointerEvents="none">
           <Animated.View
@@ -222,6 +262,16 @@ const styles = StyleSheet.create({
   gradientOverlay: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 0,
+  },
+  curtainCenter: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: "center",
+    zIndex: 1,
+    overflow: "visible",
   },
   half: {
     position: "absolute",

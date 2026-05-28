@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Pressable,
+  useWindowDimensions,
 } from "react-native";
 import AppImage from "../../components/AppImage";
 import ImageBackgroundWithLoadGate from "../../components/ImageBackgroundWithLoadGate";
@@ -37,6 +38,9 @@ const VoteScreen = () => {
   const { voterIndex } = useRoute<R>().params;
   const navigation = useNavigation<Nav>();
   usePreventBack();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isTablet = windowWidth >= 768 && windowWidth > windowHeight;
+  const numCols = isTablet ? 3 : 2;
 
   const players = useGameStore((s) => s.players);
   const oddOneId = useGameStore((s) => s.oddOneId);
@@ -126,11 +130,11 @@ const VoteScreen = () => {
 
   const playerRows = useMemo<Player[][]>(() => {
     const rows: Player[][] = [];
-    for (let i = 0; i < otherPlayers.length; i += 2) {
-      rows.push(otherPlayers.slice(i, i + 2));
+    for (let i = 0; i < otherPlayers.length; i += numCols) {
+      rows.push(otherPlayers.slice(i, i + numCols));
     }
     return rows;
-  }, [otherPlayers]);
+  }, [otherPlayers, numCols]);
 
   useEffect(() => {
     if (mode === "ONLINE") return;
@@ -181,7 +185,7 @@ const VoteScreen = () => {
   return (
     <SafeAreaView className="flex-1" edges={["right", "left"]}>
       <ImageBackgroundWithLoadGate
-        source={backgrounds.bg023}
+        source={isTablet ? backgrounds.bg023t : backgrounds.bg023}
         style={{ flex: 1 }}
         resizeMode="cover"
       >
@@ -191,8 +195,10 @@ const VoteScreen = () => {
             paddingBottom: 96,
             flexGrow: 1,
             justifyContent: "space-between",
+            alignItems: "center",
           }}
         >
+          <View style={[{ width: "100%" }, isTablet && { maxWidth: 560 }]}>
           {/* QUESTION WINDOW */}
           <View style={{ paddingHorizontal: 24 }}>
             <View style={styles.namePlateShadow}>
@@ -247,7 +253,10 @@ const VoteScreen = () => {
                   const character = heroes.find((h) => h.id === player.characterId);
 
                   return (
-                    <View key={player.id} style={styles.cell}>
+                    <View
+                      key={player.id}
+                      style={[styles.cell, isTablet && styles.cellTablet]}
+                    >
                       <Pressable
                         accessibilityRole="button"
                         onPress={() => handleVote(player.id)}
@@ -284,7 +293,9 @@ const VoteScreen = () => {
             ))}
           </View>
 
-          <View style={{ opacity: 0 }}>
+          </View>
+
+          <View style={[{ opacity: 0 }, isTablet && { width: "100%", maxWidth: 560 }]}>
             <CustomText variant="p" className="text-center px-8 mt-10">
               {t("vote_hint_pick")}
             </CustomText>
@@ -314,6 +325,9 @@ const styles = StyleSheet.create({
     width: "50%",
     paddingHorizontal: 16,
     alignItems: "center",
+  },
+  cellTablet: {
+    width: "33.33%",
   },
   avatarPressable: {
     width: "100%",

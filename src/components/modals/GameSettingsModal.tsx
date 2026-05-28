@@ -52,6 +52,7 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
   const gameSettings = useGameStore((s) => s.gameSettings);
   const setGameSettings = useGameStore((s) => s.setGameSettings);
   const userId = useAuthStore((s) => s.user.id);
+  const isPremium = useAuthStore((s) => s.user.isPremium);
 
   const [selectedSec, setSelectedSec] = useState<number>(
     gameSettings?.discussionSeconds ?? 120,
@@ -107,12 +108,15 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
     fetchQuestionPacks({ userId })
       .then((list) => {
         if (!cancelled) {
-          setAvailablePacks(list);
+          const accessible = list.filter(
+            (p) => isMainPack(p.slug) || p.isFree === true || isPremium,
+          );
+          setAvailablePacks(accessible);
           setSelectedSlugs((prev) => {
-            if (list.length === 0) return prev;
-            const valid = prev.filter((s) => list.some((p) => p.slug === s));
+            if (accessible.length === 0) return prev;
+            const valid = prev.filter((s) => accessible.some((p) => p.slug === s));
             if (valid.length > 0) return valid;
-            return [list[0].slug];
+            return [accessible[0].slug];
           });
         }
       })
@@ -125,7 +129,7 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, isPremium]);
 
   const selectedLabel = useMemo(
     () => TIME_OPTIONS.find((o) => o.seconds === selectedSec)?.label ?? "2:00",

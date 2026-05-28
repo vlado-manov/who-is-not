@@ -33,7 +33,7 @@ const ReferralScreen = () => {
   const navigation = useNavigation<Nav>();
   const { openUserSettings } = useUserSettingsSheet();
   const { t } = useTranslation();
-  const { horizontalPadding, topIconSize } = useResponsive();
+  const { horizontalPadding, topIconSize, isTablet } = useResponsive();
   const user = useAuthStore((s) => s.user);
 
   const { data, isLoading, error, refetch } = useQuery({
@@ -71,7 +71,7 @@ const ReferralScreen = () => {
       rootStyle={styles.root}
       backdrop={
         <ImageBackgroundWithLoadGate
-          source={backgrounds.bg023}
+          source={isTablet ? backgrounds.bg023t : backgrounds.bg023}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         />
