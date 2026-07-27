@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -6,6 +6,7 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  Text,
   View,
   Dimensions,
   useWindowDimensions,
@@ -32,11 +33,9 @@ import AppImage from "../../components/AppImage";
 import FullBleedStack from "../../components/FullBleedStack";
 import ImageBackgroundWithLoadGate from "../../components/ImageBackgroundWithLoadGate";
 import DeathAmbienceOverlay from "../../components/game/DeathAmbienceOverlay";
-import GameEventFeed from "../../components/game/GameEventFeed";
 import GamePhaseAutoReady from "../../components/game/GamePhaseAutoReady";
 import CustomText from "../../components/common/CustomText";
-import { useGameEventFeed } from "../../hooks/useGameEventFeed";
-import { game_images } from "../../../assets/images";
+import { type FeedEvent, useGameEventFeed } from "../../hooks/useGameEventFeed";
 import {
   DEATH_BG_URI,
   DEATH_HEART_BROKEN_URI,
@@ -75,6 +74,175 @@ const HERO_VISUAL_SCALE = 1.422;
 const TITLE_FLY_START_SCALE = 5;
 const TITLE_LAND_MS = 360;
 const TITLE_LAND_SOUND_LEAD_MS = 500;
+const HERO_RISE_MS = 700;
+const TITLE_RISE_TO_CENTER_MS = 320;
+
+const FEED_ITEM_H = 26;
+const FEED_VISIBLE = 9;
+const FEED_SLIDE_MS = 300;
+const DEV_LOOP_INTERVAL_MS = 1700;
+const FEED_ITEM_OPACITY = [1, 0.9, 0.78, 0.64, 0.48, 0.33, 0.2, 0.1, 0.04];
+
+const DEV_LOOP_TEXTS: (string | string[])[] = [
+  "🎮  New round started",
+  "✍️  Players answered their question",
+  "❓  Question: \"Who is most likely to kill you in your sleep?\"",
+  ["👆  Sam picked Kevin", "👆  Kevin picked Kevin", "👆  Ariel picked Sam"],
+  "🗳️  Voting starting",
+  "🎭  Imposter is about to be revealed...",
+  "🚨  Ariel have been caught!",
+  "💔  Ariel lost a life",
+  "🎮  New round started",
+  "✍️  Players answered their question",
+  "❓  Question: \"Who would survive a zombie apocalypse?\"",
+  ["👆  Sam picked Sam", "👆  Kevin picked Sam", "👆  Ariel picked Kevin"],
+  "🗳️  Voting starting",
+  "🎭  Imposter is about to be revealed...",
+  "🚨  Sam have been caught!",
+  "💔  Sam lost a life",
+  "💀  Sam has no more lives",
+];
+
+type FeedAnimItem = {
+  id: string;
+  text: string;
+  yAnim: Animated.Value;
+  fadeAnim: Animated.Value;
+};
+
+function DeathEventFeed({
+  events,
+  isDevLab,
+  active,
+  bottomOffset,
+}: {
+  events: FeedEvent[];
+  isDevLab: boolean;
+  active: boolean;
+  bottomOffset: number;
+}) {
+  const [renderItems, setRenderItems] = useState<FeedAnimItem[]>([]);
+  const itemsRef = useRef<FeedAnimItem[]>([]);
+  const devLoopIdxRef = useRef(0);
+  const prevCountRef = useRef(0);
+  const trimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const pushEvent = useCallback((text: string) => {
+    const item: FeedAnimItem = {
+      id: `feed-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      text,
+      yAnim: new Animated.Value(FEED_ITEM_H),
+      fadeAnim: new Animated.Value(0),
+    };
+    const list = [item, ...itemsRef.current];
+    itemsRef.current = list;
+
+    Animated.parallel(
+      list.map((it, i) =>
+        Animated.parallel([
+          Animated.timing(it.yAnim, {
+            toValue: -i * FEED_ITEM_H,
+            duration: FEED_SLIDE_MS,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(it.fadeAnim, {
+            toValue: FEED_ITEM_OPACITY[i] ?? 0,
+            duration: FEED_SLIDE_MS,
+            useNativeDriver: true,
+          }),
+        ])
+      )
+    ).start();
+
+    setRenderItems([...list]);
+
+    if (trimTimerRef.current !== null) clearTimeout(trimTimerRef.current);
+    trimTimerRef.current = setTimeout(() => {
+      const trimmed = itemsRef.current.slice(0, FEED_VISIBLE + 2);
+      itemsRef.current = trimmed;
+      setRenderItems([...trimmed]);
+    }, FEED_SLIDE_MS + 200);
+  }, []);
+
+  useEffect(() => {
+    if (!active || !isDevLab) return;
+    devLoopIdxRef.current = 0;
+    const tick = () => {
+      const entry = DEV_LOOP_TEXTS[devLoopIdxRef.current % DEV_LOOP_TEXTS.length];
+      devLoopIdxRef.current += 1;
+      if (Array.isArray(entry)) {
+        entry.forEach((text, i) => setTimeout(() => pushEvent(text), i * 110));
+      } else {
+        pushEvent(entry);
+      }
+    };
+    const first = setTimeout(tick, 350);
+    const loop = setInterval(tick, DEV_LOOP_INTERVAL_MS);
+    return () => { clearTimeout(first); clearInterval(loop); };
+  }, [active, isDevLab, pushEvent]);
+
+  useEffect(() => {
+    if (!active || isDevLab) return;
+    events.slice(prevCountRef.current).forEach((e) => pushEvent(e.text));
+    prevCountRef.current = events.length;
+  }, [events, active, isDevLab, pushEvent]);
+
+  useEffect(() => {
+    if (!active) {
+      itemsRef.current = [];
+      prevCountRef.current = 0;
+      setRenderItems([]);
+    }
+  }, [active]);
+
+  if (!active) return null;
+
+  const containerH = FEED_VISIBLE * FEED_ITEM_H;
+  const contentH = Math.min(renderItems.length, FEED_VISIBLE) * FEED_ITEM_H;
+
+  return (
+    <View
+      pointerEvents="none"
+      style={[styles.feedWrap, { bottom: bottomOffset, height: containerH }]}
+    >
+      {/* Blur only behind actual text — grows upward as items arrive */}
+      <View
+        style={[
+          styles.feedBlurZone,
+          { height: contentH },
+          Platform.OS === "ios" && {
+            shadowColor: "#6010b8",
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.55,
+            shadowRadius: 16,
+          },
+        ]}
+      >
+        {Platform.OS !== "web" ? (
+          <BlurView intensity={28} tint="dark" style={StyleSheet.absoluteFill} />
+        ) : (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(4,0,10,0.7)" }]} />
+        )}
+        <View style={styles.feedBgTint} />
+      </View>
+
+      {renderItems.map((it) => (
+        <Animated.View
+          key={it.id}
+          style={[
+            styles.feedItem,
+            { transform: [{ translateY: it.yAnim }], opacity: it.fadeAnim },
+          ]}
+        >
+          <CustomText variant="p-small" style={styles.feedItemText}>
+            {it.text}
+          </CustomText>
+        </Animated.View>
+      ))}
+    </View>
+  );
+}
 
 function runTitleShake(shake: Animated.Value) {
   return Animated.sequence([
@@ -210,8 +378,8 @@ function DeathActionButton({
   compact,
 }: {
   label: string;
-  icon: ImageSourcePropType;
-  variant: "primary" | "ghost";
+  icon?: ImageSourcePropType;
+  variant: "primary" | "ghost" | "violet";
   onPress: () => void;
   delayMs: number;
   compact: boolean;
@@ -242,7 +410,7 @@ function DeathActionButton({
 
     iconLoopRef.current = Animated.loop(
       Animated.sequence([
-        variant === "primary"
+        variant !== "ghost"
           ? Animated.parallel([
               Animated.timing(iconBob, {
                 toValue: 1,
@@ -263,7 +431,7 @@ function DeathActionButton({
               easing: Easing.inOut(Easing.sin),
               useNativeDriver: true,
             }),
-        variant === "primary"
+        variant !== "ghost"
           ? Animated.parallel([
               Animated.timing(iconBob, {
                 toValue: 0,
@@ -295,7 +463,7 @@ function DeathActionButton({
   }, [delayMs, iconBob, iconTilt, opacity, translateY, variant]);
 
   const iconTransform =
-    variant === "primary"
+    variant !== "ghost"
       ? [
           {
             translateY: iconBob.interpolate({
@@ -325,11 +493,22 @@ function DeathActionButton({
           },
         ];
 
+  const violetGlow =
+    variant === "violet" && Platform.OS === "ios"
+      ? {
+          shadowColor: "rgba(150,50,255,1)",
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.65,
+          shadowRadius: 18,
+        }
+      : {};
+
   return (
     <Animated.View
       style={[
         compact ? styles.actionCellRow : styles.actionCellStack,
         { opacity, transform: [{ translateY }] },
+        violetGlow,
       ]}
     >
       <Pressable
@@ -370,6 +549,25 @@ function DeathActionButton({
             >
               {label}
             </CustomText>
+          </LinearGradient>
+        ) : variant === "violet" ? (
+          <LinearGradient
+            colors={["#1a0040", "#4a0080", "#6600cc"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[
+              styles.actionViolet,
+              compact && styles.actionPrimaryCompact,
+            ]}
+          >
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}
+              style={styles.actionVioletCenterText}
+            >
+              {label}
+            </Text>
           </LinearGradient>
         ) : (
           <View
@@ -414,15 +612,13 @@ export default function PlayerDeathScreen() {
   const players = useGameStore((s) => s.players);
   const heroes = useHeroesStore((s) => s.heroes);
 
-  const feedActive = variant === "continue" && showActionButtons;
-  const feedEvents = useGameEventFeed(feedActive);
-
   const titleFlyScale = useRef(new Animated.Value(TITLE_FLY_START_SCALE)).current;
   const titleFlyY = useRef(new Animated.Value(0)).current;
   const titleShake = useRef(new Animated.Value(0)).current;
   const titleStaticOpacity = useRef(new Animated.Value(0)).current;
 
   const heroOpacity = useRef(new Animated.Value(0)).current;
+  const heroTranslateY = useRef(new Animated.Value(0)).current;
 
   const heartsFlyY = useRef(new Animated.Value(0)).current;
   const heartsFlyScale = useRef(new Animated.Value(HEARTS_CENTER_SCALE)).current;
@@ -432,10 +628,14 @@ export default function PlayerDeathScreen() {
   const heartsFinalYRef = useRef(0);
   const heartsSlotRef = useRef<View>(null);
 
-  const [showFlyingTitle, setShowFlyingTitle] = useState(true);
+  const [showFlyingTitle, setShowFlyingTitle] = useState(false);
   const [showFlyingHearts, setShowFlyingHearts] = useState(false);
   const [heartsActive, setHeartsActive] = useState(false);
   const [showActionButtons, setShowActionButtons] = useState(false);
+
+  const isDevLab = gameId?.startsWith("dev_") ?? false;
+  const feedActive = variant === "continue" && showActionButtons && !isDevLab;
+  const feedEvents = useGameEventFeed(feedActive);
 
   const deadPlayer = useMemo(
     () => players.find((p) => p.id === deadPlayerId),
@@ -495,45 +695,87 @@ export default function PlayerDeathScreen() {
     let titleSoundTimer: ReturnType<typeof setTimeout> | undefined;
 
     const run = async () => {
-      setShowFlyingTitle(true);
+      setShowFlyingTitle(false);
       setShowFlyingHearts(false);
       setHeartsActive(false);
       setShowActionButtons(false);
 
-      titleFlyScale.setValue(TITLE_FLY_START_SCALE);
-      titleFlyY.setValue(0);
+      titleFlyScale.setValue(0.7);
+      titleFlyY.setValue(windowHeight * 0.4);
       titleShake.setValue(0);
       titleStaticOpacity.setValue(0);
       heroOpacity.setValue(0);
+      heroTranslateY.setValue(windowHeight * 0.65);
       heartsFlyY.setValue(0);
       heartsFlyScale.setValue(HEARTS_CENTER_SCALE);
       heartsFlyOpacity.setValue(0);
       heartsStaticOpacity.setValue(0);
       bgBlurOpacity.setValue(0);
 
-      const titleSoundAtMs = Math.max(
-        0,
-        80 + TITLE_LAND_MS - TITLE_LAND_SOUND_LEAD_MS,
-      );
+      const slamEndMs =
+        80 + HERO_RISE_MS + 80 + TITLE_RISE_TO_CENTER_MS + TITLE_LAND_MS;
       titleSoundTimer = setTimeout(() => {
         if (cancelled) return;
         AudioManager.playRevealTitleSplash();
         AudioManager.playImposterLossSound();
-      }, titleSoundAtMs);
+      }, Math.max(0, slamEndMs - TITLE_LAND_SOUND_LEAD_MS));
 
       await startAnim(Animated.delay(80));
       if (cancelled) return;
 
+      // Phase 1: Hero ghost rises from below to center
       await startAnim(
         Animated.parallel([
-          Animated.timing(titleFlyScale, {
+          Animated.timing(heroOpacity, {
             toValue: 1,
+            duration: Math.round(HERO_RISE_MS * 0.5),
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(heroTranslateY, {
+            toValue: 0,
+            duration: HERO_RISE_MS,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+      );
+      if (cancelled) return;
+
+      await startAnim(Animated.delay(80));
+      if (cancelled) return;
+
+      // Phase 2: Title rises from below and scales up huge at center
+      setShowFlyingTitle(true);
+      await startAnim(
+        Animated.parallel([
+          Animated.timing(titleFlyY, {
+            toValue: 0,
+            duration: TITLE_RISE_TO_CENTER_MS,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(titleFlyScale, {
+            toValue: TITLE_FLY_START_SCALE,
+            duration: TITLE_RISE_TO_CENTER_MS,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+      );
+      if (cancelled) return;
+
+      // Phase 3: Title slams to final position at top
+      await startAnim(
+        Animated.parallel([
+          Animated.timing(titleFlyY, {
+            toValue: titleFinalTranslateY,
             duration: TITLE_LAND_MS,
             easing: Easing.out(Easing.back(2.4)),
             useNativeDriver: true,
           }),
-          Animated.timing(titleFlyY, {
-            toValue: titleFinalTranslateY,
+          Animated.timing(titleFlyScale, {
+            toValue: 1,
             duration: TITLE_LAND_MS,
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
@@ -544,15 +786,7 @@ export default function PlayerDeathScreen() {
 
       setShowFlyingTitle(false);
       titleStaticOpacity.setValue(1);
-
       runTitleShake(titleShake).start();
-
-      Animated.timing(heroOpacity, {
-        toValue: 1,
-        duration: 520,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start();
 
       await startAnim(Animated.delay(HEARTS_START_AFTER_TITLE_MS));
       if (cancelled) return;
@@ -638,6 +872,7 @@ export default function PlayerDeathScreen() {
     heartsFlyY,
     heartsStaticOpacity,
     heroOpacity,
+    heroTranslateY,
     titleFinalTranslateY,
     titleFlyScale,
     titleFlyY,
@@ -719,7 +954,7 @@ export default function PlayerDeathScreen() {
                   styles.heroImageWrap,
                   {
                     opacity: heroOpacity,
-                    transform: [{ scale: HERO_VISUAL_SCALE }],
+                    transform: [{ scale: HERO_VISUAL_SCALE }, { translateY: heroTranslateY }],
                   },
                 ]}
               >
@@ -752,17 +987,11 @@ export default function PlayerDeathScreen() {
           </View>
 
           {variant === "continue" && (
-            <View
-              style={[
-                styles.opts,
-                { minHeight: 72 },
-              ]}
-            >
+            <View style={[styles.opts, { minHeight: 72 }]}>
               {showContinueOptions && (
                 <DeathActionButton
                   label={t("player_death_quit_lobby")}
-                  icon={game_images.leaveGameIcon}
-                  variant="primary"
+                  variant="violet"
                   onPress={handleQuit}
                   delayMs={0}
                   compact
@@ -830,10 +1059,14 @@ export default function PlayerDeathScreen() {
             </Animated.View>
           </Animated.View>
         )}
-      <GameEventFeed
-        events={feedEvents}
-        bottomOffset={insets.bottom + 8 + HEARTS_ROW_HEIGHT + 10 + 72}
-      />
+      {variant === "continue" && (
+        <DeathEventFeed
+          events={feedEvents}
+          isDevLab={isDevLab}
+          active={showActionButtons}
+          bottomOffset={insets.bottom + 8 + 80}
+        />
+      )}
       {feedActive && <GamePhaseAutoReady />}
       </FullBleedStack>
     </SafeAreaView>
@@ -980,6 +1213,61 @@ const styles = StyleSheet.create({
   actionIconImageGhost: {
     width: 48,
     height: 48,
+  },
+  feedWrap: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    overflow: "hidden",
+    zIndex: 200,
+  },
+  feedBlurZone: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+  feedBgTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(4,0,10,0.50)",
+  },
+  feedItem: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: FEED_ITEM_H,
+    paddingHorizontal: 12,
+    justifyContent: "center",
+    zIndex: 2,
+  },
+  feedItemText: {
+    color: "rgba(255,255,255,0.82)",
+    fontSize: 14,
+    lineHeight: 20,
+    letterSpacing: 0.1,
+  },
+  actionViolet: {
+    minHeight: 58,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(180,100,255,0.6)",
+  },
+  actionVioletCenterText: {
+    color: "#fff",
+    fontSize: 18,
+    textTransform: "uppercase" as const,
+    fontFamily: "SeymourOne-Regular",
+    textShadowColor: "rgba(0,0,0,0.4)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+    textAlign: "center" as const,
   },
   actionPrimaryText: {
     flex: 1,

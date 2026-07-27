@@ -28,6 +28,7 @@ import ScreenTopBar from "../components/common/ScreenTopBar";
 import { useUserSettingsSheet } from "../context/UserSettingsModalContext";
 import { useResponsive } from "../utils/responsive";
 import { Ionicons } from "@expo/vector-icons";
+import { backgrounds } from "../../assets/backgrounds";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Profile">;
 
@@ -431,35 +432,33 @@ const ProfileScreen = () => {
               {authStatus === "guest" && <ProfileLoginComponent />}
             </View>
             <View style={footerStyles.wrap}>
-              {authStatus !== "guest" && (
-                <View style={footerStyles.logoutWrap}>
-                  <CustomButton
-                    title={t("logout")}
-                    appearance="danger"
-                    btnSize="sm"
-                    fontSize="sm"
-                    fullWidth
-                    glow
-                    glowColor="rgba(239,68,68,0.45)"
-                    shadowColor="#b91c1c"
-                    onPress={signOut}
-                    iconNode={
-                      <Ionicons name="log-out-outline" size={20} color="#fff" />
-                    }
-                  />
-                </View>
-              )}
               <TouchableOpacity
                 hitSlop={8}
                 style={footerStyles.supportBtn}
                 onPress={() => navigation.navigate("Support")}
-              >
+                >
                 <Ionicons name="help-circle-outline" size={17} color="rgba(255,204,80,0.8)" />
                 <CustomText style={footerStyles.supportText}>
                   Help & Support
                 </CustomText>
                 <Ionicons name="chevron-forward" size={15} color="rgba(255,255,255,0.3)" />
               </TouchableOpacity>
+                {authStatus !== "guest" && (
+                  <View style={footerStyles.logoutWrap}>
+                    <CustomButton
+                      title={t("logout")}
+                      backgroundImage={backgrounds.bg015}
+                      glow
+                      glowColor="rgba(255,50,50,0.6)"
+                      glowIntensity={14}
+                      shadowColor="#1a0000"
+                      borderColor="rgba(255,60,60,0.9)"
+                      borderWidth={2}
+                      fullWidth
+                      onPress={signOut}
+                    />
+                  </View>
+                )}
               <View style={footerStyles.legalRow}>
                 <TouchableOpacity
                   hitSlop={10}

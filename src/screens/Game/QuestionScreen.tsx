@@ -10,6 +10,7 @@ import React, {
 import {
   View,
   Text,
+  TextInput,
   Image,
   Pressable,
   ImageBackground,
@@ -47,6 +48,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import AudioManager from "../../utils/audioManager";
 import { useHeroesStore } from "../../store/useHeroesStore";
 import { usePreventBack } from "../../hooks/usePreventBack";
+import { getHeroButtonStyle } from "../../utils/heroButtonStyle";
 import { useMultiplayerPhaseGate } from "../../hooks/useMultiplayerPhaseGate";
 import { useTranslation } from "react-i18next";
 import { formatQuestionWithName } from "../../utils/formatQuestionText";
@@ -63,7 +65,7 @@ import { reportMultiplayerDiagnostic } from "../../utils/multiplayerDiagnostics"
 type Nav = StackNavigationProp<GameStackParamList, "Question">;
 type R = RouteProp<GameStackParamList, "Question">;
 
-const OPEN_INPUT_MAX_LEN = 20;
+const OPEN_INPUT_MAX_LEN = 12;
 const OPEN_INPUT_MIN_FONT = 12;
 
 const INPUT_BACKGROUND = {
@@ -75,6 +77,8 @@ const RATE_GROUP_ID = "rate";
 /* Avatar Pick Button (LOCAL, GAME-SPECIFIC) */
 /* -------------------------------------------------------------------------- */
 
+import { HeroButtonStyle } from "../../utils/heroButtonStyle";
+
 type AvatarPickButtonProps = {
   name: string;
   avatar?: any;
@@ -85,6 +89,7 @@ type AvatarPickButtonProps = {
   avatarDiameter?: number;
   buttonWidth?: number;
   titleFontSizePx?: number;
+  heroStyle?: HeroButtonStyle;
 };
 
 const AvatarPickButton = ({
@@ -96,6 +101,7 @@ const AvatarPickButton = ({
   avatarDiameter = 164,
   buttonWidth,
   titleFontSizePx,
+  heroStyle,
 }: AvatarPickButtonProps) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -247,16 +253,13 @@ const AvatarPickButton = ({
 
         <CustomButton
           title={name}
-          appearance="tertiary"
           btnSize="xs"
           fontSize="sm"
           fontSizePx={titleFontSizePx}
-          backgroundImage={backgrounds.bg018}
           glow
           fullWidth
           onPress={onPress}
-          glowColor="rgba(255,204,0,1)"
-          shadowColor="#834400"
+          {...heroStyle}
         />
       </Animated.View>
     </View>
@@ -301,20 +304,6 @@ const QuestionScreen = () => {
     [windowWidth],
   );
 
-  /** Same formula as CustomText variant="h5" (question body). */
-  const openInputFontSize = useMemo(
-    () => Math.round(28 * Math.min(1, windowWidth / 390)),
-    [windowWidth],
-  );
-  const openInputRowMinHeight = useMemo(
-    () => Math.max(48, Math.round(openInputFontSize * 1.35)),
-    [openInputFontSize],
-  );
-  const openInputCardMinHeight = useMemo(
-    () => 28 + openInputRowMinHeight,
-    [openInputRowMinHeight],
-  );
-
   const completedRounds = useGameStore((s) => s.round);
   const activeRoundNumber = (completedRounds ?? 0) + 1;
   const mode = useGameStore((s) => s.mode) as GameMode;
@@ -340,24 +329,22 @@ const QuestionScreen = () => {
 
   const [numberAnswer, setNumberAnswer] = useState("");
   const [openAnswer, setOpenAnswer] = useState("");
-  /** Android: shrink to stay on one line (iOS uses adjustsFontSizeToFit on TextInput). */
-  const [openInputRowWidth, setOpenInputRowWidth] = useState(0);
-  const [androidOpenFitFontSize, setAndroidOpenFitFontSize] =
-    useState(openInputFontSize);
-
-  useLayoutEffect(() => {
-    if (Platform.OS !== "android") return;
-    setAndroidOpenFitFontSize(openInputFontSize);
-  }, [openAnswer, openInputFontSize, openInputRowWidth]);
-
-  const openInputMeasureWidth = Math.max(0, openInputRowWidth - 16);
 
   const numberInputRef = useRef<any>(null);
+  const openInputRef = useRef<TextInput>(null);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const [rateSliderValue, setRateSliderValue] = useState(1);
   const sliderGestureRef = useRef(null);
   const numberHeroScale = useRef(new Animated.Value(1)).current;
   const [waitingAnswersSync, setWaitingAnswersSync] = useState(false);
   const answerSubmittedRef = useRef(false);
+
+  /** Answer display font size — large base, shrinks for longer text. iOS uses adjustsFontSizeToFit. */
+  const openAnswerDisplayFontSize = useMemo(() => {
+    if (Platform.OS === "ios") return 48;
+    const len = openAnswer.length || 1;
+    return Math.max(22, Math.round(52 - len * 2.5));
+  }, [openAnswer]);
 
   const answersPhase = mpPhaseAnswers(activeRoundNumber);
 
@@ -602,6 +589,14 @@ const QuestionScreen = () => {
     submitAnswerAndAdvance(text);
   };
 
+  const handleAnswerAreaPress = () => {
+    if (keyboardHeight > 0 || isInputFocused) {
+      Keyboard.dismiss();
+    } else {
+      openInputRef.current?.focus();
+    }
+  };
+
   const handleNumberChange = (text: string) => {
     const digitsOnly = text.replace(/\D/g, "").slice(0, 4);
     setNumberAnswer(digitsOnly);
@@ -659,7 +654,7 @@ const QuestionScreen = () => {
       rootStyle={{ flex: 1, backgroundColor: "#0a0a0a" }}
       backdrop={
         <ImageBackgroundWithLoadGate
-          source={isTablet ? backgrounds.bg023t : backgrounds.bg023}
+          source={{ uri: "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/812ae730-ae76-4e68-8dbe-817eef639d60-question-test-bg.webp" }}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         />
@@ -770,6 +765,81 @@ const QuestionScreen = () => {
                     {isNumber && t("question_hint_number")}
                     {isInput && t("question_hint_input")}
                   </CustomText>
+
+                  {/* ── Embedded answer area (input type only) ─────────────── */}
+                  {isInput && (
+                    <>
+                      <View style={[styles.nameDivider, { marginTop: 12 }]} />
+                      <Pressable
+                        onPress={handleAnswerAreaPress}
+                        style={styles.openEmbedPressable}
+                      >
+                        {/* Hidden TextInput — keyboard target */}
+                        <TextInput
+                          ref={openInputRef}
+                          value={openAnswer}
+                          onChangeText={(v) =>
+                            setOpenAnswer(v.slice(0, OPEN_INPUT_MAX_LEN))
+                          }
+                          onFocus={() => {
+                            setIsInputFocused(true);
+                            scrollAnswerIntoView();
+                          }}
+                          onBlur={() => setIsInputFocused(false)}
+                          maxLength={OPEN_INPUT_MAX_LEN}
+                          autoCapitalize="characters"
+                          autoCorrect={false}
+                          spellCheck={false}
+                          caretHidden
+                          style={styles.openEmbedHiddenInput}
+                        />
+
+                        {/* Visible display */}
+                        <View
+                          style={styles.openEmbedDisplay}
+                          pointerEvents="none"
+                        >
+                          {openAnswer.length === 0 ? (
+                            <View style={styles.openEmbedPlaceholderRow}>
+                              <Text style={styles.openEmbedSparkle}>✦</Text>
+                              <Text
+                                numberOfLines={1}
+                                adjustsFontSizeToFit={Platform.OS === "ios"}
+                                minimumFontScale={0.3}
+                                style={[
+                                  styles.openEmbedAnswerText,
+                                  {
+                                    fontSize: openAnswerDisplayFontSize,
+                                    color: isInputFocused
+                                      ? "rgba(89,36,16,0.65)"
+                                      : "rgba(89,36,16,0.4)",
+                                    flex: 1,
+                                  },
+                                ]}
+                              >
+                                {t("question_open_placeholder")}
+                                {isInputFocused ? "|" : ""}
+                              </Text>
+                              <Text style={styles.openEmbedSparkle}>✦</Text>
+                            </View>
+                          ) : (
+                            <Text
+                              numberOfLines={1}
+                              adjustsFontSizeToFit={Platform.OS === "ios"}
+                              minimumFontScale={0.3}
+                              style={[
+                                styles.openEmbedAnswerText,
+                                { fontSize: openAnswerDisplayFontSize },
+                              ]}
+                            >
+                              {openAnswer.toUpperCase()}
+                            </Text>
+                          )}
+                        </View>
+                      </Pressable>
+                      <View style={styles.openEmbedDividerBottom} />
+                    </>
+                  )}
                 </ImageBackground>
               </Animated.View>
             </View>
@@ -785,6 +855,7 @@ const QuestionScreen = () => {
                       const characterData = heroes.find(
                         (h) => h.id === player.characterId,
                       );
+                      const heroStyle = getHeroButtonStyle(characterData?.slug);
 
                       return (
                         <View
@@ -800,6 +871,7 @@ const QuestionScreen = () => {
                               avatarDiameter={pickLayout.avatarDiameter}
                               buttonWidth={pickLayout.buttonWidth}
                               titleFontSizePx={pickLayout.titleFontPx}
+                              heroStyle={heroStyle}
                             />
                           </View>
                         </View>
@@ -834,125 +906,7 @@ const QuestionScreen = () => {
               </View>
             )}
 
-            {isInput && !isRate && (
-              <View className="px-6" style={{ marginTop: 40 }}>
-                <Animated.View
-                  style={{
-                    opacity: numberInputOpacity,
-                    transform: [{ scale: numberInputScale }],
-                    width: "100%",
-                  }}
-                >
-                  <View style={styles.openInputBlock}>
-                    <View
-                      style={[
-                        styles.openInputCard,
-                        { minHeight: openInputCardMinHeight },
-                      ]}
-                    >
-                      <Image
-                        source={INPUT_BACKGROUND}
-                        resizeMode="stretch"
-                        style={[
-                          StyleSheet.absoluteFillObject,
-                          styles.openInputBgImage,
-                        ]}
-                      />
-                      <View style={styles.openInputCardContent}>
-                        {Platform.OS === "android" &&
-                          openInputMeasureWidth > 0 &&
-                          openAnswer.length > 0 && (
-                            <Text
-                              pointerEvents="none"
-                              style={[
-                                styles.openInputMeasureText,
-                                {
-                                  width: openInputMeasureWidth,
-                                  fontSize: androidOpenFitFontSize,
-                                },
-                              ]}
-                              onTextLayout={(e) => {
-                                if (e.nativeEvent.lines.length > 1) {
-                                  setAndroidOpenFitFontSize((s) =>
-                                    s > OPEN_INPUT_MIN_FONT ? s - 1 : s,
-                                  );
-                                }
-                              }}
-                            >
-                              {openAnswer}
-                            </Text>
-                          )}
-                        <View
-                          style={[
-                            styles.openInputRow,
-                            { minHeight: openInputRowMinHeight },
-                          ]}
-                          onLayout={(e) =>
-                            setOpenInputRowWidth(e.nativeEvent.layout.width)
-                          }
-                        >
-                          <CustomInput
-                            unstyled
-                            value={openAnswer}
-                            onChangeText={setOpenAnswer}
-                            onFocus={scrollAnswerIntoView}
-                            placeholder={t("question_open_placeholder")}
-                            placeholderTextColor="rgba(89,36,16,0.45)"
-                            multiline={false}
-                            maxLength={OPEN_INPUT_MAX_LEN}
-                            {...(Platform.OS === "ios"
-                              ? {
-                                  adjustsFontSizeToFit: true,
-                                  minimumFontScale: Math.min(
-                                    1,
-                                    OPEN_INPUT_MIN_FONT /
-                                      Math.max(1, openInputFontSize),
-                                  ),
-                                }
-                              : {})}
-                            inputStyle={[
-                              styles.openInputField,
-                              Platform.OS === "ios"
-                                ? {
-                                    fontSize: openInputFontSize,
-                                    fontFamily: "SeymourOne-Regular",
-                                    height: Math.round(
-                                      openInputFontSize * 1.35,
-                                    ),
-                                    paddingVertical: 0,
-                                  }
-                                : {
-                                    fontSize: androidOpenFitFontSize,
-                                    lineHeight: Math.round(
-                                      androidOpenFitFontSize * 1.25,
-                                    ),
-                                    fontFamily: "SeymourOne-Regular",
-                                    minHeight: Math.round(
-                                      androidOpenFitFontSize * 1.35,
-                                    ),
-                                  },
-                            ]}
-                            autoCapitalize="sentences"
-                          />
-                        </View>
-                      </View>
-                    </View>
-                    <View style={styles.openInputButtonWrap}>
-                      <CustomButton
-                        title={t("question_open_send")}
-                        onPress={handleSubmitOpen}
-                        backgroundImage={backgrounds.bg026}
-                        glow
-                        glowColor="rgba(41,255,25,0.8)"
-                        shadowColor="#005f07"
-                        horizontalPadding={48}
-                        fullWidth
-                      />
-                    </View>
-                  </View>
-                </Animated.View>
-              </View>
-            )}
+{/* isInput SEND button is rendered outside the ScrollView below */}
 
             {isNumber && !isRate && !isInput && (
               <View className="px-0" style={{ marginTop: 40 }}>
@@ -1064,6 +1018,29 @@ const QuestionScreen = () => {
           )} */}
           </Animated.View>
             </ScrollView>
+
+            {/* SEND button — outside scroll so it stays visible above keyboard */}
+            {isInput && (
+              <View
+                style={[
+                  styles.openEmbedButtonBar,
+                  androidKeyboardPad > 0 && { paddingBottom: androidKeyboardPad + 8 },
+                ]}
+              >
+                <View style={{ opacity: openAnswer.trim() ? 1 : 0.38 }}>
+                  <CustomButton
+                    title={t("question_open_send")}
+                    onPress={handleSubmitOpen}
+                    backgroundImage={backgrounds.bg026}
+                    glow
+                    glowColor="rgba(41,255,25,0.8)"
+                    shadowColor="#005f07"
+                    horizontalPadding={48}
+                    fullWidth
+                  />
+                </View>
+              </View>
+            )}
           </View>
         </KeyboardAvoidingView>
       <OnlineWaitPlayersOverlay
@@ -1354,5 +1331,55 @@ const styles = StyleSheet.create({
           paddingVertical: 0,
         }
       : { paddingVertical: 0 }),
+  },
+  openEmbedPressable: {
+    width: "100%",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    minHeight: 72,
+    justifyContent: "center",
+  },
+  openEmbedHiddenInput: {
+    position: "absolute",
+    width: 1,
+    height: 1,
+    opacity: 0,
+  },
+  openEmbedDisplay: {
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  openEmbedPlaceholderRow: {
+    flexDirection: "row" as const,
+    alignItems: "center",
+    gap: 8,
+  },
+  openEmbedSparkle: {
+    color: "rgba(89,36,16,0.45)",
+    fontSize: 28,
+  },
+  openEmbedPlaceholderText: {
+    fontStyle: "italic" as const,
+  },
+  openEmbedAnswerText: {
+    fontFamily: "Overpass-ExtraBold",
+    color: "#592410",
+    textAlign: "center" as const,
+    width: "100%",
+    fontWeight: "900" as const,
+  },
+  openEmbedDividerBottom: {
+    width: "60%",
+    height: 1,
+    backgroundColor: "rgba(89,36,16,0.25)",
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  openEmbedButtonBar: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    paddingTop: 8,
   },
 });

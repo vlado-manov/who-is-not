@@ -11,6 +11,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import AppImage from "../../components/AppImage";
+import { BlurView } from "expo-blur";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { useNavigation } from "@react-navigation/native";
@@ -735,6 +736,12 @@ const RevealScreen = () => {
         style={styles.bg}
         resizeMode="cover"
       >
+        <BlurView
+          intensity={15}
+          tint="dark"
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        />
         <RevealAmbienceOverlay variant={impostorWon ? "win" : "lose"} />
 
         {/* TOP TITLE */}

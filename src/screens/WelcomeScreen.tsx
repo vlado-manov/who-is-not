@@ -149,7 +149,7 @@ export default function WelcomeScreen() {
                     alignItems: "center",
                   }}
                 >
-                  <Image
+                  {/* <Image
                     source={game_images.htpIcon}
                     style={{
                       position: "absolute",
@@ -159,7 +159,7 @@ export default function WelcomeScreen() {
                       left: htpOverlay.left,
                     }}
                     resizeMode="contain"
-                  />
+                  /> */}
                   <Image
                     source={logoSource}
                     style={{ width: logo.width, height: logo.height }}
@@ -231,14 +231,14 @@ export default function WelcomeScreen() {
                   onPress={() => navigation.navigate("Store")}
                   label="Ad-free 😎"
                   shadowColor="#410047"
-                  icon={game_images.storeIcon}
-                  iconWidth={btnIconW}
-                  iconHeight={btnIconH}
-                  iconSize={btnIconW}
-                  iconOverlayPreset="store"
-                  iconRotation="4deg"
-                  iconLeft={-28}
-                  iconTop={3}
+                  // icon={game_images.storeIcon}
+                  // iconWidth={btnIconW}
+                  // iconHeight={btnIconH}
+                  // iconSize={btnIconW}
+                  // iconOverlayPreset="store"
+                  // iconRotation="4deg"
+                  // iconLeft={-28}
+                  // iconTop={3}
                 />
               </View>
               <View
@@ -256,14 +256,19 @@ export default function WelcomeScreen() {
                   fontSize="sm"
                   fullWidth
                   backgroundImage={backgrounds.bg015}
-                  shadowColor="#540d0d"
-                  icon={game_images.rulebookIcon}
-                  iconWidth={btnIconW}
-                  iconHeight={btnIconH}
-                  iconSize={btnIconW}
-                  iconOverlayPreset="rulebook"
-                  iconRotation="-11deg"
-                  iconRight={-32}
+                  glow
+                  glowColor="rgba(255,50,50,0.6)"
+                  glowIntensity={14}
+                  shadowColor="#1a0000"
+                  borderColor="rgba(255,60,60,0.9)"
+                  borderWidth={2}
+                  // icon={game_images.rulebookIcon}
+                  // iconWidth={btnIconW}
+                  // iconHeight={btnIconH}
+                  // iconSize={btnIconW}
+                  // iconOverlayPreset="rulebook"
+                  // iconRotation="-11deg"
+                  // iconRight={-32}
                 />
               </View>
             </View>

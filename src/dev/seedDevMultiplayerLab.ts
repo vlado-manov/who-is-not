@@ -15,7 +15,7 @@ export const DEV_IDS = {
 } as const;
 
 const defaultSettings = (): GameSettings => ({
-  discussionSeconds: 5,
+  discussionSeconds: 120,
   selectedPacks: ["main"],
   livesPerPlayer: 3,
 });
@@ -41,6 +41,11 @@ function resolveVanessaId(): string {
   const heroes = useHeroesStore.getState().heroes;
   const v = heroes.find((h) => h.name === "Silent Vanessa");
   return v?.id ?? "1";
+}
+
+function resolveHeroId(slug: string, fallbackId: string): string {
+  const heroes = useHeroesStore.getState().heroes;
+  return heroes.find((h) => h.slug === slug)?.id ?? fallbackId;
 }
 
 function threePlayers(vanessaId: string) {
@@ -502,6 +507,90 @@ export function seedResultsScreenOfType(type: QuestionTypeApi) {
   });
 }
 
+/**
+ * Deathmatch entry point: 2 alive players remain (p3 eliminated), all ready
+ * for the intro + guessing game. Both alive players use Remote Susie so her
+ * deathmatch_image is shown for both heroes in the intro animation.
+ */
+export function seedDeathMatchLocal() {
+  const remoteSusieId = resolveHeroId("remote-susie", "7");
+  const store = useGameStore.getState();
+  store.reset();
+  store.set({
+    mode: "LOCAL",
+    gameId: `dev_${Date.now()}`,
+    phase: "result",
+    round: 3,
+    players: [
+      { id: DEV_IDS.local, name: "You", characterId: remoteSusieId, connected: true, isHost: true },
+      { id: DEV_IDS.p2,    name: "Bot Alice", characterId: remoteSusieId, connected: true },
+      { id: DEV_IDS.p3,    name: "Bot Bob",   characterId: remoteSusieId, connected: true },
+    ],
+    takenCharacters: [remoteSusieId],
+    gameSettings: defaultSettings(),
+    gameQuestions: DEV_STUB_QUESTIONS,
+    oddOneId: DEV_IDS.p2,
+    votes: {
+      [DEV_IDS.local]: DEV_IDS.p2,
+      [DEV_IDS.p3]: DEV_IDS.p2,
+    },
+    lives: {
+      [DEV_IDS.local]: 2,
+      [DEV_IDS.p2]: 1,
+      [DEV_IDS.p3]: 0,
+    },
+    deathMatchWinnerIds: undefined,
+  });
+}
+
+/** Winner screen seeded with a single deathmatch winner (You). */
+export function seedDeathMatchWinnerSingle() {
+  const vanessaId = resolveVanessaId();
+  const store = useGameStore.getState();
+  store.reset();
+  store.set({
+    mode: "LOCAL",
+    gameId: `dev_${Date.now()}`,
+    phase: "result",
+    round: 3,
+    players: threePlayers(vanessaId),
+    takenCharacters: [vanessaId],
+    gameSettings: defaultSettings(),
+    gameQuestions: DEV_STUB_QUESTIONS,
+    oddOneId: DEV_IDS.p2,
+    lives: {
+      [DEV_IDS.local]: 2,
+      [DEV_IDS.p2]: 1,
+      [DEV_IDS.p3]: 0,
+    },
+    deathMatchWinnerIds: [DEV_IDS.local],
+  });
+}
+
+/** Winner screen seeded with a deathmatch tie (both alive players win). */
+export function seedDeathMatchWinnerTie() {
+  const vanessaId = resolveVanessaId();
+  const store = useGameStore.getState();
+  store.reset();
+  store.set({
+    mode: "LOCAL",
+    gameId: `dev_${Date.now()}`,
+    phase: "result",
+    round: 3,
+    players: threePlayers(vanessaId),
+    takenCharacters: [vanessaId],
+    gameSettings: defaultSettings(),
+    gameQuestions: DEV_STUB_QUESTIONS,
+    oddOneId: DEV_IDS.p2,
+    lives: {
+      [DEV_IDS.local]: 2,
+      [DEV_IDS.p2]: 1,
+      [DEV_IDS.p3]: 0,
+    },
+    deathMatchWinnerIds: [DEV_IDS.local, DEV_IDS.p2],
+  });
+}
+
 /** Same store prep as PlayersNumber → Continue — local session, then navigate to HeroPicker. */
 export function seedCreateGameHeroPickerFlow(playerCount = 5): void {
   const store = useGameStore.getState();
@@ -510,4 +599,112 @@ export function seedCreateGameHeroPickerFlow(playerCount = 5): void {
   store.startGameSession("LOCAL");
   /** `DevGameExitOverlay` only mounts for ids `dev_*` (see Game / Create stacks). */
   store.set({ gameId: `dev_${Date.now()}` });
+}
+
+/**
+ * Hero button styles — group 1 (10 heroes):
+ * Vanessa · Simpalot · Retrograda · Brochain · Dubai Princess ·
+ * Uncle Vape · Virala · Plugged In Pete · Remote Susie · Dad GPT
+ *
+ * "You" (Vanessa) is the voter at index 0, so all 10 hero buttons are visible.
+ */
+export function seedHeroButtonsGroup1() {
+  const store = useGameStore.getState();
+  store.reset();
+
+  const vanessaId = resolveVanessaId();
+
+  const heroCandidates = [
+    { id: "dev-h1-p1",  name: "Silent Vanessa",  characterId: resolveHeroId("silent-vanessa",  "1")  },
+    { id: "dev-h1-p2",  name: "Sir Simpalot",     characterId: resolveHeroId("sir-simpalot",    "2")  },
+    { id: "dev-h1-p3",  name: "Retrograda",       characterId: resolveHeroId("retrograda",      "5")  },
+    { id: "dev-h1-p4",  name: "Brochain",         characterId: resolveHeroId("brochain",        "8")  },
+    { id: "dev-h1-p5",  name: "Dubai Princess",   characterId: resolveHeroId("dubai-princess",  "3")  },
+    { id: "dev-h1-p6",  name: "Uncle Vape",       characterId: resolveHeroId("uncle-vape",      "4")  },
+    { id: "dev-h1-p7",  name: "Virala",           characterId: resolveHeroId("virala",          "17") },
+    { id: "dev-h1-p8",  name: "Plugged In Pete",  characterId: resolveHeroId("plugged-in-pete", "6")  },
+    { id: "dev-h1-p9",  name: "Remote Susie",     characterId: resolveHeroId("remote-susie",    "7")  },
+    { id: "dev-h1-p10", name: "Dad GPT",          characterId: resolveHeroId("dad-gpt",         "12") },
+  ];
+
+  const localPlayer = { id: DEV_IDS.local, name: "You", characterId: vanessaId, connected: true, isHost: true };
+  const players = [localPlayer, ...heroCandidates.map((p) => ({ ...p, connected: true }))];
+
+  const answers: Record<string, string> = {};
+  players.forEach((p) => { answers[p.id] = heroCandidates[0].id; });
+
+  store.set({
+    mode: "LOCAL",
+    gameId: `dev_${Date.now()}`,
+    phase: "discussion",
+    round: 1,
+    players,
+    takenCharacters: players.map((p) => p.characterId),
+    gameSettings: defaultSettings(),
+    gameQuestions: DEV_STUB_QUESTIONS,
+    currentBaseQuestionId: "dev-q1",
+    currentOddQuestionId: "dev-q2",
+    oddOneId: heroCandidates[1].id,
+    questionType: "pick",
+    isBonusRound: false,
+    questionNameTarget: null,
+    impostorNameSubstitute: null,
+    answers,
+    votes: {},
+    usedQuestionIds: ["dev-q1", "dev-q2"],
+  });
+  store.initLives();
+}
+
+/**
+ * Hero button styles — group 2 (8 heroes):
+ * Screena · Booena · Chef Franco · Mr. Good Time ·
+ * Wine Bender · Tedimechov · Hangreta · Dr. Wrong
+ *
+ * "You" (Vanessa) is the voter at index 0, so all 8 hero buttons are visible.
+ */
+export function seedHeroButtonsGroup2() {
+  const store = useGameStore.getState();
+  store.reset();
+
+  const vanessaId = resolveVanessaId();
+
+  const heroCandidates = [
+    { id: "dev-h2-p1", name: "Screena",       characterId: resolveHeroId("screena",      "11") },
+    { id: "dev-h2-p2", name: "Booena",        characterId: resolveHeroId("booena",       "9")  },
+    { id: "dev-h2-p3", name: "Chef Franco",   characterId: resolveHeroId("chef-franco",  "22") },
+    { id: "dev-h2-p4", name: "Mr. Good Time", characterId: resolveHeroId("mrgoodtime",   "16") },
+    { id: "dev-h2-p5", name: "Wine Bender",   characterId: resolveHeroId("wine-bender",  "13") },
+    { id: "dev-h2-p6", name: "Tedimechov",    characterId: resolveHeroId("tedimechov",   "18") },
+    { id: "dev-h2-p7", name: "Hangreta",      characterId: resolveHeroId("hangreta",     "15") },
+    { id: "dev-h2-p8", name: "Dr. Wrong",     characterId: resolveHeroId("drwrong",      "10") },
+  ];
+
+  const localPlayer = { id: DEV_IDS.local, name: "You", characterId: vanessaId, connected: true, isHost: true };
+  const players = [localPlayer, ...heroCandidates.map((p) => ({ ...p, connected: true }))];
+
+  const answers: Record<string, string> = {};
+  players.forEach((p) => { answers[p.id] = heroCandidates[0].id; });
+
+  store.set({
+    mode: "LOCAL",
+    gameId: `dev_${Date.now()}`,
+    phase: "discussion",
+    round: 1,
+    players,
+    takenCharacters: players.map((p) => p.characterId),
+    gameSettings: defaultSettings(),
+    gameQuestions: DEV_STUB_QUESTIONS,
+    currentBaseQuestionId: "dev-q1",
+    currentOddQuestionId: "dev-q2",
+    oddOneId: heroCandidates[1].id,
+    questionType: "pick",
+    isBonusRound: false,
+    questionNameTarget: null,
+    impostorNameSubstitute: null,
+    answers,
+    votes: {},
+    usedQuestionIds: ["dev-q1", "dev-q2"],
+  });
+  store.initLives();
 }

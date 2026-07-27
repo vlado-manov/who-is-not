@@ -26,6 +26,7 @@ type CharacterDto = {
   secondaryImageUrl?: string | null;
   finalWinnerImageUrl?: string | null;
   finalLoserImageUrl?: string | null;
+  deathmatchImageUrl?: string | null;
   medias?: MediaDto[];
   winImages: Array<{ url: string; variant: string | null }>;
   loseImages: Array<{ url: string; variant: string | null }>;
@@ -121,6 +122,7 @@ export async function fetchCharacters(lang?: string, userId?: string): Promise<I
       profileImage: asImage(row.profileImageUrl, fallbackAvatar),
       finalWinnerImage: asImage(row.finalWinnerImageUrl, null),
       finalLoserImage: asImage(row.finalLoserImageUrl, null),
+      deathmatch_image: asImage(row.deathmatchImageUrl, null),
       rateImage: (() => {
         const rateUrl = getRateUrlFromRow(row) ?? vanessaRateUrl;
         return asImage(rateUrl, null);

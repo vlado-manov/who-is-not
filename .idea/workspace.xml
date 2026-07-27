@@ -5,37 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7b602955-e506-4035-9383-2deaf85def34" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/app.json" beforeDir="false" afterPath="$PROJECT_DIR$/app.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/audio/audio01.wav" beforeDir="false" afterPath="$PROJECT_DIR$/assets/audio/audio01.wav" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/audio/audio02.wav" beforeDir="false" afterPath="$PROJECT_DIR$/assets/audio/audio02.wav" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/audio/audioBuyHero.wav" beforeDir="false" afterPath="$PROJECT_DIR$/assets/audio/audioBuyHero.wav" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/audio/audioCheer.wav" beforeDir="false" afterPath="$PROJECT_DIR$/assets/audio/audioCheer.wav" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/audio/audioCurtains.wav" beforeDir="false" afterPath="$PROJECT_DIR$/assets/audio/audioCurtains.wav" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/audio/audioFireworks.mp3" beforeDir="false" afterPath="$PROJECT_DIR$/assets/audio/audioFireworks.mp3" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/audio/audioHorn.mp3" beforeDir="false" afterPath="$PROJECT_DIR$/assets/audio/audioHorn.mp3" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/audio/audiointro.wav" beforeDir="false" afterPath="$PROJECT_DIR$/assets/audio/audiointro.wav" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/audio/buttonClick.wav" beforeDir="false" afterPath="$PROJECT_DIR$/assets/audio/buttonClick.wav" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/audio/closeCurtain.wav" beforeDir="false" afterPath="$PROJECT_DIR$/assets/audio/closeCurtain.wav" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/audio/closeDoor.wav" beforeDir="false" afterPath="$PROJECT_DIR$/assets/audio/closeDoor.wav" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/audio/count.wav" beforeDir="false" afterPath="$PROJECT_DIR$/assets/audio/count.wav" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/backgrounds.ts" beforeDir="false" afterPath="$PROJECT_DIR$/assets/backgrounds.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/LoadingScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/LoadingScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/PreRevealLoadingLayer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/PreRevealLoadingLayer.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/RoundScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/RoundScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/VoteNowScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/VoteNowScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/hooks/useWelcomeBackgroundVariant.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/useWelcomeBackgroundVariant.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/Game/QuestionScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/Game/QuestionScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/Game/ResultsScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/Game/ResultsScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/Game/RevealScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/Game/RevealScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/Game/StandingsScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/Game/StandingsScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/Game/VoteScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/Game/VoteScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/Game/WinnerScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/Game/WinnerScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/HeroPicker/HeroPickerBackground.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/HeroPicker/HeroPickerBackground.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/HeroPickerScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/HeroPickerScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/MenuPlayScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/MenuPlayScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/ReferralScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/ReferralScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/WelcomeScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/WelcomeScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/responsive.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/responsive.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

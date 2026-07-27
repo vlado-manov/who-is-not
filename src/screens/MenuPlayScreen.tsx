@@ -191,15 +191,15 @@ const MenuPlayScreen = () => {
               fontSizePx={menuLayout.fontSizePx}
               titleMinFontScale={menuLayout.titleMinFontScale}
               buttonClassName="-rotate-1"
-              iconOverlayPadText
-              icon={game_images.partyModeIcon}
-              iconWidth={Math.round(120 * s)}
-              iconHeight={Math.round(104 * s)}
-              iconSize={Math.round(120 * s)}
-              iconOverlayPreset="rulebook"
-              iconRotation="16deg"
-              iconTop={Math.round(-10 * s)}
-              iconRight={Math.round(-25 * s)}
+              // iconOverlayPadText
+              // icon={game_images.partyModeIcon}
+              // iconWidth={Math.round(120 * s)}
+              // iconHeight={Math.round(104 * s)}
+              // iconSize={Math.round(120 * s)}
+              // iconOverlayPreset="rulebook"
+              // iconRotation="16deg"
+              // iconTop={Math.round(-10 * s)}
+              // iconRight={Math.round(-25 * s)}
               onPress={() => {
                 void trackPlayerSessionStarted({
                   userId: user.id,
@@ -226,16 +226,16 @@ const MenuPlayScreen = () => {
               fontSize={menuLayout.fontSize}
               fontSizePx={menuLayout.fontSizePx}
               titleMinFontScale={menuLayout.titleMinFontScale}
-              iconOverlayPadText
+              // iconOverlayPadText
               label={t("invite_friends_label")}
               buttonClassName="-rotate-1"
-              icon={game_images.hostGameIcon}
-              iconWidth={Math.round(104 * s)}
-              iconHeight={Math.round(88 * s)}
-              iconSize={Math.round(104 * s)}
-              iconLeft={Math.round(-24 * s)}
-              iconOverlayPreset="party"
-              iconRotation="10deg"
+              // icon={game_images.hostGameIcon}
+              // iconWidth={Math.round(104 * s)}
+              // iconHeight={Math.round(88 * s)}
+              // iconSize={Math.round(104 * s)}
+              // iconLeft={Math.round(-24 * s)}
+              // iconOverlayPreset="party"
+              // iconRotation="10deg"
               backgroundImage={backgrounds.bg022}
               shadowColor="#410047"
               onPress={() => {
@@ -258,23 +258,28 @@ const MenuPlayScreen = () => {
             <CustomButton
               title={t("menuPlay_join_btn")}
               fullWidth
-              iconOverlayPadText
+              // iconOverlayPadText
               btnSize={menuLayout.btnSize}
               fontSize={menuLayout.fontSize}
               fontSizePx={menuLayout.fontSizePx}
               titleMinFontScale={menuLayout.titleMinFontScale}
-              iconOverlayPreset="rulebook"
+              // iconOverlayPreset="rulebook"
               buttonClassName="-rotate-1"
-              icon={game_images.joinGameIcon}
-              iconWidth={Math.round(104 * s)}
-              iconHeight={Math.round(88 * s)}
-              iconSize={Math.round(104 * s)}
-              iconRight={Math.round(-20 * s)}
-              iconRotation="-8deg"
+              // icon={game_images.joinGameIcon}
+              // iconWidth={Math.round(104 * s)}
+              // iconHeight={Math.round(88 * s)}
+              // iconSize={Math.round(104 * s)}
+              // iconRight={Math.round(-20 * s)}
+              // iconRotation="-8deg"
               backgroundImage={backgrounds.bg015}
+              glow
+              glowColor="rgba(255,50,50,0.6)"
+              glowIntensity={14}
+              shadowColor="#1a0000"
+              borderColor="rgba(255,60,60,0.9)"
+              borderWidth={2}
               label={t("scan_qr_code")}
               labelSide="left"
-              shadowColor="#540d0d"
               onPress={() => {
                 void trackPlayerSessionStarted({
                   userId: user.id,

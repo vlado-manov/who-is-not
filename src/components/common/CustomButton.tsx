@@ -38,9 +38,17 @@ interface CustomButtonProps {
   disabled?: boolean;
 
   /** visuals */
-  gradientColors?: [string, string];
+  gradientColors?: string[];
+  gradientStart?: { x: number; y: number };
+  gradientEnd?: { x: number; y: number };
   backgroundImage?: ImageSourcePropType;
+  /** Semi-transparent gradient overlay rendered on top of backgroundImage (for tinting/vignette). */
+  overlayColors?: string[];
+  overlayStart?: { x: number; y: number };
+  overlayEnd?: { x: number; y: number };
   solidColor?: string;
+  showGloss?: boolean;
+  glossOpacity?: number;
 
   /** icon */
   icon?: ImageSourcePropType;
@@ -82,12 +90,21 @@ interface CustomButtonProps {
   fontSizePx?: number;
   /** Overrides default min scale when `adjustsFontSizeToFit` shrinks the title. */
   titleMinFontScale?: number;
+  /** Overrides the default white title color. */
+  titleColor?: string;
+  /** Overrides the default SeymourOne-Regular font family for the title. */
+  titleFontFamily?: string;
+  /** When set, renders a polka-dot circle pattern overlay with this color. */
+  circlePatternColor?: string;
 
   /** badge */
   label?: string;
   /** Pill position when `label` is set. Default `right` (top-right corner). */
   labelSide?: "left" | "right";
   horizontalPadding?: number;
+  /** border overlay rendered inside the clip area */
+  borderColor?: string;
+  borderWidth?: number;
   /** glow */
   glow?: boolean;
   glowColor?: string;
@@ -175,8 +192,15 @@ export default function CustomButton({
   disabled = false,
 
   gradientColors,
+  gradientStart,
+  gradientEnd,
   backgroundImage,
+  overlayColors,
+  overlayStart,
+  overlayEnd,
   solidColor,
+  showGloss = true,
+  glossOpacity = 0.25,
 
   icon,
   iconSize = 36,
@@ -199,7 +223,12 @@ export default function CustomButton({
   fontSize = "md",
   fontSizePx,
   titleMinFontScale,
+  titleColor,
+  titleFontFamily,
+  circlePatternColor,
 
+  borderColor,
+  borderWidth: borderWidthProp,
   label,
   labelSide = "right",
   horizontalPadding = 8,
@@ -253,8 +282,8 @@ export default function CustomButton({
   const radius =
     variant === "circle" ? diameter / 2 : variant === "pill" ? 999 : 20;
 
-  const colors: [string, string] =
-    gradientColors ||
+  const colors: string[] =
+    (gradientColors && gradientColors.length >= 2 ? gradientColors : null) ??
     (appearance !== "custom"
       ? APPEARANCE_PRESETS[appearance]
       : APPEARANCE_PRESETS.primary);
@@ -415,25 +444,77 @@ export default function CustomButton({
                 />
               ) : (
                 <LinearGradient
-                  colors={colors}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
+                  colors={colors as any}
+                  start={gradientStart ?? { x: 0, y: 0 }}
+                  end={gradientEnd ?? { x: 1, y: 1 }}
+                  style={{ position: "absolute", inset: 0 }}
+                />
+              )}
+              {/* COLOR OVERLAY — on top of backgroundImage for tinting */}
+              {backgroundImage && overlayColors && overlayColors.length >= 2 && (
+                <LinearGradient
+                  colors={overlayColors as any}
+                  start={overlayStart ?? { x: 0, y: 0 }}
+                  end={overlayEnd ?? { x: 1, y: 1 }}
                   style={{ position: "absolute", inset: 0 }}
                 />
               )}
 
               {/* GLOSS */}
-              <View
-                style={{
-                  position: "absolute",
-                  top: 4,
-                  left: 4,
-                  right: 4,
-                  height: "45%",
-                  borderRadius: radius,
-                  backgroundColor: "rgba(255,255,255,0.25)",
-                }}
-              />
+              {showGloss && (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 4,
+                    left: 4,
+                    right: 4,
+                    height: "45%",
+                    borderRadius: radius,
+                    backgroundColor: `rgba(255,255,255,${glossOpacity})`,
+                  }}
+                />
+              )}
+
+              {/* CIRCLE PATTERN OVERLAY */}
+              {circlePatternColor && (
+                <View
+                  pointerEvents="none"
+                  style={{ position: "absolute", inset: 0, overflow: "hidden" }}
+                >
+                  {Array.from({ length: 60 }).map((_, i) => {
+                    const col = i % 12;
+                    const row = Math.floor(i / 12);
+                    return (
+                      <View
+                        key={i}
+                        style={{
+                          position: "absolute",
+                          width: 16,
+                          height: 16,
+                          borderRadius: 8,
+                          backgroundColor: circlePatternColor,
+                          left: col * 24 - 4,
+                          top: row * 24 - 4,
+                        }}
+                      />
+                    );
+                  })}
+                </View>
+              )}
+
+              {/* BORDER OVERLAY — inside clip so it follows borderRadius */}
+              {borderWidthProp != null && borderColor && (
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    borderRadius: radius,
+                    borderWidth: borderWidthProp,
+                    borderColor,
+                  }}
+                />
+              )}
 
               {/* CONTENT */}
               <View
@@ -469,10 +550,10 @@ export default function CustomButton({
                     }
                     style={{
                       flexShrink: 1,
-                      color: "#fff",
+                      color: titleColor ?? "#fff",
                       fontSize: resolvedFontSize,
                       textTransform: "uppercase",
-                      fontFamily: "SeymourOne-Regular",
+                      fontFamily: titleFontFamily ?? "SeymourOne-Regular",
                       textShadowColor: "rgba(0,0,0,0.35)",
                       textShadowOffset: { width: 0, height: 3 },
                       textShadowRadius: 4,

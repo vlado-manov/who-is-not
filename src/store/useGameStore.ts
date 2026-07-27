@@ -175,7 +175,11 @@ type GameState = {
    */
   originalPlayers?: Player[];
 
+  /** Set by DeathMatchScreen when the guessing game concludes. WinnerScreen reads this instead of computing from lives. */
+  deathMatchWinnerIds?: string[];
+
   set: (p: Partial<GameState>) => void;
+  setDeathMatchWinners: (ids: string[]) => void;
   /** Sets online lobby session fields and starts an ONLINE game id. */
   applyOnlinePartySession: (p: {
     roomId: string;
@@ -254,8 +258,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   usedQuestionIds: [],
   lives: {},
   lastAppliedLivesRoundKey: undefined,
+  deathMatchWinnerIds: undefined,
 
   set: (p) => set(p),
+  setDeathMatchWinners: (ids) => set({ deathMatchWinnerIds: ids }),
 
   applyOnlinePartySession: (p) => {
     const gameId = `game_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -354,6 +360,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       lives: {},
       lastAppliedLivesRoundKey: undefined,
       originalPlayers: undefined,
+      deathMatchWinnerIds: undefined,
     });
   },
 

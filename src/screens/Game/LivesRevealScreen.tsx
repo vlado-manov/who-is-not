@@ -1052,30 +1052,17 @@ const LivesRevealScreen = () => {
     centerDeathX1.setValue(0);
     centerDeathX2.setValue(0);
     setCenterDeadId(null);
+    centerScale.setValue(1);
     focusSpotlightScale.setValue(1);
     void AudioManager.playAnswerPop();
 
     await startAnim(
-      Animated.parallel([
-        Animated.timing(centerFade, {
-          toValue: 1,
-          duration: 240,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.spring(centerScale, {
-          toValue: 1,
-          speed: 17,
-          bounciness: 11,
-          useNativeDriver: true,
-        }),
-        Animated.spring(focusSpotlightScale, {
-          toValue: 1,
-          speed: 17,
-          bounciness: 8,
-          useNativeDriver: true,
-        }),
-      ]),
+      Animated.timing(centerFade, {
+        toValue: 1,
+        duration: 240,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
     );
   };
 
@@ -1610,7 +1597,18 @@ const LivesRevealScreen = () => {
         return;
       }
 
-      if (aliveCount <= 2) {
+      if (aliveCount === 2) {
+        await startAnim(Animated.delay(350));
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: "DeathMatch" }],
+          })
+        );
+        return;
+      }
+
+      if (aliveCount < 2) {
         await startAnim(Animated.delay(350));
         navigation.dispatch(
           CommonActions.reset({
@@ -1752,6 +1750,13 @@ const LivesRevealScreen = () => {
             resizeMode="cover"
           />
         )}
+
+        <BlurView
+          intensity={20}
+          tint="dark"
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
 
         {!showGameOver && (
           <ScrollView

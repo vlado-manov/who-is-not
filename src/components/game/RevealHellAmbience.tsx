@@ -11,8 +11,8 @@ import { mulberry32 } from "./revealAmbience.shared";
 const rng = mulberry32(80030);
 const R = () => rng();
 
-const COUNT_SMOKE = 65;
-const COUNT_EMBERS = 210;
+const COUNT_SMOKE = 110;
+const COUNT_EMBERS = 320;
 
 // ─── types ────────────────────────────────────────────────────────────────────
 type Smoke = {
@@ -61,19 +61,18 @@ const C_EMBER: [number, number, number][] = [
 
 function makeSmoke(): Smoke[] {
   return Array.from({ length: COUNT_SMOKE }, () => {
-    // spread across lower 40% of screen, concentrated toward bottom
-    const yFrac = 0.62 + R() * 0.38;
-    const maxLife = 180 + R() * 320;
-    const birthSize = 15 + R() * 45;
+    const yFrac = 0.45 + R() * 0.55;
+    const maxLife = 140 + R() * 300;
+    const birthSize = 20 + R() * 60;
     return {
-      x: -0.1 + R() * 1.2,
+      x: -0.15 + R() * 1.3,
       y: yFrac,
-      vx: (R() - 0.5) * 0.001,
-      vy: -(0.0006 + R() * 0.0018),
+      vx: (R() - 0.5) * 0.0015,
+      vy: -(0.001 + R() * 0.003),
       life: R() * maxLife,
       maxLife,
       birthSize,
-      size: birthSize + R() * 30,  // stagger initial sizes
+      size: birthSize + R() * 35,
       colorIdx: Math.floor(R() * C_SMOKE.length),
       phase: R() * Math.PI * 2,
     };
@@ -82,23 +81,21 @@ function makeSmoke(): Smoke[] {
 
 function makeEmbers(): Ember[] {
   return Array.from({ length: COUNT_EMBERS }, () => {
-    // spawn from fire zone — bottom-center with spread
-    const spawnX = 0.2 + R() * 0.6;
-    const spawnY = 0.55 + R() * 0.35;
-    const maxLife = 45 + R() * 160;
+    const spawnX = 0.05 + R() * 0.9;
+    const spawnY = 0.5 + R() * 0.5;
+    const maxLife = 35 + R() * 130;
     return {
       x: spawnX,
       y: spawnY,
-      // bursting upward with varied speeds — key for "разбутан огън" feel
-      vx: (R() - 0.5) * 0.007,
-      vy: -(0.002 + R() * 0.008),
+      vx: (R() - 0.5) * 0.01,
+      vy: -(0.003 + R() * 0.011),
       life: R() * maxLife,
       maxLife,
-      size: 0.8 + R() * 5.5,
+      size: 0.8 + R() * 6.5,
       colorIdx: Math.floor(R() * C_EMBER.length),
       phase: R() * Math.PI * 2,
-      turbFreq: 1.2 + R() * 3.5,
-      turbAmp: 0.0003 + R() * 0.0014,
+      turbFreq: 1.5 + R() * 4.5,
+      turbAmp: 0.0005 + R() * 0.002,
     };
   });
 }
@@ -128,17 +125,16 @@ export default function RevealHellAmbience() {
         p.x += p.vx + Math.sin(t * 0.4 + p.phase) * 0.0004;
         p.y += p.vy;
         // smoke expands as it rises (less dense = more spread)
-        p.size *= 1.0038;
-        if (p.life > p.maxLife || p.y < -0.25) {
-          // respawn from bottom
-          p.x = -0.1 + Math.random() * 1.2;
-          p.y = 0.75 + Math.random() * 0.28;
+        p.size *= 1.005;
+        if (p.life > p.maxLife || p.y < -0.3) {
+          p.x = -0.15 + Math.random() * 1.3;
+          p.y = 0.65 + Math.random() * 0.38;
           p.life = 0;
-          p.maxLife = 180 + Math.random() * 320;
-          p.birthSize = 15 + Math.random() * 45;
+          p.maxLife = 140 + Math.random() * 300;
+          p.birthSize = 20 + Math.random() * 60;
           p.size = p.birthSize;
-          p.vy = -(0.0006 + Math.random() * 0.0018);
-          p.vx = (Math.random() - 0.5) * 0.001;
+          p.vy = -(0.001 + Math.random() * 0.003);
+          p.vx = (Math.random() - 0.5) * 0.0015;
         }
       }
       return arr;
@@ -151,15 +147,15 @@ export default function RevealHellAmbience() {
         p.x += p.vx + Math.sin(t * p.turbFreq + p.phase) * p.turbAmp;
         p.y += p.vy;
         // very slight gravity (convection heat means almost none)
-        p.vy += 0.00006;
-        if (p.life > p.maxLife || p.y < -0.06 || p.x < -0.08 || p.x > 1.08) {
-          p.x = 0.2 + Math.random() * 0.6;
-          p.y = 0.58 + Math.random() * 0.32;
+        p.vy += 0.00005;
+        if (p.life > p.maxLife || p.y < -0.08 || p.x < -0.1 || p.x > 1.1) {
+          p.x = 0.05 + Math.random() * 0.9;
+          p.y = 0.55 + Math.random() * 0.45;
           p.life = 0;
-          p.maxLife = 45 + Math.random() * 160;
-          p.vy = -(0.002 + Math.random() * 0.008);
-          p.vx = (Math.random() - 0.5) * 0.007;
-          p.size = 0.8 + Math.random() * 5.5;
+          p.maxLife = 35 + Math.random() * 130;
+          p.vy = -(0.003 + Math.random() * 0.011);
+          p.vx = (Math.random() - 0.5) * 0.01;
+          p.size = 0.8 + Math.random() * 6.5;
           p.colorIdx = Math.floor(Math.random() * C_EMBER.length);
         }
       }

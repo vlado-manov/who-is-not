@@ -28,6 +28,7 @@ import { sendPlayerReady } from "../../api/multiplayerSync";
 import { sendMultiplayerRelay } from "../../api/multiplayerRelay";
 import { mpPhaseVotes, VOTE_CAST_MESSAGE_TYPE } from "../../constants/onlineLobby";
 import OnlineWaitPlayersOverlay from "../../components/online/OnlineWaitPlayersOverlay";
+import { getHeroButtonStyle } from "../../utils/heroButtonStyle";
 import { reportMultiplayerDiagnostic } from "../../utils/multiplayerDiagnostics";
 
 type R = RouteProp<GameStackParamList, "Vote">;
@@ -251,6 +252,7 @@ const VoteScreen = () => {
               <View key={`row-${rowIndex}`} style={styles.row}>
                 {row.map((player) => {
                   const character = heroes.find((h) => h.id === player.characterId);
+                  const heroStyle = getHeroButtonStyle(character?.slug);
 
                   return (
                     <View
@@ -275,16 +277,13 @@ const VoteScreen = () => {
 
                       <CustomButton
                         title={player.name}
-                        appearance="tertiary"
                         btnSize="xs"
                         fontSize="sm"
-                        backgroundImage={backgrounds.bg018}
                         glow
                         fullWidth
                         buttonClassName="-mt-4"
-                        glowColor="rgba(255,204,0,1)"
-                        shadowColor="#834400"
                         onPress={() => handleVote(player.id)}
+                        {...heroStyle}
                       />
                     </View>
                   );

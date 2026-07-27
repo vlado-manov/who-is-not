@@ -43,6 +43,15 @@ export const HOST_CLOSE_SESSION_MESSAGE_TYPE = "host_close_session";
 /** Client voluntarily left the game (broadcast before disconnect). */
 export const PLAYER_LEFT_GAME_MESSAGE_TYPE = "player_left_game";
 
+/** Deathmatch: player submits their secret number (broadcast to room; all devices store it). */
+export const DEATHMATCH_SECRET_MESSAGE_TYPE = "deathmatch_secret";
+
+/** Deathmatch: player submits a guess for the other player's number. */
+export const DEATHMATCH_GUESS_MESSAGE_TYPE = "deathmatch_guess";
+
+/** Deathmatch: host broadcasts the final result (winnerIds). */
+export const DEATHMATCH_DONE_MESSAGE_TYPE = "deathmatch_done";
+
 export function mpPhaseRound1Start(): string {
   return "round1_start";
 }

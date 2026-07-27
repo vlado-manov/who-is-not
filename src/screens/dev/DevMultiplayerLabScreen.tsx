@@ -47,6 +47,11 @@ import {
   seedVoteScreen,
   seedWinnerCelebration,
   seedWinnerEliminatedOnline,
+  seedDeathMatchLocal,
+  seedDeathMatchWinnerSingle,
+  seedDeathMatchWinnerTie,
+  seedHeroButtonsGroup1,
+  seedHeroButtonsGroup2,
 } from "../../dev/seedDevMultiplayerLab";
 import { useGameStore } from "../../store/useGameStore";
 
@@ -277,6 +282,26 @@ export default function DevMultiplayerLabScreen() {
         }),
     },
     {
+      label: "Hero buttons — group 1 (10 heroes: Vanessa → Dad GPT)",
+      onPress: () => go(seedHeroButtonsGroup1, "Vote", { voterIndex: 0 }),
+    },
+    {
+      label: "Hero buttons — group 2 (8 heroes: Screena → Dr. Wrong)",
+      onPress: () => go(seedHeroButtonsGroup2, "Vote", { voterIndex: 0 }),
+    },
+    {
+      label: "Deathmatch (local setup)",
+      onPress: () => go(seedDeathMatchLocal, "DeathMatch"),
+    },
+    {
+      label: "Deathmatch winner — single",
+      onPress: () => go(seedDeathMatchWinnerSingle, "Winner"),
+    },
+    {
+      label: "Deathmatch winner — tie",
+      onPress: () => go(seedDeathMatchWinnerTie, "Winner"),
+    },
+    {
       label: "Winner (celebration)",
       onPress: () => go(seedWinnerCelebration, "Winner"),
     },
@@ -302,6 +327,84 @@ export default function DevMultiplayerLabScreen() {
         seedDevLabBase();
         navigation.navigate("Game", { screen: "VoteResults" } as never);
       },
+    },
+
+    // FONT LAB
+    {
+      label: "Font — SeymourOne (current)",
+      onPress: () => navigation.navigate("DevFontPreview", { fontFamily: "SeymourOne-Regular", label: "SeymourOne Regular (current)" }),
+    },
+    {
+      label: "Font — Alumni Sans Collegiate One",
+      onPress: () => navigation.navigate("DevFontPreview", { fontFamily: "AlumniSansCollegiateOne-Regular", label: "Alumni Sans Collegiate One" }),
+    },
+    {
+      label: "Font — Hachi Maru Pop",
+      onPress: () => navigation.navigate("DevFontPreview", { fontFamily: "HachiMaruPop-Regular", label: "Hachi Maru Pop" }),
+    },
+    {
+      label: "Font — Onest Bold",
+      onPress: () => navigation.navigate("DevFontPreview", { fontFamily: "Onest-Bold", label: "Onest Bold" }),
+    },
+    {
+      label: "Font — Onest ExtraBold",
+      onPress: () => navigation.navigate("DevFontPreview", { fontFamily: "Onest-ExtraBold", label: "Onest ExtraBold" }),
+    },
+    {
+      label: "Font — Onest Black",
+      onPress: () => navigation.navigate("DevFontPreview", { fontFamily: "Onest-Black", label: "Onest Black" }),
+    },
+    {
+      label: "Font — Oi",
+      onPress: () => navigation.navigate("DevFontPreview", { fontFamily: "Oi-Regular", label: "Oi Regular" }),
+    },
+    {
+      label: "Font — Overpass Bold",
+      onPress: () => navigation.navigate("DevFontPreview", { fontFamily: "Overpass-Bold", label: "Overpass Bold" }),
+    },
+    {
+      label: "Font — Overpass ExtraBold",
+      onPress: () => navigation.navigate("DevFontPreview", { fontFamily: "Overpass-ExtraBold", label: "Overpass ExtraBold" }),
+    },
+    {
+      label: "Font — Pacifico",
+      onPress: () => navigation.navigate("DevFontPreview", { fontFamily: "Pacifico-Regular", label: "Pacifico" }),
+    },
+    {
+      label: "Font — Sofia Sans Condensed Bold",
+      onPress: () => navigation.navigate("DevFontPreview", { fontFamily: "SofiaSansExtraCondensed-Bold", label: "Sofia Sans Extra Condensed Bold" }),
+    },
+    {
+      label: "Font — Sofia Sans Condensed ExtraBold",
+      onPress: () => navigation.navigate("DevFontPreview", { fontFamily: "SofiaSansExtraCondensed-ExtraBold", label: "Sofia Sans Extra Condensed ExtraBold" }),
+    },
+    {
+      label: "Font — Sofia Sans Condensed Black",
+      onPress: () => navigation.navigate("DevFontPreview", { fontFamily: "SofiaSansExtraCondensed-Black", label: "Sofia Sans Extra Condensed Black" }),
+    },
+    {
+      label: "Font — Stalinist One",
+      onPress: () => navigation.navigate("DevFontPreview", { fontFamily: "StalinistOne-Regular", label: "Stalinist One" }),
+    },
+    {
+      label: "Font — Tektur Bold",
+      onPress: () => navigation.navigate("DevFontPreview", { fontFamily: "Tektur-Bold", label: "Tektur Bold" }),
+    },
+    {
+      label: "Font — Tektur ExtraBold",
+      onPress: () => navigation.navigate("DevFontPreview", { fontFamily: "Tektur-ExtraBold", label: "Tektur ExtraBold" }),
+    },
+    {
+      label: "Font — Tektur Black",
+      onPress: () => navigation.navigate("DevFontPreview", { fontFamily: "Tektur-Black", label: "Tektur Black" }),
+    },
+    {
+      label: "Font — Yanone Kaffeesatz SemiBold",
+      onPress: () => navigation.navigate("DevFontPreview", { fontFamily: "YanoneKaffeesatz-SemiBold", label: "Yanone Kaffeesatz SemiBold" }),
+    },
+    {
+      label: "Font — Yanone Kaffeesatz Bold",
+      onPress: () => navigation.navigate("DevFontPreview", { fontFamily: "YanoneKaffeesatz-Bold", label: "Yanone Kaffeesatz Bold" }),
     },
   ];
 
@@ -339,6 +442,18 @@ export default function DevMultiplayerLabScreen() {
               noted). No server. Use “Exit lab” on game screens to return here. Vote
               Results is a stub.
             </CustomText>
+
+            <CustomButton
+              title="Button + Background Lab"
+              fullWidth
+              btnSize="sm"
+              fontSize="sm"
+              onPress={() => navigation.navigate("DevButtonLab")}
+              backgroundImage={backgrounds.bg026}
+              glow
+              glowColor="rgba(41,255,25,0.8)"
+              shadowColor="#005f07"
+            />
 
             {rows.map((r) => (
               <View key={r.label}>

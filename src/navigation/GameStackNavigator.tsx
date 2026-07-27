@@ -20,6 +20,7 @@ import PreRevealScreen from "../screens/Game/PreRevealScreen";
 import StandingsScreen from "../screens/Game/StandingsScreen";
 import WinnerScreen from "../screens/Game/WinnerScreen";
 import PlayerDeathScreen from "../screens/Game/PlayerDeathScreen";
+import DeathMatchScreen from "../screens/Game/DeathMatchScreen";
 import GameplayRefreshButton from "../components/game/GameplayRefreshButton";
 
 const Stack = createStackNavigator<GameStackParamList>();
@@ -84,6 +85,7 @@ export default function GameStackNavigator() {
         <Stack.Screen name="Reveal" component={RevealScreen} />
         <Stack.Screen name="LivesReveal" component={LivesRevealScreen} />
         <Stack.Screen name="PlayerDeath" component={PlayerDeathScreen} />
+        <Stack.Screen name="DeathMatch" component={DeathMatchScreen} />
         <Stack.Screen name="Winner" component={WinnerScreen} />
         <Stack.Screen name="Standings" component={StandingsScreen} />
       </Stack.Navigator>

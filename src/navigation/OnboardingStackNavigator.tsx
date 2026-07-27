@@ -10,6 +10,8 @@ import PrivacyScreen from "../screens/PrivacyScreen";
 import TermsScreen from "../screens/TermsScreen";
 import SupportScreen from "../screens/SupportScreen";
 import DevMultiplayerLabScreen from "../screens/dev/DevMultiplayerLabScreen";
+import DevButtonLabScreen from "../screens/dev/DevButtonLabScreen";
+import DevFontPreviewScreen from "../screens/dev/DevFontPreviewScreen";
 import { Transitions } from "./transitions";
 
 const Stack = createStackNavigator<OnboardingStackParamList>();
@@ -102,6 +104,24 @@ export default function OnboardingStackNavigator() {
         <Stack.Screen
           name="DevMultiplayerLab"
           component={DevMultiplayerLabScreen}
+          options={{
+            cardStyleInterpolator: Transitions.slideFromTop,
+          }}
+        />
+      )}
+      {__DEV__ && (
+        <Stack.Screen
+          name="DevButtonLab"
+          component={DevButtonLabScreen}
+          options={{
+            cardStyleInterpolator: Transitions.slideFromTop,
+          }}
+        />
+      )}
+      {__DEV__ && (
+        <Stack.Screen
+          name="DevFontPreview"
+          component={DevFontPreviewScreen}
           options={{
             cardStyleInterpolator: Transitions.slideFromTop,
           }}

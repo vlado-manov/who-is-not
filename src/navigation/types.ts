@@ -13,6 +13,10 @@ export type OnboardingStackParamList = {
   Support: undefined;
   /** __DEV__ only — open seeded Game screens without a real multiplayer session. */
   DevMultiplayerLab: undefined;
+  /** __DEV__ only — button + background visual lab. */
+  DevButtonLab: undefined;
+  /** __DEV__ only — font preview lab. Shows a QuestionScreen mock with the given font. */
+  DevFontPreview: { fontFamily: string; label: string };
 };
 
 export type CreateGameStackParamList = {
@@ -43,6 +47,7 @@ export type GameStackParamList = {
     deadPlayerId: string;
   };
   Winner: undefined;
+  DeathMatch: undefined;
   Round: undefined;
   Standings: undefined;
 };

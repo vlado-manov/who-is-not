@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ImageBackgroundProps,
 } from "react-native";
+import { BlurView } from "expo-blur";
 
 function containerWrapperStyle(
   style: ImageBackgroundProps["style"] | undefined,
@@ -31,6 +32,8 @@ type Props = Omit<ImageBackgroundProps, "onLoad"> & {
   showChildrenWhileLoading?: boolean;
   /** Под слоя с изображението (по подразбиране #000, или transparent с showChildrenWhileLoading). */
   underlayColor?: string;
+  /** Изключва размития overlay (по подразбиране е включен). */
+  noBlur?: boolean;
 };
 
 export default function ImageBackgroundWithLoadGate({
@@ -39,6 +42,7 @@ export default function ImageBackgroundWithLoadGate({
   loadTimeoutMs = 5000,
   showChildrenWhileLoading = false,
   underlayColor,
+  noBlur = false,
   ...rest
 }: Props) {
   const [loaded, setLoaded] = useState(false);
@@ -80,8 +84,16 @@ export default function ImageBackgroundWithLoadGate({
           onLoad={onLoad}
           onError={onError}
         />
+        {!noBlur && (
+          <BlurView
+            intensity={10}
+            tint="dark"
+            style={[StyleSheet.absoluteFillObject, { zIndex: 2 }]}
+            pointerEvents="none"
+          />
+        )}
         <View
-          style={[StyleSheet.absoluteFillObject, { zIndex: 2 }]}
+          style={[StyleSheet.absoluteFillObject, { zIndex: 3 }]}
           pointerEvents="box-none"
         >
           {children}
@@ -111,6 +123,14 @@ export default function ImageBackgroundWithLoadGate({
         onLoad={onLoad}
         onError={onError}
       >
+        {!noBlur && (
+          <BlurView
+            intensity={10}
+            tint="dark"
+            style={StyleSheet.absoluteFillObject}
+            pointerEvents="none"
+          />
+        )}
         {showContent ? children : null}
       </ImageBackground>
     </View>

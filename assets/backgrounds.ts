@@ -3,6 +3,7 @@
 const R2 = "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery";
 
 export const backgrounds = {
+  bg000: require("./images/bg000.png"),
   bg003: { uri: `${R2}/9dd10679-acba-4b66-8ffd-84a2c12b1f97-bg003.webp` },
   bg004: { uri: `${R2}/eef21476-a766-4970-8620-7391d4c82573-IMG_4014.webp` },
   bg005: { uri: `${R2}/7d92a71b-401b-4465-9145-ff3fd76818f6-bg005.webp` },

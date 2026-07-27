@@ -17,8 +17,9 @@ import {
   useWindowDimensions,
 } from "react-native";
 import AppImage from "../../components/AppImage";
+import { BlurView } from "expo-blur";
 import FullBleedStack from "../../components/FullBleedStack";
-import ImageBackgroundWithLoadGate from "../../components/ImageBackgroundWithLoadGate";
+import ResultsAmbience from "../../components/game/ResultsAmbience";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
@@ -27,6 +28,7 @@ import { backgrounds } from "../../../assets/backgrounds";
 
 import CustomText from "../../components/common/CustomText";
 import CustomButton from "../../components/common/CustomButton";
+import CardAmbienceCanvas from "../../components/game/CardAmbienceCanvas";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useGameStore, Player } from "../../store/useGameStore";
@@ -71,8 +73,149 @@ type ScreenPhase = "answers" | "title" | "timer_intro" | "running";
 /** Max animated answer slots — enough for any game configuration. */
 const MAX_ANS = 14;
 
+const PLAYER_COLORS = [
+  "#F0A020",
+  "#9B59B6",
+  "#1ABC9C",
+  "#E91E63",
+  "#3498DB",
+  "#E67E22",
+  "#2ECC71",
+  "#E74C3C",
+];
+
 const DISCUSSION_COUNTDOWN_FRAME_URI =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/3db0af2c-1a13-4110-96e2-b79348d66976-border1.webp";
+
+/* ── InputAnswerItem — card with blurred header + bg005 body + Skia glow ─── */
+const InputAnswerItem = React.memo(function InputAnswerItem({
+  player,
+  answer,
+  playerColor,
+  avatar,
+}: {
+  player: Player;
+  answer: string;
+  playerColor: string;
+  avatar: ImageSourcePropType | undefined;
+}) {
+  return (
+    <View style={iiStyles.cardShadow}>
+      <View style={iiStyles.cardClip}>
+        <View style={[iiStyles.header, { borderBottomColor: playerColor + "170" }]}>
+          <BlurView intensity={18} tint="default" style={StyleSheet.absoluteFill} />
+          <View style={iiStyles.headerWhiten} />
+          <View style={[iiStyles.headerTint, { backgroundColor: playerColor + "32" }]} />
+          {avatar ? (
+            <AppImage source={avatar} style={iiStyles.avatar} contentFit="contain" />
+          ) : (
+            <View style={[iiStyles.avatarFallback, { borderColor: playerColor }]} />
+          )}
+          <CustomText
+            variant="h6"
+            textColor={playerColor}
+            style={[iiStyles.name, { fontSize: 16 }]}
+          >
+            {player.name.toUpperCase()}
+          </CustomText>
+        </View>
+
+        <ImageBackground source={backgrounds.bg005} style={iiStyles.body} resizeMode="cover">
+          <CardAmbienceCanvas color={playerColor} />
+          <CustomText variant="h4" allowWrap={false} style={iiStyles.answerText}>
+            {answer}
+          </CustomText>
+        </ImageBackground>
+      </View>
+    </View>
+  );
+});
+
+const iiStyles = StyleSheet.create({
+  cardShadow: {
+    width: "100%",
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.28,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 14,
+  },
+  cardClip: {
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    overflow: "hidden",
+    borderBottomWidth: 2.5,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+  },
+  avatarFallback: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    backgroundColor: "rgba(255,255,255,0.3)",
+  },
+  headerWhiten: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255,255,255,0.65)",
+  },
+  headerTint: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  name: {
+    flexShrink: 1,
+  },
+  body: {
+    paddingHorizontal: 20,
+    paddingTop: 22,
+    paddingBottom: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 100,
+    overflow: "hidden",
+  },
+  answerText: {
+    textAlign: "center",
+    color: "#2E1604",
+    width: "100%",
+    textShadowColor: "rgba(255,255,255,0.6)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+});
+
+const RESULTS_BG_URI =
+  "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/9f825a2a-5bf9-4f27-ae1d-8ca5de20f3d5-bg-results3.webp";
+
+function ResultsBackground() {
+  return (
+    <View style={[StyleSheet.absoluteFill, { overflow: "hidden" }]}>
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0a0a0a" }]} />
+      <AppImage
+        source={{ uri: RESULTS_BG_URI }}
+        style={StyleSheet.absoluteFillObject}
+        contentFit="cover"
+      />
+      <BlurView
+        intensity={20}
+        tint="dark"
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+      <ResultsAmbience />
+    </View>
+  );
+}
 
 const ResultsScreen = () => {
   const navigation = useNavigation<Nav>();
@@ -938,13 +1081,7 @@ const ResultsScreen = () => {
   return (
     <FullBleedStack
       rootStyle={{ flex: 1, backgroundColor: "#0a0a0a" }}
-      backdrop={
-        <ImageBackgroundWithLoadGate
-          source={isTablet ? backgrounds.bg023t : backgrounds.bg023}
-          style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-        />
-      }
+      backdrop={<ResultsBackground />}
     >
       <SafeAreaView
         className="flex-1"
@@ -1270,11 +1407,13 @@ const ResultsScreen = () => {
             </View>
           )}
 
-          {/* ── INPUT: player + answer plate ──────────────────────────────── */}
+          {/* ── INPUT: per-player card with blurred header + animated body ────── */}
           {questionType === "input" && (
             <View className="px-6" style={[styles.inputAnswersContainer, isTablet && { width: "100%", maxWidth: 560 }]}>
               {answerEntries.map(({ player, answer }, idx) => {
                 const avatar = getAvatar(player);
+                const playerIdx = players.findIndex((p) => p.id === player.id);
+                const resolvedColor = PLAYER_COLORS[(playerIdx >= 0 ? playerIdx : idx) % PLAYER_COLORS.length];
                 return (
                   <Animated.View
                     key={player.id}
@@ -1283,45 +1422,12 @@ const ResultsScreen = () => {
                       answerLayouts.current[idx] = e.nativeEvent.layout.y;
                     }}
                   >
-                    <View style={styles.inputAnswerRow}>
-                      <View style={styles.inputAnswerPlayer}>
-                        {avatar && (
-                          <AppImage
-                            source={avatar}
-                            style={styles.inputAnswerAvatar}
-                            contentFit="contain"
-                          />
-                        )}
-                        <CustomButton
-                          title={player.name}
-                          appearance="tertiary"
-                          btnSize="xs"
-                          fontSize="xs"
-                          backgroundImage={backgrounds.bg018}
-                          glow
-                          fullWidth
-                          glowColor="rgba(255,204,0,1)"
-                          shadowColor="#834400"
-                          buttonClassName="-mt-4"
-                        />
-                      </View>
-                      <View style={styles.inputAnswerPlateShadow}>
-                        <ImageBackground
-                          source={backgrounds.bg005}
-                          resizeMode="stretch"
-                          imageStyle={{ borderRadius: 18 }}
-                          style={styles.inputAnswerPlate}
-                        >
-                          <CustomText
-                            variant="p"
-                            textColor="#592410"
-                            style={styles.inputAnswerText}
-                          >
-                            {answer}
-                          </CustomText>
-                        </ImageBackground>
-                      </View>
-                    </View>
+                    <InputAnswerItem
+                      player={player}
+                      answer={answer}
+                      playerColor={resolvedColor}
+                      avatar={avatar}
+                    />
                   </Animated.View>
                 );
               })}
@@ -1637,58 +1743,9 @@ const styles = StyleSheet.create({
   },
   /* ── Input answers ────────────────────────────────────────────────────── */
   inputAnswersContainer: {
-    gap: 16,
-  },
-  inputAnswerRow: {
-    flexDirection: "row",
-    alignItems: "center",
     width: "100%",
-  },
-  inputAnswerPlayer: {
-    width: 140,
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 2,
-  },
-  inputAnswerAvatar: {
-    width: 106,
-    height: 106,
-  },
-  inputAnswerPlateShadow: {
-    flex: 1,
-    shadowColor: "#fff",
-    shadowOpacity: 1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 14,
-  },
-  inputAnswerPlate: {
-    minHeight: 64,
-    marginLeft: -40,
-    borderTopLeftRadius: 0,
-    borderBottomLeftRadius: 0,
-    borderTopRightRadius: 20,
-    borderBottomRightRadius: 20,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    justifyContent: "center",
-    shadowColor: "#ffd800",
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 14,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(251,192,32,1)",
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(160,110,60,0.7)",
-  },
-  inputAnswerText: {
-    textAlign: "left",
-    fontSize: 22,
-    lineHeight: 26,
-    fontWeight: "900",
-    fontFamily: "OpenSans-Bold",
-    color: "#592410",
+    gap: 16,
+    marginTop: 40,
   },
 });
 

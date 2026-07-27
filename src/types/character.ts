@@ -28,6 +28,8 @@ export interface ICharacter {
   finalWinnerImage?: ImageSourcePropType | null;
   /** Optional end-game loser image. Empty when not uploaded. */
   finalLoserImage?: ImageSourcePropType | null;
+  /** Optional image shown during the deathmatch guessing game. */
+  deathmatch_image?: ImageSourcePropType | null;
   winImages: ImageSourcePropType[];
   winVideo?: any;
   loseImages: ImageSourcePropType[];
