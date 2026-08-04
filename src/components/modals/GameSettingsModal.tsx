@@ -218,7 +218,8 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
                 variant="p"
                 className="text-center"
                 textColor="#762a05"
-                style={styles.modalTitle}
+                sizeDelta={2}
+                style={[styles.modalTitle, { fontFamily: "Onest-SemiBold" }]}
               >
                 {t("game_settings")}
               </CustomText>
@@ -229,6 +230,8 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
                 variant="h6"
                 className="text-center"
                 textColor="#592410"
+                sizeDelta={6}
+                style={{ fontFamily: "Onest-SemiBold" }}
               >
                 {t("lives_per_player")}
               </CustomText>
@@ -263,6 +266,8 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
                 variant="h6"
                 className="text-center"
                 textColor="#592410"
+                sizeDelta={6}
+                style={{ fontFamily: "Onest-SemiBold" }}
               >
                 {t("time_for_discussion")}
               </CustomText>
@@ -294,6 +299,8 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
                 variant="h6"
                 className="text-center"
                 textColor="#592410"
+                sizeDelta={6}
+                style={{ fontFamily: "Onest-SemiBold" }}
               >
                 {t("packages_included")}
               </CustomText>
@@ -368,8 +375,8 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
             buttonClassName="mt-5 w-full"
             onPress={onSave}
             backgroundImage={backgrounds.bg026}
-            btnSize="sm"
-            fontSize="sm"
+            btnSize="md"
+            fontSize="md"
             glow
             glowColor="rgba(41,255,25,0.6)"
             shadowColor="#005f07"

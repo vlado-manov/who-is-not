@@ -28,7 +28,6 @@ import { sendPlayerReady } from "../../api/multiplayerSync";
 import { sendMultiplayerRelay } from "../../api/multiplayerRelay";
 import { mpPhaseVotes, VOTE_CAST_MESSAGE_TYPE } from "../../constants/onlineLobby";
 import OnlineWaitPlayersOverlay from "../../components/online/OnlineWaitPlayersOverlay";
-import { getHeroButtonStyle } from "../../utils/heroButtonStyle";
 import { reportMultiplayerDiagnostic } from "../../utils/multiplayerDiagnostics";
 
 type R = RouteProp<GameStackParamList, "Vote">;
@@ -213,6 +212,8 @@ const VoteScreen = () => {
                   variant="p"
                   className="text-center"
                   textColor={isImposterVoter ? "#b91c1c" : "#762a05"}
+                  sizeDelta={2}
+                  style={{ fontFamily: "Tektur-SemiBold" }}
                 >
                   {isImposterVoter
                     ? t("vote_imposter_blend_cast")
@@ -225,6 +226,8 @@ const VoteScreen = () => {
                   variant="h6-headline"
                   className="text-center"
                   textColor={isImposterVoter ? "#b91c1c" : "#592410"}
+                  sizeDelta={10}
+                  style={{ fontFamily: "SofiaSansExtraCondensed-SemiBold" }}
                 >
                   {isImposterVoter
                     ? t("vote_imposter_blend_headline")
@@ -237,6 +240,8 @@ const VoteScreen = () => {
                   variant="p-small"
                   className="text-center"
                   textColor={isImposterVoter ? "#c62828" : "#762a05"}
+                  sizeDelta={2}
+                  style={{ fontFamily: "Onest-SemiBold" }}
                 >
                   {isImposterVoter
                     ? t("vote_imposter_blend_hint")
@@ -252,7 +257,6 @@ const VoteScreen = () => {
               <View key={`row-${rowIndex}`} style={styles.row}>
                 {row.map((player) => {
                   const character = heroes.find((h) => h.id === player.characterId);
-                  const heroStyle = getHeroButtonStyle(character?.slug);
 
                   return (
                     <View
@@ -283,7 +287,9 @@ const VoteScreen = () => {
                         fullWidth
                         buttonClassName="-mt-4"
                         onPress={() => handleVote(player.id)}
-                        {...heroStyle}
+                        backgroundImage={backgrounds.bg018}
+                        glowColor="rgba(255,204,0,1)"
+                        shadowColor="#834400"
                       />
                     </View>
                   );

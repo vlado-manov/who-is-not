@@ -58,6 +58,8 @@ interface Props extends TextProps {
   textColor?: string;
   /** When true, heading text may wrap (opt out of single-line shrink). */
   allowWrap?: boolean;
+  /** Added to the computed responsive font size (can be negative). */
+  sizeDelta?: number;
 }
 
 export default function CustomText({
@@ -69,6 +71,7 @@ export default function CustomText({
   responsive = true,
   textColor,
   allowWrap = false,
+  sizeDelta = 0,
   ...rest
 }: Props) {
   const { width } = useWindowDimensions();
@@ -126,7 +129,7 @@ export default function CustomText({
   }, [variant]);
 
   const scale = responsive ? Math.min(1, width / 390) : 1;
-  const fontSize = Math.round(baseSize * scale) + (isTablet ? 2 : 0);
+  const fontSize = Math.round(baseSize * scale) + (isTablet ? 2 : 0) + sizeDelta;
 
   const fontClass = useMemo(() => {
     switch (variant) {

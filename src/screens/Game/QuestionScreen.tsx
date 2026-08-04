@@ -2,7 +2,6 @@
 import React, {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -11,7 +10,6 @@ import {
   View,
   Text,
   TextInput,
-  Image,
   Pressable,
   ImageBackground,
   StyleSheet,
@@ -44,11 +42,10 @@ import CustomInput from "../../components/common/CustomInput";
 import { Player, useGameStore } from "../../store/useGameStore";
 import { IQuestion } from "../../types/question";
 import { GameStackParamList } from "../../navigation/types";
-import { LinearGradient } from "expo-linear-gradient";
 import AudioManager from "../../utils/audioManager";
 import { useHeroesStore } from "../../store/useHeroesStore";
 import { usePreventBack } from "../../hooks/usePreventBack";
-import { getHeroButtonStyle } from "../../utils/heroButtonStyle";
+
 import { useMultiplayerPhaseGate } from "../../hooks/useMultiplayerPhaseGate";
 import { useTranslation } from "react-i18next";
 import { formatQuestionWithName } from "../../utils/formatQuestionText";
@@ -66,205 +63,12 @@ type Nav = StackNavigationProp<GameStackParamList, "Question">;
 type R = RouteProp<GameStackParamList, "Question">;
 
 const OPEN_INPUT_MAX_LEN = 12;
-const OPEN_INPUT_MIN_FONT = 12;
-
-const INPUT_BACKGROUND = {
-  uri: "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/efba9ddd-bff8-436b-8c3e-946f53c01a3b-input.webp",
-};
 const RATE_GROUP_ID = "rate";
 
 /* -------------------------------------------------------------------------- */
 /* Avatar Pick Button (LOCAL, GAME-SPECIFIC) */
 /* -------------------------------------------------------------------------- */
 
-import { HeroButtonStyle } from "../../utils/heroButtonStyle";
-
-type AvatarPickButtonProps = {
-  name: string;
-  avatar?: any;
-  color: string;
-  selected?: boolean;
-  onPress: () => void;
-  /** Defaults scale with screen when omitted (see QuestionScreen pick layout). */
-  avatarDiameter?: number;
-  buttonWidth?: number;
-  titleFontSizePx?: number;
-  heroStyle?: HeroButtonStyle;
-};
-
-const AvatarPickButton = ({
-  name,
-  avatar,
-  color,
-  selected,
-  onPress,
-  avatarDiameter = 164,
-  buttonWidth,
-  titleFontSizePx,
-  heroStyle,
-}: AvatarPickButtonProps) => {
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-
-  const longPressTimeout = useRef<number | null>(null);
-  const isLongPressActive = useRef(false);
-  const rotationLoopRef = useRef<Animated.CompositeAnimation | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (longPressTimeout.current !== null) {
-        clearTimeout(longPressTimeout.current);
-        longPressTimeout.current = null;
-      }
-      rotationLoopRef.current?.stop();
-      rotationLoopRef.current = null;
-      scaleAnim.stopAnimation();
-      rotateAnim.stopAnimation();
-    };
-  }, [rotateAnim, scaleAnim]);
-
-  /* -------------------- SCALE (avatar + button) -------------------- */
-
-  const scaleUp = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1.1,
-      friction: 6,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const scaleDown = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      friction: 6,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  /* -------------------- ROTATION (avatar ONLY) -------------------- */
-
-  const startSlowRotation = () => {
-    isLongPressActive.current = true;
-    rotateAnim.setValue(0);
-
-    rotationLoopRef.current?.stop();
-    rotationLoopRef.current = Animated.loop(
-      Animated.timing(rotateAnim, {
-        toValue: 1,
-        duration: 3000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }),
-    );
-    rotationLoopRef.current.start();
-  };
-
-  const releaseSpin = () => {
-    if (!isLongPressActive.current) return;
-
-    isLongPressActive.current = false;
-    rotationLoopRef.current?.stop();
-    rotationLoopRef.current = null;
-    rotateAnim.stopAnimation();
-
-    Animated.sequence([
-      Animated.timing(rotateAnim, {
-        toValue: 4,
-        duration: 600,
-        easing: Easing.out(Easing.exp),
-        useNativeDriver: true,
-      }),
-      Animated.timing(rotateAnim, {
-        toValue: 0,
-        duration: 400,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  /* -------------------- PRESS HANDLERS -------------------- */
-
-  const onPressIn = () => {
-    scaleUp();
-
-    longPressTimeout.current = setTimeout(() => {
-      startSlowRotation();
-    }, 1500);
-  };
-
-  const onPressOut = () => {
-    scaleDown();
-
-    if (longPressTimeout.current !== null) {
-      clearTimeout(longPressTimeout.current);
-      longPressTimeout.current = null;
-    }
-
-    releaseSpin();
-  };
-
-  const rotate = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
-  });
-
-  return (
-    <View
-      style={{
-        alignItems: "center",
-        width: buttonWidth,
-        maxWidth: "100%",
-      }}
-    >
-      <Animated.View
-        style={{
-          alignItems: "center",
-          width: "100%",
-          transform: [{ scale: scaleAnim }],
-        }}
-      >
-        <Pressable onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}>
-          <Animated.View style={{ transform: [{ rotate }] }}>
-            <View
-              style={[
-                styles.avatarCircle,
-                {
-                  shadowColor: color,
-                  shadowOpacity: selected ? 0.9 : 0.4,
-                  shadowRadius: selected ? 14 : 6,
-                },
-              ]}
-            >
-              {avatar && (
-                <AppImage
-                  source={avatar}
-                  style={{
-                    width: avatarDiameter,
-                    height: avatarDiameter,
-                    marginBottom: -20,
-                  }}
-                  contentFit="contain"
-                />
-              )}
-            </View>
-          </Animated.View>
-        </Pressable>
-
-        <CustomButton
-          title={name}
-          btnSize="xs"
-          fontSize="sm"
-          fontSizePx={titleFontSizePx}
-          glow
-          fullWidth
-          onPress={onPress}
-          {...heroStyle}
-        />
-      </Animated.View>
-    </View>
-  );
-};
 
 /* -------------------------------------------------------------------------- */
 
@@ -274,29 +78,13 @@ const QuestionScreen = () => {
   const isTablet = windowWidth >= 768 && windowWidth > windowHeight;
   const numCols = isTablet ? 3 : 2;
   const insets = useSafeAreaInsets();
-  const scrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const navigation = useNavigation<Nav>();
   usePreventBack();
   const { playerIndex } = useRoute<R>().params;
 
   /** Pick row: `px-6` + `cell` horizontal padding — avatar + label scale to fit. */
-  const pickLayout = useMemo(() => {
-    const outerPad = 0;
-    const cellPadH = 4;
-    const rowWidth = Math.max(0, windowWidth - outerPad * 2);
-    const cellWidth = rowWidth / numCols;
-    const innerWidth = Math.max(40, cellWidth - cellPadH * 2);
-    const target = Math.round(Math.min(164, Math.max(48, innerWidth * 0.88)));
-    const avatarDiameter = Math.min(
-      target,
-      Math.max(32, Math.floor(innerWidth - 2)),
-    );
-    const titleFontPx = Math.round(
-      Math.min(18, Math.max(11, innerWidth / 8.2)),
-    );
-    return { avatarDiameter, buttonWidth: innerWidth, titleFontPx };
-  }, [windowWidth, numCols]);
 
   /** Scales with screen; slot position uses % of hero so layout stays aligned on all sizes. */
   const numberFieldFontSize = useMemo(
@@ -738,6 +526,8 @@ const QuestionScreen = () => {
                     variant="p"
                     className="text-center"
                     textColor="#762a05"
+                    sizeDelta={2}
+                    style={{ fontFamily: "Tektur-SemiBold" }}
                   >
                     {t("question_round", { round: activeRoundNumber })}
                   </CustomText>
@@ -749,6 +539,8 @@ const QuestionScreen = () => {
                     className="text-center"
                     textColor="#592410"
                     allowWrap
+                    sizeDelta={10}
+                    style={{ fontFamily: "SofiaSansExtraCondensed-SemiBold" }}
                   >
                     {questionDisplayText}
                   </CustomText>
@@ -759,6 +551,8 @@ const QuestionScreen = () => {
                     variant="p-small"
                     className="text-center"
                     textColor="#762a05"
+                    sizeDelta={2}
+                    style={{ fontFamily: "Onest-SemiBold" }}
                   >
                     {isPick && t("question_hint_pick")}
                     {isRate && t("question_hint_rate")}
@@ -855,25 +649,38 @@ const QuestionScreen = () => {
                       const characterData = heroes.find(
                         (h) => h.id === player.characterId,
                       );
-                      const heroStyle = getHeroButtonStyle(characterData?.slug);
-
                       return (
                         <View
                           key={player.id}
                           style={[styles.cell, isTablet && styles.cellTablet]}
                         >
-                          <View>
-                            <AvatarPickButton
-                              name={player.name}
-                              avatar={characterData?.profileImage}
-                              color={`#${characterData?.color ?? "ffffff"}`}
-                              onPress={() => handlePickPlayer(player.id)}
-                              avatarDiameter={pickLayout.avatarDiameter}
-                              buttonWidth={pickLayout.buttonWidth}
-                              titleFontSizePx={pickLayout.titleFontPx}
-                              heroStyle={heroStyle}
-                            />
-                          </View>
+                          <Pressable
+                            accessibilityRole="button"
+                            onPress={() => handlePickPlayer(player.id)}
+                            style={styles.avatarPressable}
+                          >
+                            <View style={styles.avatarWrapper}>
+                              {characterData?.profileImage && (
+                                <AppImage
+                                  source={characterData.profileImage}
+                                  style={styles.avatarImage}
+                                  contentFit="contain"
+                                />
+                              )}
+                            </View>
+                          </Pressable>
+                          <CustomButton
+                            title={player.name}
+                            btnSize="xs"
+                            fontSize="sm"
+                            glow
+                            fullWidth
+                            buttonClassName="-mt-4"
+                            onPress={() => handlePickPlayer(player.id)}
+                            backgroundImage={backgrounds.bg018}
+                            glowColor="rgba(255,204,0,1)"
+                            shadowColor="#834400"
+                          />
                         </View>
                       );
                     })}
@@ -1091,6 +898,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     shadowOffset: { width: 0, height: 6 },
+  },
+  avatarPressable: {
+    width: "100%",
+    alignItems: "center",
+  },
+  avatarWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: -12,
+  },
+  avatarImage: {
+    width: 164,
+    height: 164,
   },
   headerContainer: {
     borderWidth: 2,

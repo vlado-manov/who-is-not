@@ -1245,21 +1245,15 @@ export default function HeroPickerScreen() {
               />
               <View className="flex-1 justify-center relative">
                 <View style={isTablet ? { maxWidth: 560, alignSelf: "center", width: "100%" } : undefined}>
-                  <CustomText variant="h2" className="text-center mb-2" shadow>
+                  <CustomText variant="h2" sizeDelta={4} className="text-center mb-2" shadow style={{ fontFamily: "Tektur-ExtraBold" }}>
                     {t("round_label")}
                   </CustomText>
-                  <CustomText className="text-center" variant="h0" shadow>
+                  <CustomText className="text-center" variant="h0" sizeDelta={4} shadow style={{ fontFamily: "Tektur-ExtraBold" }}>
                     1
                   </CustomText>
                 </View>
                 <View className="mb-16 absolute bottom-0 left-0 right-0">
                   <View style={isTablet ? { maxWidth: 560, alignSelf: "center", width: "100%", paddingHorizontal: 64 } : { paddingHorizontal: 64 }}>
-                    <CustomText className="text-center mb-4">
-                      <CustomText className="underline">
-                        {firstPlayerName}
-                      </CustomText>
-                      ,<CustomText> {t("round_start_hint")}</CustomText>
-                    </CustomText>
                     <CustomButton
                       title={t("start_btn")}
                       backgroundImage={backgrounds.bg026}
@@ -1271,6 +1265,14 @@ export default function HeroPickerScreen() {
                       onPress={onRound1Start}
                       disabled={mode === "ONLINE" && waitingRound1Players}
                     />
+                    <CustomText
+                      variant="footnote"
+                      className="text-center mt-2"
+                      style={{ fontFamily: "Onest-SemiBold" }}
+                    >
+                      <CustomText className="underline" style={{ fontFamily: "Onest-SemiBold" }}>{firstPlayerName}</CustomText>
+                      {", "}{t("round_start_hint")}
+                    </CustomText>
                   </View>
                 </View>
               </View>

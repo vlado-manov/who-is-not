@@ -1365,8 +1365,8 @@ export default function WinnerScreen() {
                     onPress={handleCloseSurprise}
                     backgroundImage={backgrounds.bg026}
                     glow
-                    btnSize="sm"
-                    fontSize="sm"
+                    btnSize="md"
+                    fontSize="md"
                     glowColor="rgba(41,255,25,0.8)"
                     shadowColor="#005f07"
                   />
@@ -1402,8 +1402,8 @@ export default function WinnerScreen() {
                     onPress={handleContinueToSecondWinner}
                     backgroundImage={backgrounds.bg026}
                     glow
-                    btnSize="sm"
-                    fontSize="sm"
+                    btnSize="md"
+                    fontSize="md"
                     glowColor="rgba(41,255,25,0.8)"
                     shadowColor="#005f07"
                   />

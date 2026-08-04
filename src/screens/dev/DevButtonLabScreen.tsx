@@ -22,6 +22,7 @@ import CustomText from "../../components/common/CustomText";
 import { backgrounds } from "../../../assets/backgrounds";
 import { game_images } from "../../../assets/images";
 import AudioManager from "../../utils/audioManager";
+import RateAppModal from "../../components/modals/RateAppModal";
 
 /* ── Background catalog ──────────────────────────────────────────────────── */
 
@@ -317,6 +318,7 @@ export default function DevButtonLabScreen() {
   const [bgIndex, setBgIndex] = useState(0);
   const nextBg = useCallback(() => setBgIndex((i) => (i + 1) % BG_CATALOG.length), []);
   const activeBg = BG_CATALOG[bgIndex];
+  const [showRateModal, setShowRateModal] = useState(false);
 
   return (
     <FullBleedStack
@@ -1186,8 +1188,26 @@ export default function DevButtonLabScreen() {
             />
           </View>
 
+          {/* ═══ MODALS ══════════════════════════════════════════════════════ */}
+          <SectionLabel text="MODALS" />
+          <View style={{ marginBottom: GAP }}>
+            <CustomButton
+              title="⭐  RATE APP MODAL"
+              appearance="primary"
+              btnSize="sm"
+              fontSize="sm"
+              fullWidth
+              onPress={() => setShowRateModal(true)}
+            />
+          </View>
+
         </ScrollView>
       </SafeAreaView>
+
+      <RateAppModal
+        visible={showRateModal}
+        onClose={() => setShowRateModal(false)}
+      />
     </FullBleedStack>
   );
 }

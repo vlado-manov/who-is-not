@@ -553,7 +553,7 @@ export default function CustomButton({
                       color: titleColor ?? "#fff",
                       fontSize: resolvedFontSize,
                       textTransform: "uppercase",
-                      fontFamily: titleFontFamily ?? "SeymourOne-Regular",
+                      fontFamily: titleFontFamily ?? "Tektur-Black",
                       textShadowColor: "rgba(0,0,0,0.35)",
                       textShadowOffset: { width: 0, height: 3 },
                       textShadowRadius: 4,

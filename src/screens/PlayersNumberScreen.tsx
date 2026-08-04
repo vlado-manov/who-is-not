@@ -14,7 +14,7 @@ const AnimatedImage = Animated.createAnimatedComponent(Image);
 import FullBleedStack from "../components/FullBleedStack";
 import ImageBackgroundWithLoadGate from "../components/ImageBackgroundWithLoadGate";
 import WarmBubblesOverlay from "../components/WarmBubblesOverlay";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { backgrounds } from "../../assets/backgrounds";
 import CustomText from "../components/common/CustomText";
 import { useTranslation } from "react-i18next";
@@ -53,6 +53,7 @@ const PlayersNumberScreen = () => {
   const navigation = useNavigation<Nav>();
   const { openUserSettings } = useUserSettingsSheet();
   const { settings, updateSettings, user } = useAuthStore();
+  const insets = useSafeAreaInsets();
 
   /* ----------------------------- LOGO PICKER ----------------------------- */
 
@@ -219,7 +220,7 @@ const PlayersNumberScreen = () => {
 
             {/* CONTENT */}
             <View style={[{ width: "100%", alignItems: "center", paddingHorizontal: 8 }, isTablet && { maxWidth: 560, alignSelf: "center" }]}>
-              <CustomText variant="label" className="mb-4">
+              <CustomText variant="label" sizeDelta={6} className="mb-4" style={{ fontFamily: "SofiaSansExtraCondensed-Bold" }}>
                 {t("players_number_label_text")}
               </CustomText>
 
@@ -298,36 +299,39 @@ const PlayersNumberScreen = () => {
                 </Pressable>
               </View>
 
-              <CustomText variant="footnote" className="mb-4">
+              <CustomText variant="footnote" className="mb-4" style={{ fontFamily: "Onest-SemiBold" }}>
                 {t("max_characters_players")}
               </CustomText>
-
-              {/* CONTINUE */}
-              <CustomButton
-                title={t("continue_btn")}
-                fullWidth
-                btnSize="sm"
-                fontSize="sm"
-                buttonClassName="mt-2"
-                onPress={onContinue}
-                backgroundImage={backgrounds.bg026}
-                shadowColor="#005f07"
-              />
-
-              {/* SETTINGS */}
-              <TouchableOpacity
-                className="flex-row items-center gap-2 justify-center mt-4"
-                onPress={() => {
-                  setGameSettingsVisible(true);
-                  AudioManager.playButtonClick();
-                }}
-              >
-                <FontAwesome name="gear" size={20} color="white" />
-                <CustomText variant="p">{t("game_settings")}</CustomText>
-              </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
+
+        <View
+          style={[
+            styles.footer,
+            { paddingHorizontal: pad, paddingBottom: insets.bottom + 16 },
+          ]}
+        >
+          <CustomButton
+            title={t("continue_btn")}
+            fullWidth
+            btnSize="md"
+            fontSize="md"
+            onPress={onContinue}
+            backgroundImage={backgrounds.bg026}
+            shadowColor="#005f07"
+          />
+          <TouchableOpacity
+            className="flex-row items-center gap-2 justify-center mt-4"
+            onPress={() => {
+              setGameSettingsVisible(true);
+              AudioManager.playButtonClick();
+            }}
+          >
+            <FontAwesome name="gear" size={20} color="white" />
+            <CustomText variant="p" sizeDelta={4} style={{ fontFamily: "SofiaSansExtraCondensed-Bold" }}>{t("game_settings")}</CustomText>
+          </TouchableOpacity>
+        </View>
 
         {gameSettingsVisible && (
           <GameSettingsModal setGameSettingsVisible={setGameSettingsVisible} />
@@ -347,5 +351,8 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: "transparent",
+  },
+  footer: {
+    paddingTop: 12,
   },
 });

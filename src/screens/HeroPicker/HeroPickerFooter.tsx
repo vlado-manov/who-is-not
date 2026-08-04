@@ -113,8 +113,8 @@ export function HeroPickerFooter({
       <View style={[styles.heroCtaWrap, ctaWrapStyles.wrap]}>
         <CustomButton
           title={ctaTitle}
-          btnSize={isNaming ? "md" : "sm"}
-          fontSize={isNaming ? "md" : "sm"}
+          btnSize="md"
+          fontSize="md"
           fullWidth
           horizontalPadding={28}
           onPress={onConfirm}

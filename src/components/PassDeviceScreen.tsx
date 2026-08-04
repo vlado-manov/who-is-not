@@ -138,6 +138,7 @@ const PassDeviceScreen = () => {
             <CustomText
               variant="h3-headline"
               className="mt-8 text-center z-50 px-2 text-black"
+              style={{ fontFamily: "Tektur-SemiBold" }}
             >
               {t("pass_device_sub", {
                 defaultValue: "Hand the phone to next player",

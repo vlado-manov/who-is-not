@@ -221,8 +221,8 @@ function PromoCard({ onGoToStore }: { onGoToStore: () => void }) {
           <CustomButton
             title="Get Premium"
             appearance="primary"
-            btnSize="sm"
-            fontSize="sm"
+            btnSize="md"
+            fontSize="md"
             fullWidth
             glow
             glowColor="rgba(249,115,22,0.55)"

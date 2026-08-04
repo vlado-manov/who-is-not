@@ -1129,6 +1129,8 @@ const ResultsScreen = () => {
                       variant="p"
                       className="text-center"
                       textColor="#762a05"
+                      sizeDelta={2}
+                      style={{ fontFamily: "Onest-SemiBold" }}
                     >
                       {t("bonus_round_title")}
                     </CustomText>
@@ -1138,6 +1140,8 @@ const ResultsScreen = () => {
                       className="text-center"
                       textColor="#592410"
                       allowWrap
+                      sizeDelta={10}
+                      style={{ fontFamily: "SofiaSansExtraCondensed-SemiBold" }}
                     >
                       {t("results_bonus_no_question")}
                     </CustomText>
@@ -1146,6 +1150,8 @@ const ResultsScreen = () => {
                       variant="p-small"
                       className="text-center max-w-[60%]"
                       textColor="#762a05"
+                      sizeDelta={2}
+                      style={{ fontFamily: "Onest-SemiBold" }}
                     >
                       {t("results_who_voted_whom")}
                     </CustomText>
@@ -1153,6 +1159,8 @@ const ResultsScreen = () => {
                       variant="p-xsmall"
                       className="text-center max-w-[50%]"
                       textColor="#762a05"
+                      sizeDelta={2}
+                      style={{ fontFamily: "Onest-SemiBold" }}
                     >
                       {t("results_click_timer_skip")}
                     </CustomText>
@@ -1163,6 +1171,8 @@ const ResultsScreen = () => {
                       variant="p"
                       className="text-center"
                       textColor="#762a05"
+                      sizeDelta={2}
+                      style={{ fontFamily: "Onest-SemiBold" }}
                     >
                       {t("results_the_question_is")}
                     </CustomText>
@@ -1172,6 +1182,8 @@ const ResultsScreen = () => {
                       className="text-center"
                       textColor="#592410"
                       allowWrap
+                      sizeDelta={10}
+                      style={{ fontFamily: "SofiaSansExtraCondensed-SemiBold" }}
                     >
                       {baseQuestion?.text}
                     </CustomText>
@@ -1180,6 +1192,8 @@ const ResultsScreen = () => {
                       variant="p-small"
                       className="text-center max-w-[60%]"
                       textColor="#762a05"
+                      sizeDelta={2}
+                      style={{ fontFamily: "Onest-SemiBold" }}
                     >
                       {t("results_who_not_answering")}
                     </CustomText>
@@ -1187,6 +1201,8 @@ const ResultsScreen = () => {
                       variant="p-xsmall"
                       className="text-center max-w-[50%]"
                       textColor="#762a05"
+                      sizeDelta={2}
+                      style={{ fontFamily: "Onest-SemiBold" }}
                     >
                       {t("results_click_timer_skip")}
                     </CustomText>
@@ -1297,7 +1313,7 @@ const ResultsScreen = () => {
                           title={voter.name}
                           appearance="tertiary"
                           btnSize="xs"
-                          fontSize="xs"
+                          fontSize="sm"
                           backgroundImage={backgrounds.bg018}
                           glow
                           fullWidth
@@ -1323,7 +1339,7 @@ const ResultsScreen = () => {
                           title={target.name}
                           appearance="tertiary"
                           btnSize="xs"
-                          fontSize="xs"
+                          fontSize="sm"
                           backgroundImage={backgrounds.bg018}
                           glow
                           fullWidth
@@ -1390,7 +1406,7 @@ const ResultsScreen = () => {
                           title={player.name}
                           appearance="tertiary"
                           btnSize="xs"
-                          fontSize="xs"
+                          fontSize="sm"
                           backgroundImage={backgrounds.bg018}
                           glow
                           fullWidth

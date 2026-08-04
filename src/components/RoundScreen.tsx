@@ -206,22 +206,16 @@ const RoundScreen = () => {
       )}
       <View className="flex-1 justify-center relative">
         <View style={isTablet ? styles.tabletCenter : undefined}>
-          <CustomText variant="h2" className="text-center mb-2" shadow>
+          <CustomText variant="h2" sizeDelta={4} className="text-center mb-2" shadow>
             {t("round_label")}
           </CustomText>
-          <CustomText className="text-center" variant="h0" shadow>
+          <CustomText className="text-center" variant="h0" sizeDelta={4} shadow>
             {displayRound}
           </CustomText>
         </View>
         {mode !== "ONLINE" ? (
           <View className="mb-16 absolute bottom-0 left-0 right-0">
             <View style={isTablet ? styles.tabletBottomBar : { paddingHorizontal: 64 }}>
-              <CustomText className="text-center mb-4">
-                <CustomText className="underline">{firstPlayerName}</CustomText>,
-                <CustomText>
-                  {" "}{t("round_start_hint")}
-                </CustomText>
-              </CustomText>
               <CustomButton
                 title={t("start_btn")}
                 backgroundImage={backgrounds.bg026}
@@ -232,6 +226,14 @@ const RoundScreen = () => {
                 fullWidth
                 onPress={onContinue}
               />
+              <CustomText
+                variant="footnote"
+                className="text-center mt-2"
+                style={{ fontFamily: "Onest-SemiBold" }}
+              >
+                <CustomText className="underline" style={{ fontFamily: "Onest-SemiBold" }}>{firstPlayerName}</CustomText>
+                {", "}{t("round_start_hint")}
+              </CustomText>
             </View>
           </View>
         ) : null}

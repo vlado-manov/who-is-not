@@ -110,7 +110,8 @@ const ProfileSettingsComponent = ({ setSettingsVisible }: Props) => {
                     <CustomButton
                       title="Change name"
                       color="bg-primary-700"
-                      btnSize="sm"
+                      btnSize="md"
+                      fontSize="md"
                       fullWidth
                       buttonClassName="w-full m-auto"
                       onPress={submitName}

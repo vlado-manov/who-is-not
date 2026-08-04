@@ -117,6 +117,8 @@
   "first_player_up": "Le toca al primero",
   "first_player_name": "{{name}} es el primero",
   "vote_now_player_turn": "Le toca votar a {{name}}",
+  "vote_now_first_label": "es el primero",
+  "vote_now_turn_label": "le toca votar",
   "loading": "Cargando...",
   "loading_hint": "Un momento, lo estamos preparando todo.",
   "loading_hint_2": "Casi listo...",

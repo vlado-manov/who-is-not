@@ -117,6 +117,8 @@
   "first_player_up": "Първият играч е на ред",
   "first_player_name": "{{name}} е първи",
   "vote_now_player_turn": "{{name}} е на ред да гласува",
+  "vote_now_first_label": "е първи",
+  "vote_now_turn_label": "е на ред",
   "loading": "Зареждане...",
   "loading_hint": "Малко търпение, приготвяме всичко.",
   "loading_hint_2": "Почти готово...",

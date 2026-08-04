@@ -38,6 +38,8 @@ import {
 } from "../utils/responsive";
 import { reportMultiplayerDiagnostic } from "../utils/multiplayerDiagnostics";
 import AudioManager from "../utils/audioManager";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 
 const VOTE_NOW_IMAGE_URLS = [
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/536c3912-ecb7-485e-a434-6702f142fdc9-voteNow1.webp",
@@ -110,7 +112,7 @@ const VoteNowScreen = () => {
 
   /** Prefer measured stage; until onLayout, window height avoids bad % fallbacks that pushed title near the footer. */
   const effectiveStageHeight = stageHeight > 0 ? stageHeight : windowHeight;
-  const markTopPx = (effectiveStageHeight - markStackOuterHeight) / 2;
+  const markTopPx = (effectiveStageHeight - markStackOuterHeight) / 2 - 120;
 
   const onStartVoting = () => {
     if (continuedRef.current) return;
@@ -315,20 +317,55 @@ const VoteNowScreen = () => {
               </View>
             </Pressable>
 
-            {mode !== "ONLINE" ? (
-              <CustomText
-                variant="h4-headline"
-                className="px-2 text-center"
-                style={styles.titleUnderMark}
-              >
-                {currentVoter
-                  ? voterIndex === 0
-                    ? t("first_player_name", { name: currentVoter.name })
-                    : t("vote_now_player_turn", { name: currentVoter.name })
-                  : t("first_player_up")}
-              </CustomText>
-            ) : null}
           </Animated.View>
+
+          {mode !== "ONLINE" ? (
+            <View
+              style={[
+                styles.nameLabel,
+                { left: pad, right: pad, top: markTopPx + markStackOuterHeight - 20 },
+              ]}
+              pointerEvents="none"
+            >
+              <View style={styles.nameBlurContainer}>
+                <BlurView intensity={18} tint="default" style={StyleSheet.absoluteFill} />
+                <LinearGradient
+                  colors={["transparent", "rgba(255,255,255,0.08)", "transparent"]}
+                  locations={[0, 0.5, 1]}
+                  start={{ x: 0, y: 0.5 }}
+                  end={{ x: 1, y: 0.5 }}
+                  style={StyleSheet.absoluteFill}
+                />
+                <LinearGradient
+                  colors={["transparent", "rgba(255,255,255,0.08)", "transparent"]}
+                  locations={[0, 0.5, 1]}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+                <CustomText
+                  variant="h4-headline"
+                  sizeDelta={12}
+                  className="px-2 text-center"
+                  style={{ fontFamily: "SofiaSansExtraCondensed-Bold" }}
+                >
+                  {currentVoter ? currentVoter.name : t("first_player_up")}
+                </CustomText>
+                {currentVoter ? (
+                  <CustomText
+                    variant="h4-headline"
+                    sizeDelta={8}
+                    className="px-2 text-center"
+                    style={{ fontFamily: "SofiaSansExtraCondensed-SemiBold" }}
+                  >
+                    {voterIndex === 0
+                      ? t("vote_now_first_label")
+                      : t("vote_now_turn_label")}
+                  </CustomText>
+                ) : null}
+              </View>
+            </View>
+          ) : null}
 
           <View
             style={[
@@ -340,21 +377,6 @@ const VoteNowScreen = () => {
               },
             ]}
           >
-            {mode !== "ONLINE" ? (
-              <CustomText
-                variant="footnote"
-                className="px-2 text-center"
-                style={styles.hintAboveButton}
-              >
-                {currentVoter
-                  ? voterIndex === 0
-                    ? t("first_voter_click_hint", { name: currentVoter.name })
-                    : t("pass_device_vote_instruction", {
-                        name: currentVoter.name,
-                      })
-                  : t("first_player_up")}
-              </CustomText>
-            ) : null}
             <CustomButton
               title={t("its_me")}
               backgroundImage={backgrounds.bg026}
@@ -365,6 +387,21 @@ const VoteNowScreen = () => {
               fullWidth
               onPress={onStartVoting}
             />
+            {mode !== "ONLINE" ? (
+              <CustomText
+                variant="footnote"
+                className="px-2 text-center"
+                style={[styles.hintBelowButton, { fontFamily: "Onest-SemiBold" }]}
+              >
+                {currentVoter
+                  ? voterIndex === 0
+                    ? t("first_voter_click_hint", { name: currentVoter.name })
+                    : t("pass_device_vote_instruction", {
+                        name: currentVoter.name,
+                      })
+                  : t("first_player_up")}
+              </CustomText>
+            ) : null}
           </View>
         </View>
       </SafeAreaView>
@@ -381,15 +418,23 @@ const styles = StyleSheet.create({
     position: "absolute",
     alignItems: "center",
   },
-  titleUnderMark: {
-    marginTop: 12,
+  nameLabel: {
+    position: "absolute",
+    alignItems: "center",
+  },
+  nameBlurContainer: {
+    overflow: "hidden",
+    borderRadius: 36,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    alignItems: "center",
   },
   footer: {
     position: "absolute",
     bottom: 0,
   },
-  hintAboveButton: {
-    marginBottom: 8,
+  hintBelowButton: {
+    marginTop: 8,
   },
   markPressable: {
     alignItems: "center",

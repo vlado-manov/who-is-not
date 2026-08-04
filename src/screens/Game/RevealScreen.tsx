@@ -18,7 +18,7 @@ import { useNavigation } from "@react-navigation/native";
 
 import { Player, useGameStore } from "../../store/useGameStore";
 import { GameStackParamList } from "../../navigation/types";
-import CustomText from "../../components/common/CustomText";
+// import CustomText from "../../components/common/CustomText"; // commented out for now
 import CustomButton from "../../components/common/CustomButton";
 
 import { backgrounds } from "../../../assets/backgrounds";
@@ -31,7 +31,7 @@ import { useTranslation } from "react-i18next";
 import { formatQuestionWithName } from "../../utils/formatQuestionText";
 import {
   deterministicPickIndex,
-  getRevealQuoteI18nKey,
+  // getRevealQuoteI18nKey, // commented out for now
   getRevealVariant,
   LoseVariant,
   WinVariant,
@@ -64,20 +64,21 @@ const RevealScreen = () => {
   const impactFlash = useRef(new Animated.Value(0)).current;
   const [characterLoaded, setCharacterLoaded] = useState(false);
   const [showCTA, setShowCTA] = useState(false);
-  const [showQuoteBubble, setShowQuoteBubble] = useState(false);
-  const [quoteTyped, setQuoteTyped] = useState("");
+  // -- QUOTE BUBBLE (commented out for now) --
+  // const [showQuoteBubble, setShowQuoteBubble] = useState(false);
+  // const [quoteTyped, setQuoteTyped] = useState("");
 
   const [hideAnimatedTitle, setHideAnimatedTitle] = useState(false);
   const plateTranslateY = useRef(new Animated.Value(0)).current;
   const buttonTranslateY = useRef(new Animated.Value(80)).current;
   const buttonOpacity = useRef(new Animated.Value(0)).current;
   const titleOpacity = useRef(new Animated.Value(0)).current;
-  const quoteOpacity = useRef(new Animated.Value(0)).current;
-  const quoteTranslateY = useRef(new Animated.Value(-28)).current;
-  const quoteScale = useRef(new Animated.Value(1)).current;
+  // const quoteOpacity = useRef(new Animated.Value(0)).current; // commented out for now
+  // const quoteTranslateY = useRef(new Animated.Value(-28)).current; // commented out for now
+  // const quoteScale = useRef(new Animated.Value(1)).current; // commented out for now
   const hasRevealedCTA = useRef(false);
   const isContinuingRef = useRef(false);
-  const typeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // const typeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null); // commented out for now
   const hideTitleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
@@ -87,7 +88,7 @@ const RevealScreen = () => {
   const entryAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   const ctaAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   const titleFadeAnimRef = useRef<Animated.CompositeAnimation | null>(null);
-  const quoteIntroAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+  // const quoteIntroAnimRef = useRef<Animated.CompositeAnimation | null>(null); // commented out for now
 
   const stopRevealAnimations = () => {
     entryAnimRef.current?.stop();
@@ -96,10 +97,10 @@ const RevealScreen = () => {
     ctaAnimRef.current = null;
     titleFadeAnimRef.current?.stop();
     titleFadeAnimRef.current = null;
-    quoteIntroAnimRef.current?.stop();
-    quoteIntroAnimRef.current = null;
+    // quoteIntroAnimRef.current?.stop(); // commented out for now
+    // quoteIntroAnimRef.current = null; // commented out for now
 
-    cleanupQuoteTyping();
+    // cleanupQuoteTyping(); // commented out for now
 
     if (revealCtaTimeoutRef.current) {
       clearTimeout(revealCtaTimeoutRef.current);
@@ -129,15 +130,15 @@ const RevealScreen = () => {
     buttonTranslateY.stopAnimation();
     buttonOpacity.stopAnimation();
     titleOpacity.stopAnimation();
-    quoteOpacity.stopAnimation();
-    quoteTranslateY.stopAnimation();
-    quoteScale.stopAnimation();
+    // quoteOpacity.stopAnimation(); // commented out for now
+    // quoteTranslateY.stopAnimation(); // commented out for now
+    // quoteScale.stopAnimation(); // commented out for now
 
-    setShowQuoteBubble(false);
-    setQuoteTyped("");
+    // setShowQuoteBubble(false); // commented out for now
+    // setQuoteTyped(""); // commented out for now
 
-    void AudioManager.stopKeyboardLoop();
-    void AudioManager.restoreBackground(0.2);
+    // void AudioManager.stopKeyboardLoop(); // commented out for now
+    // void AudioManager.restoreBackground(0.2); // commented out for now
   };
 
   const players = useGameStore((s) => s.players);
@@ -445,79 +446,76 @@ const RevealScreen = () => {
     ]);
     ctaAnimRef.current.start(() => {
       if (isContinuingRef.current) return;
-      if (hideTitleTimeoutRef.current) {
-        clearTimeout(hideTitleTimeoutRef.current);
-      }
-      hideTitleTimeoutRef.current = setTimeout(() => {
-        if (isContinuingRef.current) return;
-        titleFadeAnimRef.current = Animated.timing(titleOpacity, {
-          toValue: 0,
-          duration: 280,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        });
-        titleFadeAnimRef.current.start();
-        runRevealQuoteSequence();
-      }, 300);
+      // -- Title fade-out + quote sequence commented out for now --
+      // if (hideTitleTimeoutRef.current) {
+      //   clearTimeout(hideTitleTimeoutRef.current);
+      // }
+      // hideTitleTimeoutRef.current = setTimeout(() => {
+      //   if (isContinuingRef.current) return;
+      //   titleFadeAnimRef.current = Animated.timing(titleOpacity, {
+      //     toValue: 0,
+      //     duration: 280,
+      //     easing: Easing.out(Easing.cubic),
+      //     useNativeDriver: true,
+      //   });
+      //   titleFadeAnimRef.current.start();
+      //   runRevealQuoteSequence();
+      // }, 300);
     });
   };
 
-  const cleanupQuoteTyping = () => {
-    if (typeIntervalRef.current) {
-      clearInterval(typeIntervalRef.current);
-      typeIntervalRef.current = null;
-    }
-  };
+  // -- QUOTE FUNCTIONS (commented out for now) --
+  // const cleanupQuoteTyping = () => {
+  //   if (typeIntervalRef.current) {
+  //     clearInterval(typeIntervalRef.current);
+  //     typeIntervalRef.current = null;
+  //   }
+  // };
 
-  const typeQuote = (text: string, onDone?: () => void) => {
-    cleanupQuoteTyping();
+  // const typeQuote = (text: string, onDone?: () => void) => {
+  //   cleanupQuoteTyping();
+  //   void AudioManager.duckBackground(0.12);
+  //   void AudioManager.startKeyboardLoop();
+  //   setQuoteTyped("");
+  //   let i = 0;
+  //   typeIntervalRef.current = setInterval(() => {
+  //     i += 1;
+  //     setQuoteTyped(text.slice(0, i));
+  //     if (i >= text.length) {
+  //       cleanupQuoteTyping();
+  //       void AudioManager.stopKeyboardLoop();
+  //       void AudioManager.restoreBackground(0.35);
+  //       onDone?.();
+  //     }
+  //   }, 38);
+  // };
 
-    void AudioManager.duckBackground(0.12);
-    void AudioManager.startKeyboardLoop();
-
-    setQuoteTyped("");
-    let i = 0;
-
-    typeIntervalRef.current = setInterval(() => {
-      i += 1;
-      setQuoteTyped(text.slice(0, i));
-
-      if (i >= text.length) {
-        cleanupQuoteTyping();
-        void AudioManager.stopKeyboardLoop();
-        void AudioManager.restoreBackground(0.35);
-        onDone?.();
-      }
-    }, 38);
-  };
-
-  const runRevealQuoteSequence = () => {
-    setShowQuoteBubble(true);
-    quoteOpacity.setValue(0);
-    quoteTranslateY.setValue(-28);
-    quoteScale.setValue(1);
-
-    quoteIntroAnimRef.current = Animated.parallel([
-      Animated.timing(quoteOpacity, {
-        toValue: 1,
-        duration: 160,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-      Animated.timing(quoteTranslateY, {
-        toValue: 0,
-        duration: 220,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]);
-    quoteIntroAnimRef.current.start(() => {
-      if (isContinuingRef.current) return;
-      typeQuote(revealQuoteText, () => {
-        // void AudioManager.playHeroPickerEnd();
-      });
-    });
-  };
+  // const runRevealQuoteSequence = () => {
+  //   setShowQuoteBubble(true);
+  //   quoteOpacity.setValue(0);
+  //   quoteTranslateY.setValue(-28);
+  //   quoteScale.setValue(1);
+  //   quoteIntroAnimRef.current = Animated.parallel([
+  //     Animated.timing(quoteOpacity, {
+  //       toValue: 1,
+  //       duration: 160,
+  //       easing: Easing.out(Easing.quad),
+  //       useNativeDriver: true,
+  //     }),
+  //     Animated.timing(quoteTranslateY, {
+  //       toValue: 0,
+  //       duration: 220,
+  //       easing: Easing.out(Easing.cubic),
+  //       useNativeDriver: true,
+  //     }),
+  //   ]);
+  //   quoteIntroAnimRef.current.start(() => {
+  //     if (isContinuingRef.current) return;
+  //     typeQuote(revealQuoteText, () => {
+  //       // void AudioManager.playHeroPickerEnd();
+  //     });
+  //   });
+  // };
 
   useEffect(() => {
     return () => {
@@ -596,10 +594,10 @@ const RevealScreen = () => {
     [gameId, round, oddOneId, revealVariant, impostorWon]
   );
 
-  const revealQuoteText = useMemo(
-    () => t(getRevealQuoteI18nKey(impostorWon, revealVariant)),
-    [t, impostorWon, revealVariant]
-  );
+  // const revealQuoteText = useMemo( // commented out for now
+  //   () => t(getRevealQuoteI18nKey(impostorWon, revealVariant)),
+  //   [t, impostorWon, revealVariant]
+  // );
 
   /* -------------------------------------------------------------------------- */
   /* ASSETS */
@@ -753,6 +751,7 @@ const RevealScreen = () => {
           />
         </View> */}
 
+        {/* -- QUOTE BUBBLE (commented out for now) --
         {showQuoteBubble && (
           <Animated.View
             pointerEvents="none"
@@ -782,6 +781,7 @@ const RevealScreen = () => {
             </View>
           </Animated.View>
         )}
+        */}
         <Animated.View
           style={[
             styles.topTitleWrap,
@@ -960,7 +960,8 @@ const RevealScreen = () => {
               >
                 <CustomButton
                   title={t("continue_btn")}
-                  btnSize="sm"
+                  btnSize="md"
+                  fontSize="md"
                   fullWidth
                   backgroundImage={
                     impostorLost ? backgrounds.bg003 : backgrounds.bg026
@@ -1063,45 +1064,46 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
 
-  quoteBubble: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 22,
-    paddingVertical: 18,
-    paddingHorizontal: 22,
-    minWidth: "92%",
-    maxWidth: "92%",
-    alignSelf: "center",
-    marginTop: 48,
-    zIndex: 1,
-  },
-  quoteOverlay: {
-    position: "absolute",
-    top: 24,
-    left: 0,
-    right: 0,
-    zIndex: 11,
-  },
-  quoteBubbleShadow: {
-    shadowColor: "#000",
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
-  },
-  quoteBubbleTailWrap: {
-    position: "absolute",
-    bottom: -14,
-    left: "50%",
-    transform: [{ translateX: -12 }],
-  },
-  quoteBubbleTail: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 12,
-    borderRightWidth: 12,
-    borderTopWidth: 14,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderTopColor: "#FFFFFF",
-  },
+  // -- QUOTE STYLES (commented out for now) --
+  // quoteBubble: {
+  //   backgroundColor: "#FFFFFF",
+  //   borderRadius: 22,
+  //   paddingVertical: 18,
+  //   paddingHorizontal: 22,
+  //   minWidth: "92%",
+  //   maxWidth: "92%",
+  //   alignSelf: "center",
+  //   marginTop: 48,
+  //   zIndex: 1,
+  // },
+  // quoteOverlay: {
+  //   position: "absolute",
+  //   top: 24,
+  //   left: 0,
+  //   right: 0,
+  //   zIndex: 11,
+  // },
+  // quoteBubbleShadow: {
+  //   shadowColor: "#000",
+  //   shadowOpacity: 0.18,
+  //   shadowRadius: 16,
+  //   shadowOffset: { width: 0, height: 8 },
+  //   elevation: 8,
+  // },
+  // quoteBubbleTailWrap: {
+  //   position: "absolute",
+  //   bottom: -14,
+  //   left: "50%",
+  //   transform: [{ translateX: -12 }],
+  // },
+  // quoteBubbleTail: {
+  //   width: 0,
+  //   height: 0,
+  //   borderLeftWidth: 12,
+  //   borderRightWidth: 12,
+  //   borderTopWidth: 14,
+  //   borderLeftColor: "transparent",
+  //   borderRightColor: "transparent",
+  //   borderTopColor: "#FFFFFF",
+  // },
 });

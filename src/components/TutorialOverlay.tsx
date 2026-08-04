@@ -153,6 +153,7 @@ export default function TutorialOverlay({ visible, onSkipAll, onDoneAll, steps }
                         key={i}
                         textColor="black"
                         className={i === 0 ? "mt-4" : "mt-2"}
+                        style={{ fontFamily: "Onest-SemiBold" }}
                       >
                         {b}
                       </CustomText>

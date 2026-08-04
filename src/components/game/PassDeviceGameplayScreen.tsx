@@ -122,13 +122,14 @@ const PassDeviceGameplayScreen = () => {
             <CustomText
               variant="h4-headline"
               className="text-center z-50 px-2 mt-4"
+              style={{ fontFamily: "Tektur-SemiBold" }}
             >
               {t("hand_phone_to")}
             </CustomText>
             <CustomText variant="h3" shadow className="capitalize">
               {currentPlayer?.name}
             </CustomText>
-            <CustomText variant="p-small">({t("no_peeking")})</CustomText>
+            <CustomText variant="p-small" sizeDelta={4} style={{ fontFamily: "Tektur-SemiBold" }}>({t("no_peeking")})</CustomText>
           </View>
 
           <View style={styles.illustrationBlock}>
@@ -153,7 +154,7 @@ const PassDeviceGameplayScreen = () => {
             <CustomText
               variant="p"
               className="text-center px-2"
-              style={styles.ctaHint}
+              style={[styles.ctaHint, { fontFamily: "Onest-SemiBold" }]}
             >
               {currentPlayer
                 ? `${currentPlayer.name}, ${t("click_next_phone")}`

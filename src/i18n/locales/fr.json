@@ -117,6 +117,8 @@
   "first_player_up": "Le premier joueur est à l'honneur",
   "first_player_name": "{{name}} commence",
   "vote_now_player_turn": "C'est au tour de {{name}} de voter",
+  "vote_now_first_label": "commence",
+  "vote_now_turn_label": "vote maintenant",
   "loading": "Chargement...",
   "loading_hint": "Un instant, on prépare tout.",
   "loading_hint_2": "Presque prêt...",

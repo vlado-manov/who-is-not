@@ -858,8 +858,8 @@ export default function DeathMatchScreen() {
             <CustomButton
               title={t("deathmatch_lets_go")}
               fullWidth
-              btnSize="lg"
-              fontSize="lg"
+              btnSize="md"
+              fontSize="md"
               onPress={handleLetsGo}
               backgroundImage={backgrounds.bg026}
               glow

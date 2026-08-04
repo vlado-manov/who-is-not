@@ -82,6 +82,8 @@ const QuestionPlate = ({
               variant="p-small"
               className="text-center"
               textColor={theme.subText}
+              sizeDelta={2}
+              style={{ fontFamily: "Onest-SemiBold" }}
             >
               {title}
             </CustomText>
@@ -97,6 +99,8 @@ const QuestionPlate = ({
           className="text-center"
           textColor={textColorOverride ?? theme.text}
           allowWrap
+          sizeDelta={10}
+          style={{ fontFamily: "SofiaSansExtraCondensed-SemiBold" }}
         >
           {text}
         </CustomText>
@@ -110,6 +114,8 @@ const QuestionPlate = ({
               variant="p-small"
               className="text-center"
               textColor={theme.subText}
+              sizeDelta={2}
+              style={{ fontFamily: "Onest-SemiBold" }}
             >
               {subtitle}
             </CustomText>

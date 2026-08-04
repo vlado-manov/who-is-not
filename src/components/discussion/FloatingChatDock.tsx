@@ -359,7 +359,8 @@ export default function FloatingChatDock({
                     <CustomButton
                       title={t("discussion_chat_send")}
                       onPress={submit}
-                      btnSize="sm"
+                      btnSize="md"
+                      fontSize="md"
                       backgroundImage={backgrounds.bg026}
                       glow
                       glowColor="rgba(41,255,25,0.8)"
