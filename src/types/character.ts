@@ -30,6 +30,8 @@ export interface ICharacter {
   finalLoserImage?: ImageSourcePropType | null;
   /** Optional image shown during the deathmatch guessing game. */
   deathmatch_image?: ImageSourcePropType | null;
+  /** Optional ghost/death image shown on the PlayerDeath screen. */
+  deathImage?: ImageSourcePropType | null;
   winImages: ImageSourcePropType[];
   winVideo?: any;
   loseImages: ImageSourcePropType[];

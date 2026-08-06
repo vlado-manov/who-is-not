@@ -44,6 +44,7 @@ import {
 } from "./src/utils/crashMonitor";
 import { WELCOME_BACKGROUND_URIS } from "./src/hooks/useWelcomeBackgroundVariant";
 import { prefetchExpoImageUri } from "./src/utils/prefetchExpoImage";
+import { registerForPushNotifications } from "./src/utils/pushNotifications";
 
 /** Same URI as `CurtainOverlay` loader strip — prefetch early for Android decode. */
 const WELCOME_CURTAIN_LOADER_URI =
@@ -219,10 +220,17 @@ export default function App() {
   };
 
   const soundEnabled = useAuthStore((s) => s.settings.soundEnabled);
+  const userId = useAuthStore((s) => s.user.id);
+  const notificationsEnabled = useAuthStore((s) => s.settings.notificationsEnabled);
 
   useEffect(() => {
     AudioManager.applySettingsFromStore(soundEnabled);
   }, [soundEnabled]);
+
+  useEffect(() => {
+    if (!notificationsEnabled || !userId) return;
+    void registerForPushNotifications(userId).catch(() => {});
+  }, [userId, notificationsEnabled]);
 
   useEffect(() => {
     void assertContractCompatibility().catch((e) => {

@@ -40,7 +40,6 @@ import {
   DEATH_BG_URI,
   DEATH_HEART_BROKEN_URI,
   DEATH_HEART_FULL_URI,
-  DEV_LAB_DEATH_HERO_GHOST_URI,
   YOU_GOT_COOKED_TITLE_URI,
 } from "../../constants/deathScreen";
 import { PLAYER_LEFT_GAME_MESSAGE_TYPE } from "../../constants/onlineLobby";
@@ -651,15 +650,10 @@ export default function PlayerDeathScreen() {
   );
 
   const loseImage: ImageSourcePropType | null = useMemo(() => {
-    if (gameId?.startsWith("dev_")) {
-      return { uri: DEV_LAB_DEATH_HERO_GHOST_URI };
-    }
     if (!hero) return null;
-    const byVar = hero.loseImagesByVariant?.NORMAL;
-    const pool = byVar && byVar.length > 0 ? byVar : (hero.loseImages ?? []);
-    if (pool.length > 0) return pool[0] as ImageSourcePropType;
+    if (hero.deathImage) return hero.deathImage as ImageSourcePropType;
     return (hero.main_image ?? hero.profileImage) as ImageSourcePropType;
-  }, [gameId, hero]);
+  }, [hero]);
 
   const titleHeight = Math.min(400, Math.round(windowWidth * 0.74));
   const titleTop = insets.top + Math.max(0, Math.round(windowHeight * 0.004) - 14);

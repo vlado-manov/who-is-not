@@ -21,10 +21,6 @@ export const DEATH_X_PART_1_URI =
 export const DEATH_X_PART_2_URI =
   GALLERY + "ec0c25c5-748e-4689-9742-b6a211bf0a2b-xpart2.webp";
 
-/** Dev lab PlayerDeath hero override (Silent Vanessa ghost). */
-export const DEV_LAB_DEATH_HERO_GHOST_URI =
-  GALLERY + "f15b67f1-444d-4903-8f9d-218bfc72df44-silentVanessaGhost.webp";
-
 /** @deprecated Use YOU_GOT_COOKED_TITLE_URI */
 export const YOU_DIED_TITLE_URI = YOU_GOT_COOKED_TITLE_URI;
 

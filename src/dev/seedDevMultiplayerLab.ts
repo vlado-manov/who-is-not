@@ -48,6 +48,13 @@ function resolveHeroId(slug: string, fallbackId: string): string {
   return heroes.find((h) => h.slug === slug)?.id ?? fallbackId;
 }
 
+function resolveRandomHeroId(excludeId?: string): string {
+  const heroes = useHeroesStore.getState().heroes;
+  const pool = excludeId ? heroes.filter((h) => h.id !== excludeId) : heroes;
+  if (pool.length === 0) return resolveVanessaId();
+  return pool[Math.floor(Math.random() * pool.length)].id;
+}
+
 function threePlayers(vanessaId: string) {
   return [
     {
@@ -204,11 +211,67 @@ export function seedLivesRevealScreen() {
 }
 
 export function seedPlayerDeathContinue() {
-  seedDevLabBase();
+  const vanessaId = resolveVanessaId();
+  const randomId = resolveRandomHeroId(vanessaId);
+  const store = useGameStore.getState();
+  store.reset();
+  store.set({
+    mode: "LOCAL",
+    gameId: `dev_${Date.now()}`,
+    phase: "answering",
+    round: 0,
+    players: [
+      { id: DEV_IDS.local, name: "You",       characterId: vanessaId, connected: true, isHost: true },
+      { id: DEV_IDS.p2,    name: "Bot Alice", characterId: randomId,  connected: true },
+      { id: DEV_IDS.p3,    name: "Bot Bob",   characterId: vanessaId, connected: true },
+    ],
+    takenCharacters: [vanessaId, randomId],
+    gameSettings: defaultSettings(),
+    gameQuestions: DEV_STUB_QUESTIONS,
+    currentBaseQuestionId: "dev-q1",
+    currentOddQuestionId: "dev-q2",
+    oddOneId: DEV_IDS.p2,
+    questionType: "pick",
+    isBonusRound: false,
+    questionNameTarget: null,
+    impostorNameSubstitute: null,
+    answers: {},
+    votes: {},
+    usedQuestionIds: ["dev-q1", "dev-q2"],
+  });
+  store.initLives();
 }
 
 export function seedPlayerDeathGameOver() {
-  seedDevLabBase();
+  const vanessaId = resolveVanessaId();
+  const randomId = resolveRandomHeroId(vanessaId);
+  const store = useGameStore.getState();
+  store.reset();
+  store.set({
+    mode: "LOCAL",
+    gameId: `dev_${Date.now()}`,
+    phase: "answering",
+    round: 0,
+    players: [
+      { id: DEV_IDS.local, name: "You",       characterId: vanessaId, connected: true, isHost: true },
+      { id: DEV_IDS.p2,    name: "Bot Alice", characterId: randomId,  connected: true },
+      { id: DEV_IDS.p3,    name: "Bot Bob",   characterId: vanessaId, connected: true },
+    ],
+    takenCharacters: [vanessaId, randomId],
+    gameSettings: defaultSettings(),
+    gameQuestions: DEV_STUB_QUESTIONS,
+    currentBaseQuestionId: "dev-q1",
+    currentOddQuestionId: "dev-q2",
+    oddOneId: DEV_IDS.p2,
+    questionType: "pick",
+    isBonusRound: false,
+    questionNameTarget: null,
+    impostorNameSubstitute: null,
+    answers: {},
+    votes: {},
+    usedQuestionIds: ["dev-q1", "dev-q2"],
+  });
+  store.initLives();
 }
 
 /**
@@ -233,6 +296,7 @@ export function seedPlayerDeathGameOver() {
  */
 export function seedPlayerDeathWatchDemo() {
   const vanessaId = resolveVanessaId();
+  const randomId = resolveRandomHeroId(vanessaId);
   const store = useGameStore.getState();
   store.reset();
   store.set({
@@ -240,8 +304,12 @@ export function seedPlayerDeathWatchDemo() {
     gameId: `dev_${Date.now()}`,
     phase: "answering",
     round: 1,
-    players: threePlayers(vanessaId),
-    takenCharacters: [vanessaId],
+    players: [
+      { id: DEV_IDS.local, name: "You",       characterId: randomId,  connected: true, isHost: true },
+      { id: DEV_IDS.p2,    name: "Bot Alice", characterId: vanessaId, connected: true },
+      { id: DEV_IDS.p3,    name: "Bot Bob",   characterId: vanessaId, connected: true },
+    ],
+    takenCharacters: [vanessaId, randomId],
     gameSettings: defaultSettings(),
     gameQuestions: DEV_STUB_QUESTIONS,
     currentBaseQuestionId: "dev-q1",
@@ -513,7 +581,8 @@ export function seedResultsScreenOfType(type: QuestionTypeApi) {
  * deathmatch_image is shown for both heroes in the intro animation.
  */
 export function seedDeathMatchLocal() {
-  const remoteSusieId = resolveHeroId("remote-susie", "7");
+  const randomId1 = resolveRandomHeroId();
+  const randomId2 = resolveRandomHeroId(randomId1);
   const store = useGameStore.getState();
   store.reset();
   store.set({
@@ -522,11 +591,11 @@ export function seedDeathMatchLocal() {
     phase: "result",
     round: 3,
     players: [
-      { id: DEV_IDS.local, name: "You", characterId: remoteSusieId, connected: true, isHost: true },
-      { id: DEV_IDS.p2,    name: "Bot Alice", characterId: remoteSusieId, connected: true },
-      { id: DEV_IDS.p3,    name: "Bot Bob",   characterId: remoteSusieId, connected: true },
+      { id: DEV_IDS.local, name: "You",       characterId: randomId1, connected: true, isHost: true },
+      { id: DEV_IDS.p2,    name: "Bot Alice", characterId: randomId2, connected: true },
+      { id: DEV_IDS.p3,    name: "Bot Bob",   characterId: randomId1, connected: true },
     ],
-    takenCharacters: [remoteSusieId],
+    takenCharacters: [randomId1, randomId2],
     gameSettings: defaultSettings(),
     gameQuestions: DEV_STUB_QUESTIONS,
     oddOneId: DEV_IDS.p2,
