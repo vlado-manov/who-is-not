@@ -22,6 +22,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import AppImage from "../../components/AppImage";
+import { LinearGradient } from "expo-linear-gradient";
 import FullBleedStack from "../../components/FullBleedStack";
 import ImageBackgroundWithLoadGate from "../../components/ImageBackgroundWithLoadGate";
 import { ScrollView } from "react-native-gesture-handler";
@@ -117,6 +118,7 @@ const QuestionScreen = () => {
 
   const [numberAnswer, setNumberAnswer] = useState("");
   const [openAnswer, setOpenAnswer] = useState("");
+  const [selectedPickId, setSelectedPickId] = useState<string | null>(null);
 
   const numberInputRef = useRef<any>(null);
   const openInputRef = useRef<TextInput>(null);
@@ -410,7 +412,12 @@ const QuestionScreen = () => {
   };
 
   const handlePickPlayer = (pickedId: string) => {
-    submitAnswerAndAdvance(pickedId);
+    setSelectedPickId(pickedId);
+  };
+
+  const confirmPickPlayer = () => {
+    if (!selectedPickId) return;
+    submitAnswerAndAdvance(selectedPickId);
   };
 
   const getRateImage = ():
@@ -477,7 +484,7 @@ const QuestionScreen = () => {
               contentContainerStyle={{
                 paddingTop: 96,
                 paddingBottom:
-                  (isNumber || isInput || isRate ? 32 : 96) +
+                  (isNumber || isInput || isRate ? 32 : 140) +
                   iosKeyboardScrollPad,
                 flexGrow: 1,
                 justifyContent: "space-between",
@@ -649,17 +656,36 @@ const QuestionScreen = () => {
                       const characterData = heroes.find(
                         (h) => h.id === player.characterId,
                       );
+                      const isSelected = selectedPickId === player.id;
+                      const isDimmed = !!selectedPickId && !isSelected;
                       return (
                         <View
                           key={player.id}
-                          style={[styles.cell, isTablet && styles.cellTablet]}
+                          style={[
+                            styles.cell,
+                            isTablet && styles.cellTablet,
+                            isDimmed && { opacity: 0.85 },
+                          ]}
                         >
                           <Pressable
                             accessibilityRole="button"
                             onPress={() => handlePickPlayer(player.id)}
                             style={styles.avatarPressable}
                           >
-                            <View style={styles.avatarWrapper}>
+                            <View
+                              style={[
+                                styles.avatarWrapper,
+                                isSelected && styles.avatarWrapperSelected,
+                              ]}
+                            >
+                              {isSelected && (
+                                <LinearGradient
+                                  colors={["#ff8800", "#ffc200", "#ffee58"]}
+                                  start={{ x: 0, y: 0 }}
+                                  end={{ x: 1, y: 1 }}
+                                  style={[StyleSheet.absoluteFill, { borderRadius: 83 }]}
+                                />
+                              )}
                               {characterData?.profileImage && (
                                 <AppImage
                                   source={characterData.profileImage}
@@ -678,8 +704,11 @@ const QuestionScreen = () => {
                             buttonClassName="-mt-4"
                             onPress={() => handlePickPlayer(player.id)}
                             backgroundImage={backgrounds.bg018}
-                            glowColor="rgba(255,204,0,1)"
-                            shadowColor="#834400"
+                            glowColor={isSelected ? "rgba(255,220,100,1)" : "rgba(255,204,0,1)"}
+                            glowIntensity={isSelected ? 16 : 8}
+                            shadowColor={isSelected ? "#a85000" : "#834400"}
+                            borderColor={isSelected ? "#ffd060" : undefined}
+                            borderWidth={isSelected ? 1.5 : undefined}
                           />
                         </View>
                       );
@@ -826,6 +855,27 @@ const QuestionScreen = () => {
           </Animated.View>
             </ScrollView>
 
+            {/* CONFIRM button for pick type */}
+            {isPick && selectedPickId && (
+              <View
+                style={[
+                  styles.openEmbedButtonBar,
+                  { paddingBottom: Math.max(insets.bottom, 16) + 8 },
+                ]}
+              >
+                <CustomButton
+                  title={t("question_number_confirm")}
+                  onPress={confirmPickPlayer}
+                  backgroundImage={backgrounds.bg026}
+                  glow
+                  glowColor="rgba(41,255,25,0.8)"
+                  shadowColor="#005f07"
+                  horizontalPadding={48}
+                  fullWidth
+                />
+              </View>
+            )}
+
             {/* SEND button — outside scroll so it stays visible above keyboard */}
             {isInput && (
               <View
@@ -907,6 +957,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: -12,
+  },
+  avatarWrapperSelected: {
+    padding: 1.5,
+    borderRadius: 83,
+    overflow: "hidden",
+    transform: [{ scale: 1.05 }],
   },
   avatarImage: {
     width: 164,

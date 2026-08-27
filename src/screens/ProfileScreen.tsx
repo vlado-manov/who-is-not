@@ -24,6 +24,7 @@ import ProfileLoginComponent from "../components/profile/ProfileLoginComponent";
 import CustomButton from "../components/common/CustomButton";
 import ProfileImagePickerComponent from "../components/profile/ProfileImagePickerComponent";
 import ProfilePremiumQuestionsCard from "../components/profile/ProfilePremiumQuestionsCard";
+import ProfileFriendsCard from "../components/profile/ProfileFriendsCard";
 import ScreenTopBar from "../components/common/ScreenTopBar";
 import { useUserSettingsSheet } from "../context/UserSettingsModalContext";
 import { useResponsive } from "../utils/responsive";
@@ -345,6 +346,7 @@ const ProfileScreen = () => {
                 setImagePickerVisible={setImagePickerVisible}
               />
               <ProfilePremiumQuestionsCard />
+              <ProfileFriendsCard />
 
               {/* <View className="mx-6 mt-6 rounded-2xl bg-black/45 p-4 border border-white/15">
               <View className="flex-row items-center justify-between mb-2">

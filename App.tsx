@@ -3,7 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Asset } from "expo-asset";
 import {
   Linking,
@@ -45,6 +45,8 @@ import {
 import { WELCOME_BACKGROUND_URIS } from "./src/hooks/useWelcomeBackgroundVariant";
 import { prefetchExpoImageUri } from "./src/utils/prefetchExpoImage";
 import { registerForPushNotifications } from "./src/utils/pushNotifications";
+import * as Notifications from "expo-notifications";
+import { useGameStore } from "./src/store/useGameStore";
 
 /** Same URI as `CurtainOverlay` loader strip — prefetch early for Android decode. */
 const WELCOME_CURTAIN_LOADER_URI =
@@ -222,6 +224,8 @@ export default function App() {
   const soundEnabled = useAuthStore((s) => s.settings.soundEnabled);
   const userId = useAuthStore((s) => s.user.id);
   const notificationsEnabled = useAuthStore((s) => s.settings.notificationsEnabled);
+  const setGameState = useGameStore((s) => s.set);
+  const pendingNavRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     AudioManager.applySettingsFromStore(soundEnabled);
@@ -231,6 +235,38 @@ export default function App() {
     if (!notificationsEnabled || !userId) return;
     void registerForPushNotifications(userId).catch(() => {});
   }, [userId, notificationsEnabled]);
+
+  const handleNotificationResponse = useCallback(
+    (response: Notifications.NotificationResponse) => {
+      const data = response.notification.request.content.data as Record<
+        string,
+        unknown
+      >;
+      if (data?.type === "GAME_INVITE" && typeof data?.joinCode === "string") {
+        const joinCode = data.joinCode as string;
+        const doNav = () => {
+          setGameState({ roomCode: joinCode });
+          navRef.current?.navigate("CreateGame", { screen: "OnlineJoin" });
+        };
+        if (navRef.current) {
+          doNav();
+        } else {
+          pendingNavRef.current = doNav;
+        }
+      }
+    },
+    [setGameState],
+  );
+
+  useEffect(() => {
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) handleNotificationResponse(response);
+    });
+    const sub = Notifications.addNotificationResponseReceivedListener(
+      handleNotificationResponse,
+    );
+    return () => sub.remove();
+  }, [handleNotificationResponse]);
 
   useEffect(() => {
     void assertContractCompatibility().catch((e) => {
@@ -291,6 +327,10 @@ export default function App() {
             const route = navRef.current?.getCurrentRoute?.()?.name;
             lastRouteRef.current = route;
             if (route) void addCrashBreadcrumb("route_ready", { route });
+            if (pendingNavRef.current) {
+              pendingNavRef.current();
+              pendingNavRef.current = null;
+            }
           }}
           onStateChange={() => {
             const nextRoute = navRef.current?.getCurrentRoute?.()?.name;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, Fragment, useMemo, useRef, useState } from "react";
 import {
   View,
   TouchableOpacity,
@@ -54,6 +54,11 @@ import {
   FontAwesome,
 } from "@expo/vector-icons";
 import { fetchQuestionPacks, type QuestionPackDto } from "../api/questions";
+import {
+  fetchFriends,
+  inviteFriendToGame,
+  type FriendItem,
+} from "../api/friends";
 import AnimatedLogoHero from "../components/AnimatedLogoHero";
 import Round1TransitionOverlay from "../components/Round1TransitionOverlay";
 import { game_images } from "../../assets/images";
@@ -128,6 +133,8 @@ export default function OnlineHostScreen() {
   const prevCountRef = useRef(1);
   const [copyToastVisible, setCopyToastVisible] = useState(false);
   const copyToastOpacity = useRef(new Animated.Value(0)).current;
+  const [friendsForInvite, setFriendsForInvite] = useState<FriendItem[]>([]);
+  const [invitedFriendIds, setInvitedFriendIds] = useState<Set<string>>(new Set());
 
   const showCopyToast = useCallback(() => {
     setCopyToastVisible(true);
@@ -505,6 +512,26 @@ export default function OnlineHostScreen() {
     startGameAfterTransitionRef.current?.();
     startGameAfterTransitionRef.current = null;
   }, []);
+
+  useEffect(() => {
+    if (!joinCode || !userId) return;
+    fetchFriends(userId)
+      .then((data) => setFriendsForInvite(data.items))
+      .catch(() => {});
+  }, [joinCode, userId]);
+
+  const handleInviteFriend = useCallback(
+    async (friendshipId: string) => {
+      if (!joinCode || invitedFriendIds.has(friendshipId)) return;
+      try {
+        await inviteFriendToGame(userId, friendshipId, joinCode);
+        setInvitedFriendIds((prev) => new Set([...prev, friendshipId]));
+      } catch {
+        /* best-effort */
+      }
+    },
+    [joinCode, userId, invitedFriendIds],
+  );
 
   return (
     <FullBleedStack
@@ -990,12 +1017,76 @@ export default function OnlineHostScreen() {
                     </View>
                   </Animated.View>
 
+                </View>
+
+                {/* Friends invite panel — same wrapper as room code plate for matching width */}
+                {friendsForInvite.length > 0 && (
+                  <View style={styles.modalWrap}>
+                    <View style={styles.namePlateShadow}>
+                      <ImageBackground
+                        source={backgrounds.bg005}
+                        resizeMode="stretch"
+                        imageStyle={{ borderRadius: 18 }}
+                        style={styles.namePlate}
+                      >
+                        <View style={styles.namePlateContent}>
+                          <CustomText
+                            variant="p"
+                            className="text-center"
+                            textColor="#762a05"
+                          >
+                            {t("online_invite_friends")}
+                          </CustomText>
+                          {friendsForInvite.map((f) => (
+                            <Fragment key={f.friendshipId}>
+                              <View style={styles.nameDivider} />
+                              <View style={styles.inviteFriendRow}>
+                                <CustomText
+                                  variant="p-small"
+                                  textColor="#592410"
+                                  style={{ flex: 1 }}
+                                  numberOfLines={1}
+                                >
+                                  {f.name}
+                                </CustomText>
+                                <Pressable
+                                  onPress={() => void handleInviteFriend(f.friendshipId)}
+                                  disabled={invitedFriendIds.has(f.friendshipId)}
+                                  style={[
+                                    styles.inviteFriendBtn,
+                                    invitedFriendIds.has(f.friendshipId) &&
+                                      styles.inviteFriendBtnDone,
+                                  ]}
+                                >
+                                  <CustomText
+                                    variant="p-xsmall"
+                                    textColor={
+                                      invitedFriendIds.has(f.friendshipId)
+                                        ? "#762a05"
+                                        : "#fff"
+                                    }
+                                  >
+                                    {invitedFriendIds.has(f.friendshipId)
+                                      ? t("online_invited")
+                                      : t("online_invite_btn")}
+                                  </CustomText>
+                                </Pressable>
+                              </View>
+                            </Fragment>
+                          ))}
+                        </View>
+                      </ImageBackground>
+                    </View>
+                  </View>
+                )}
+
+                {/* Start button — only rendered (and takes layout space) when game can start */}
+                {canStartGame && (
                   <Animated.View
                     style={{
-                      width: "100%",
+                      paddingHorizontal: horizontalPadding,
                       opacity: startCtaOpacity,
                       transform: [{ scale: startCtaScale }],
-                      marginTop: 24,
                     }}
                   >
                     <CustomButton
@@ -1007,7 +1098,7 @@ export default function OnlineHostScreen() {
                       shadowColor="#005f07"
                     />
                   </Animated.View>
-                </View>
+                )}
               </Animated.View>
             )}
           </View>
@@ -1431,5 +1522,23 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 10,
+  },
+  inviteFriendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 4,
+  },
+  inviteFriendBtn: {
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: "#8b2b1a",
+    borderWidth: 1,
+    borderColor: "rgba(89,36,16,0.6)",
+  },
+  inviteFriendBtnDone: {
+    backgroundColor: "rgba(255,247,236,0.85)",
+    borderColor: "rgba(160,110,60,0.4)",
   },
 });

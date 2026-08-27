@@ -7,6 +7,7 @@ import {
   Easing,
   useWindowDimensions,
   StyleSheet,
+  ImageBackground,
 } from "react-native";
 import AppImage from "./AppImage";
 import FullBleedStack from "./FullBleedStack";
@@ -21,6 +22,7 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 
 import { backgrounds } from "../../assets/backgrounds";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import CustomText from "./common/CustomText";
 import CustomButton from "./common/CustomButton";
 import { GameStackParamList } from "../navigation/types";
@@ -38,8 +40,6 @@ import {
 } from "../utils/responsive";
 import { reportMultiplayerDiagnostic } from "../utils/multiplayerDiagnostics";
 import AudioManager from "../utils/audioManager";
-import { BlurView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
 
 const VOTE_NOW_IMAGE_URLS = [
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/536c3912-ecb7-485e-a434-6702f142fdc9-voteNow1.webp",
@@ -221,6 +221,7 @@ const VoteNowScreen = () => {
                 left: pad,
                 right: pad,
                 top: markTopPx,
+                zIndex: 10,
                 transform: [
                   {
                     translateX: screenShake.interpolate({
@@ -232,7 +233,7 @@ const VoteNowScreen = () => {
               },
             ]}
           >
-            <Pressable style={styles.markPressable}>
+            <Pressable style={[styles.markPressable, { zIndex: 2 }]}>
               <View
                 style={{
                   width: voteMark.width,
@@ -317,55 +318,45 @@ const VoteNowScreen = () => {
               </View>
             </Pressable>
 
-          </Animated.View>
-
-          {mode !== "ONLINE" ? (
-            <View
-              style={[
-                styles.nameLabel,
-                { left: pad, right: pad, top: markTopPx + markStackOuterHeight - 20 },
-              ]}
-              pointerEvents="none"
-            >
-              <View style={styles.nameBlurContainer}>
-                <BlurView intensity={18} tint="default" style={StyleSheet.absoluteFill} />
-                <LinearGradient
-                  colors={["transparent", "rgba(255,255,255,0.08)", "transparent"]}
-                  locations={[0, 0.5, 1]}
-                  start={{ x: 0, y: 0.5 }}
-                  end={{ x: 1, y: 0.5 }}
-                  style={StyleSheet.absoluteFill}
-                />
-                <LinearGradient
-                  colors={["transparent", "rgba(255,255,255,0.08)", "transparent"]}
-                  locations={[0, 0.5, 1]}
-                  start={{ x: 0.5, y: 0 }}
-                  end={{ x: 0.5, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                />
-                <CustomText
-                  variant="h4-headline"
-                  sizeDelta={12}
-                  className="px-2 text-center"
-                  style={{ fontFamily: "SofiaSansExtraCondensed-Bold" }}
+            {mode !== "ONLINE" && currentVoter ? (
+              <View style={[styles.nameplateShadow, { marginTop: deco.top + 24, zIndex: 1 }]} pointerEvents="none">
+                <ImageBackground
+                  source={backgrounds.bg005}
+                  resizeMode="stretch"
+                  imageStyle={{ borderRadius: 18 }}
+                  style={styles.namePlate}
                 >
-                  {currentVoter ? currentVoter.name : t("first_player_up")}
-                </CustomText>
-                {currentVoter ? (
+                  <View style={styles.nameCardIconRow}>
+                    <MaterialCommunityIcons name="account-group" size={26} color="#c45e1a" />
+                    <CustomText
+                      variant="p-small"
+                      textColor="#7c3a10"
+                      style={{ fontFamily: "Onest-SemiBold", textTransform: "uppercase", letterSpacing: 0.5 }}
+                    >
+                      {t("hand_phone_to")}
+                    </CustomText>
+                  </View>
                   <CustomText
-                    variant="h4-headline"
-                    sizeDelta={8}
-                    className="px-2 text-center"
-                    style={{ fontFamily: "SofiaSansExtraCondensed-SemiBold" }}
+                    variant="h2"
+                    className="text-center px-2"
+                    textColor="#3b1a08"
+                    style={{ fontFamily: "SofiaSansExtraCondensed-Bold" }}
                   >
-                    {voterIndex === 0
-                      ? t("vote_now_first_label")
-                      : t("vote_now_turn_label")}
+                    {currentVoter.name}
                   </CustomText>
-                ) : null}
+                  <CustomText
+                    variant="p-small"
+                    className="text-center"
+                    textColor="#a05020"
+                    style={{ fontFamily: "Onest-SemiBold", marginTop: 2 }}
+                  >
+                    {voterIndex === 0 ? t("vote_now_first_label") : t("vote_now_turn_label")}
+                  </CustomText>
+                </ImageBackground>
               </View>
-            </View>
-          ) : null}
+            ) : null}
+
+          </Animated.View>
 
           <View
             style={[
@@ -388,19 +379,18 @@ const VoteNowScreen = () => {
               onPress={onStartVoting}
             />
             {mode !== "ONLINE" ? (
-              <CustomText
-                variant="footnote"
-                className="px-2 text-center"
-                style={[styles.hintBelowButton, { fontFamily: "Onest-SemiBold" }]}
-              >
-                {currentVoter
-                  ? voterIndex === 0
-                    ? t("first_voter_click_hint", { name: currentVoter.name })
-                    : t("pass_device_vote_instruction", {
-                        name: currentVoter.name,
-                      })
-                  : t("first_player_up")}
-              </CustomText>
+              <View style={styles.warnHintRow}>
+                <View style={styles.warnIconGlow}>
+                  <MaterialCommunityIcons name="alert" size={20} color="#fbbf24" />
+                </View>
+                <CustomText
+                  variant="footnote"
+                  textColor="rgba(255,255,255,0.88)"
+                  style={{ fontFamily: "Onest-SemiBold" }}
+                >
+                  {t("vote_now_only_tap")}
+                </CustomText>
+              </View>
             ) : null}
           </View>
         </View>
@@ -418,27 +408,55 @@ const styles = StyleSheet.create({
     position: "absolute",
     alignItems: "center",
   },
-  nameLabel: {
-    position: "absolute",
-    alignItems: "center",
-  },
-  nameBlurContainer: {
-    overflow: "hidden",
-    borderRadius: 36,
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
   footer: {
     position: "absolute",
     bottom: 0,
   },
-  hintBelowButton: {
-    marginTop: 8,
-  },
   markPressable: {
     alignItems: "center",
     justifyContent: "center",
+  },
+  nameplateShadow: {
+    alignSelf: "stretch",
+    shadowColor: "#fff",
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 14,
+  },
+  namePlate: {
+    borderRadius: 18,
+    paddingTop: 64,
+    paddingBottom: 16,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    shadowColor: "#ffd800",
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 14,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(251,192,32,1)",
+  },
+  nameCardIconRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 6,
+  },
+  warnHintRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 8,
+  },
+  warnIconGlow: {
+    shadowColor: "#fbbf24",
+    shadowOpacity: 0.9,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 5,
   },
 });
 

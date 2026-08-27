@@ -9,8 +9,9 @@ import {
   useWindowDimensions,
 } from "react-native";
 import AppImage from "../../components/AppImage";
+import { LinearGradient } from "expo-linear-gradient";
 import ImageBackgroundWithLoadGate from "../../components/ImageBackgroundWithLoadGate";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 
@@ -38,6 +39,7 @@ const VoteScreen = () => {
   const { voterIndex } = useRoute<R>().params;
   const navigation = useNavigation<Nav>();
   usePreventBack();
+  const insets = useSafeAreaInsets();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isTablet = windowWidth >= 768 && windowWidth > windowHeight;
   const numCols = isTablet ? 3 : 2;
@@ -53,6 +55,7 @@ const VoteScreen = () => {
   const heroes = useHeroesStore((s) => s.heroes);
   const setVote = useGameStore((s) => s.setVote);
   const [waitingVotesSync, setWaitingVotesSync] = useState(false);
+  const [selectedVoteId, setSelectedVoteId] = useState<string | null>(null);
 
   useMultiplayerPhaseGate({
     enabled: mode === "ONLINE" && waitingVotesSync,
@@ -155,7 +158,13 @@ const VoteScreen = () => {
     );
   }
 
-  const handleVote = (targetId: string) => {
+  const handleSelectVote = (targetId: string) => {
+    setSelectedVoteId(targetId);
+  };
+
+  const confirmVote = () => {
+    if (!selectedVoteId) return;
+    const targetId = selectedVoteId;
     const voterId =
       mode === "ONLINE" && onlinePlayerId ? onlinePlayerId : voter.id;
     setVote(voterId, targetId);
@@ -189,123 +198,162 @@ const VoteScreen = () => {
         style={{ flex: 1 }}
         resizeMode="cover"
       >
-        <ScrollView
-          contentContainerStyle={{
-            paddingTop: 96,
-            paddingBottom: 96,
-            flexGrow: 1,
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <View style={[{ width: "100%" }, isTablet && { maxWidth: 560 }]}>
-          {/* QUESTION WINDOW */}
-          <View style={{ paddingHorizontal: 24 }}>
-            <View style={styles.namePlateShadow}>
-              <ImageBackground
-                source={backgrounds.bg005}
-                resizeMode="stretch"
-                imageStyle={{ borderRadius: 18 }}
-                style={styles.namePlate}
-              >
-                <CustomText
-                  variant="p"
-                  className="text-center"
-                  textColor={isImposterVoter ? "#b91c1c" : "#762a05"}
-                  sizeDelta={2}
-                  style={{ fontFamily: "Tektur-SemiBold" }}
+        <View style={{ flex: 1 }}>
+          <ScrollView
+            contentContainerStyle={{
+              paddingTop: 96,
+              paddingBottom: selectedVoteId ? 140 : 96,
+              flexGrow: 1,
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <View style={[{ width: "100%" }, isTablet && { maxWidth: 560 }]}>
+            {/* QUESTION WINDOW */}
+            <View style={{ paddingHorizontal: 24 }}>
+              <View style={styles.namePlateShadow}>
+                <ImageBackground
+                  source={backgrounds.bg005}
+                  resizeMode="stretch"
+                  imageStyle={{ borderRadius: 18 }}
+                  style={styles.namePlate}
                 >
-                  {isImposterVoter
-                    ? t("vote_imposter_blend_cast")
-                    : t("vote_cast_your_vote")}
-                </CustomText>
+                  <CustomText
+                    variant="p"
+                    className="text-center"
+                    textColor={isImposterVoter ? "#b91c1c" : "#762a05"}
+                    sizeDelta={2}
+                    style={{ fontFamily: "Tektur-SemiBold" }}
+                  >
+                    {isImposterVoter
+                      ? t("vote_imposter_blend_cast")
+                      : t("vote_cast_your_vote")}
+                  </CustomText>
 
-                <View style={styles.nameDivider} />
+                  <View style={styles.nameDivider} />
 
-                <CustomText
-                  variant="h6-headline"
-                  className="text-center"
-                  textColor={isImposterVoter ? "#b91c1c" : "#592410"}
-                  sizeDelta={10}
-                  style={{ fontFamily: "SofiaSansExtraCondensed-SemiBold" }}
-                >
-                  {isImposterVoter
-                    ? t("vote_imposter_blend_headline")
-                    : t("vote_who_is_not")}
-                </CustomText>
+                  <CustomText
+                    variant="h6-headline"
+                    className="text-center"
+                    textColor={isImposterVoter ? "#b91c1c" : "#592410"}
+                    sizeDelta={10}
+                    style={{ fontFamily: "SofiaSansExtraCondensed-SemiBold" }}
+                  >
+                    {isImposterVoter
+                      ? t("vote_imposter_blend_headline")
+                      : t("vote_who_is_not")}
+                  </CustomText>
 
-                <View style={styles.nameDivider} />
+                  <View style={styles.nameDivider} />
 
-                <CustomText
-                  variant="p-small"
-                  className="text-center"
-                  textColor={isImposterVoter ? "#c62828" : "#762a05"}
-                  sizeDelta={2}
-                  style={{ fontFamily: "Onest-SemiBold" }}
-                >
-                  {isImposterVoter
-                    ? t("vote_imposter_blend_hint")
-                    : t("vote_pick_imposter")}
-                </CustomText>
-              </ImageBackground>
-            </View>
-          </View>
-
-          {/* PLAYERS GRID — SAME AS QUESTION SCREEN */}
-          <View className="px-6 mt-20">
-            {playerRows.map((row, rowIndex) => (
-              <View key={`row-${rowIndex}`} style={styles.row}>
-                {row.map((player) => {
-                  const character = heroes.find((h) => h.id === player.characterId);
-
-                  return (
-                    <View
-                      key={player.id}
-                      style={[styles.cell, isTablet && styles.cellTablet]}
-                    >
-                      <Pressable
-                        accessibilityRole="button"
-                        onPress={() => handleVote(player.id)}
-                        style={styles.avatarPressable}
-                      >
-                        <View style={styles.avatarWrapper}>
-                          {character?.profileImage && (
-                            <AppImage
-                              source={character.profileImage}
-                              style={styles.avatarImage}
-                              contentFit="contain"
-                            />
-                          )}
-                        </View>
-                      </Pressable>
-
-                      <CustomButton
-                        title={player.name}
-                        btnSize="xs"
-                        fontSize="sm"
-                        glow
-                        fullWidth
-                        buttonClassName="-mt-4"
-                        onPress={() => handleVote(player.id)}
-                        backgroundImage={backgrounds.bg018}
-                        glowColor="rgba(255,204,0,1)"
-                        shadowColor="#834400"
-                      />
-                    </View>
-                  );
-                })}
+                  <CustomText
+                    variant="p-small"
+                    className="text-center"
+                    textColor={isImposterVoter ? "#c62828" : "#762a05"}
+                    sizeDelta={2}
+                    style={{ fontFamily: "Onest-SemiBold" }}
+                  >
+                    {isImposterVoter
+                      ? t("vote_imposter_blend_hint")
+                      : t("vote_pick_imposter")}
+                  </CustomText>
+                </ImageBackground>
               </View>
-            ))}
-          </View>
+            </View>
 
-          </View>
+            {/* PLAYERS GRID */}
+            <View className="px-6 mt-20">
+              {playerRows.map((row, rowIndex) => (
+                <View key={`row-${rowIndex}`} style={styles.row}>
+                  {row.map((player) => {
+                    const character = heroes.find((h) => h.id === player.characterId);
+                    const isSelected = selectedVoteId === player.id;
+                    const isDimmed = !!selectedVoteId && !isSelected;
 
-          <View style={[{ opacity: 0 }, isTablet && { width: "100%", maxWidth: 560 }]}>
-            <CustomText variant="p" className="text-center px-8 mt-10">
-              {t("vote_hint_pick")}
-            </CustomText>
-          </View>
-        </ScrollView>
+                    return (
+                      <View
+                        key={player.id}
+                        style={[
+                          styles.cell,
+                          isTablet && styles.cellTablet,
+                          isDimmed && { opacity: 0.85 },
+                        ]}
+                      >
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={() => handleSelectVote(player.id)}
+                          style={styles.avatarPressable}
+                        >
+                          <View
+                            style={[
+                              styles.avatarWrapper,
+                              isSelected && styles.avatarWrapperSelected,
+                            ]}
+                          >
+                            {isSelected && (
+                              <LinearGradient
+                                colors={["#ff2d2d", "#7f0000"]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={[StyleSheet.absoluteFill, { borderRadius: 83 }]}
+                              />
+                            )}
+                            {character?.profileImage && (
+                              <AppImage
+                                source={character.profileImage}
+                                style={styles.avatarImage}
+                                contentFit="contain"
+                              />
+                            )}
+                          </View>
+                        </Pressable>
+
+                        <CustomButton
+                          title={player.name}
+                          btnSize="xs"
+                          fontSize="sm"
+                          glow
+                          fullWidth
+                          buttonClassName="-mt-4"
+                          onPress={() => handleSelectVote(player.id)}
+                          backgroundImage={isSelected ? backgrounds.bg015 : backgrounds.bg018}
+                          glowColor={isSelected ? "rgba(255,50,50,0.6)" : "rgba(255,204,0,1)"}
+                          glowIntensity={isSelected ? 14 : 8}
+                          shadowColor={isSelected ? "#1a0000" : "#834400"}
+                          borderColor={isSelected ? "rgba(255,60,60,0.9)" : undefined}
+                          borderWidth={isSelected ? 2 : undefined}
+                        />
+                      </View>
+                    );
+                  })}
+                </View>
+              ))}
+            </View>
+
+            </View>
+          </ScrollView>
+
+          {/* CONFIRM button — fixed below scroll */}
+          {selectedVoteId && (
+            <View
+              style={[
+                styles.confirmBar,
+                { paddingBottom: Math.max(insets.bottom, 16) + 8 },
+              ]}
+            >
+              <CustomButton
+                title={t("question_number_confirm")}
+                onPress={confirmVote}
+                backgroundImage={backgrounds.bg026}
+                glow
+                glowColor="rgba(41,255,25,0.8)"
+                shadowColor="#005f07"
+                horizontalPadding={48}
+                fullWidth
+              />
+            </View>
+          )}
+        </View>
       </ImageBackgroundWithLoadGate>
       <OnlineWaitPlayersOverlay
         visible={mode === "ONLINE" && waitingVotesSync}
@@ -342,6 +390,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: -12,
+  },
+  avatarWrapperSelected: {
+    padding: 1.5,
+    borderRadius: 83,
+    overflow: "hidden",
+    transform: [{ scale: 1.05 }],
+  },
+  confirmBar: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
   },
   avatarImage: {
     width: 164,
