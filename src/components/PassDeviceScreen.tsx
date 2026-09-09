@@ -1,5 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { View, Pressable, useWindowDimensions, ScrollView, StyleSheet } from "react-native";
+import React, { useCallback, useEffect, useRef } from "react";
+import {
+  Animated,
+  Easing,
+  ImageBackground,
+  View,
+  useWindowDimensions,
+  StyleSheet,
+} from "react-native";
 import AppImage from "./AppImage";
 import FullBleedStack from "./FullBleedStack";
 import ImageBackgroundWithLoadGate from "./ImageBackgroundWithLoadGate";
@@ -19,8 +26,6 @@ import { game_images } from "../../assets/images";
 import { CreateGameStackParamList } from "../navigation/types";
 import { useGameStore } from "../store/useGameStore";
 import AudioManager from "../utils/audioManager";
-import i18n from "../i18n";
-import { useAuthStore } from "../store/useUserStore";
 import { usePreventBack } from "../hooks/usePreventBack";
 import { useResponsive } from "../utils/responsive";
 
@@ -33,7 +38,6 @@ const PassDeviceScreen = () => {
   const navigation = useNavigation<Nav>();
   const { index } = useRoute<R>().params;
   usePreventBack();
-  const { settings, updateSettings } = useAuthStore();
   const continuedRef = useRef(false);
 
   useEffect(() => {
@@ -47,9 +51,9 @@ const PassDeviceScreen = () => {
     continuedRef.current = true;
     void AudioManager.playHeroPickerEnd();
     if (target && index <= target) {
-      navigation.navigate("HeroPicker", { index });
+      navigation.replace("HeroPicker", { index });
     } else {
-      navigation.navigate("Lobby");
+      navigation.replace("Lobby");
     }
   }, [index, navigation, target]);
 
@@ -67,29 +71,34 @@ const PassDeviceScreen = () => {
     };
   }, [onContinue]);
 
-  const logoSource = useMemo(() => {
-    const sound = settings.soundEnabled ? "MusicOn" : "MusicOff";
+  const plateScale  = useRef(new Animated.Value(40)).current;
+  const plateOpacity = useRef(new Animated.Value(0)).current;
+  const screenShake = useRef(new Animated.Value(0)).current;
 
-    switch (i18n.language) {
-      case "fr":
-        return game_images[`logoFr${sound}`];
-      case "es":
-        return game_images[`logoEs${sound}`];
-      case "bg":
-        return game_images[`logoBg${sound}`];
-      default:
-        return game_images[`logo${sound}`];
-    }
-  }, [i18n.language, settings.soundEnabled]);
+  useEffect(() => {
+    AudioManager.playItemDrop();
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(plateScale,   { toValue: 1, duration: 400, easing: Easing.out(Easing.back(3)), useNativeDriver: true }),
+        Animated.timing(plateOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]),
+      Animated.sequence([
+        Animated.timing(screenShake, { toValue: 1,  duration: 60, useNativeDriver: true }),
+        Animated.timing(screenShake, { toValue: -1, duration: 60, useNativeDriver: true }),
+        Animated.timing(screenShake, { toValue: 1,  duration: 60, useNativeDriver: true }),
+        Animated.timing(screenShake, { toValue: 0,  duration: 60, useNativeDriver: true }),
+      ]),
+    ]).start();
+  }, []);
 
-  const toggleSound = () => {
-    const newVal = !settings.soundEnabled;
-    updateSettings({ soundEnabled: newVal });
-    AudioManager.setSoundEnabled(newVal);
-  };
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const { horizontalPadding } = useResponsive();
+  const padH = horizontalPadding;
 
-  const { width: windowWidth } = useWindowDimensions();
-  const { logo, horizontalPadding } = useResponsive();
+  const shakeX = screenShake.interpolate({ inputRange: [-1, 1], outputRange: [-8, 8] });
+
+  const gap = Math.min(40, windowHeight * 0.055);
+  const imageHeight = Math.min(windowWidth * (320 / 350), windowHeight * 0.38);
 
   return (
     <FullBleedStack
@@ -104,10 +113,54 @@ const PassDeviceScreen = () => {
         </ImageBackgroundWithLoadGate>
       }
     >
-      <SafeAreaView
-        style={{ flex: 1, backgroundColor: "transparent" }}
-        edges={["right", "left"]}
-      >
+      <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["right", "left"]}>
+        <View style={styles.container}>
+
+          {/* Nameplate */}
+          <View style={{ paddingHorizontal: padH }}>
+            <Animated.View style={{ transform: [{ translateX: shakeX }] }}>
+              <Animated.View style={[styles.namePlateShadow, { opacity: plateOpacity, transform: [{ scale: plateScale }] }]}>
+                <ImageBackground
+                  source={backgrounds.bg005}
+                  resizeMode="stretch"
+                  imageStyle={{ borderRadius: 18 }}
+                  style={styles.namePlate}
+                >
+                  <CustomText
+                    variant="h5"
+                    className="text-center"
+                    textColor="#592410"
+                    allowWrap
+                    sizeDelta={10}
+                    style={{ fontFamily: "SofiaSansExtraCondensed-SemiBold" }}
+                  >
+                    {t("pass_device_sub", {
+                      defaultValue: "Hand the phone to next player",
+                      index,
+                    })}
+                  </CustomText>
+                </ImageBackground>
+              </Animated.View>
+            </Animated.View>
+          </View>
+
+          <View style={{ height: gap }} />
+
+          {/* Illustration */}
+          <View style={{ overflow: "hidden" }}>
+            <AppImage
+              source={game_images.passDevice}
+              contentFit="cover"
+              style={{ width: windowWidth, height: imageHeight }}
+            />
+          </View>
+
+          {/* Space for floating BottomSkipAction */}
+          <View style={{ height: insets.bottom + 96 }} />
+
+        </View>
+
+        {/* Skip floats absolutely */}
         <BottomSkipAction
           label={t("skip", { defaultValue: "Skip" })}
           onPress={() => {
@@ -117,50 +170,38 @@ const PassDeviceScreen = () => {
             onContinue();
           }}
         />
-
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{
-            flexGrow: 1,
-            paddingHorizontal: horizontalPadding,
-            paddingBottom: insets.bottom + 12,
-          }}
-          showsVerticalScrollIndicator={false}
-        >
-          <View className="items-center w-full pt-20">
-            <Pressable style={{ marginTop: 8 }} onPress={toggleSound}>
-              <AppImage
-                source={logoSource}
-                style={{ width: logo.width, height: logo.height }}
-                contentFit="contain"
-              />
-            </Pressable>
-            <CustomText
-              variant="h3-headline"
-              className="mt-8 text-center z-50 px-2 text-black"
-              style={{ fontFamily: "Tektur-SemiBold" }}
-            >
-              {t("pass_device_sub", {
-                defaultValue: "Hand the phone to next player",
-                index,
-              })}
-            </CustomText>
-          </View>
-          <View style={{ marginTop: 16, width: "100%" }}>
-            <AppImage
-              source={game_images.passDevice}
-              contentFit="cover"
-              style={{
-                width: windowWidth,
-                alignSelf: "center",
-                aspectRatio: 350 / 320,
-              }}
-            />
-          </View>
-        </ScrollView>
       </SafeAreaView>
     </FullBleedStack>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  namePlateShadow: {
+    shadowColor: "#fff",
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 14,
+  },
+  namePlate: {
+    borderRadius: 18,
+    paddingHorizontal: 32,
+    paddingVertical: 24,
+    alignItems: "center",
+    shadowColor: "#ffd800",
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 14,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(251,192,32,1)",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(160,110,60,0.7)",
+  },
+});
 
 export default PassDeviceScreen;

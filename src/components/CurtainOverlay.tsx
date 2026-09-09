@@ -673,7 +673,7 @@ export default function CurtainOverlay({
           style={[styles.container, { backgroundColor: "#000" }]}
         >
           <Animated.View
-            style={[StyleSheet.absoluteFillObject, { opacity: welcomeLoadingOpacity }]}
+            style={[StyleSheet.absoluteFill, { opacity: welcomeLoadingOpacity }]}
           >
             <AppImage
               source={{ uri: selectedBackgroundUri }}
@@ -686,7 +686,7 @@ export default function CurtainOverlay({
                 height: safeH,
               }}
             />
-            <View pointerEvents="box-none" style={StyleSheet.absoluteFillObject}>
+            <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
               <Animated.View
                 style={[styles.loaderShell, { opacity: loaderOpacity }]}
               >
@@ -761,7 +761,7 @@ export default function CurtainOverlay({
                   onPress={handleWelcomeStart}
                   accessibilityRole="button"
                   accessibilityLabel={t("start_btn")}
-                  style={StyleSheet.absoluteFillObject}
+                  style={StyleSheet.absoluteFill}
                 />
               )}
             </View>
@@ -788,7 +788,7 @@ export default function CurtainOverlay({
         <AppImage
           source={{ uri: selectedBackgroundUri }}
           contentFit="cover"
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
 
         <Animated.View style={[styles.loaderShell, { opacity: loaderOpacity }]}>
@@ -858,7 +858,7 @@ export default function CurtainOverlay({
             onPress={handleWelcomeStart}
             accessibilityRole="button"
             accessibilityLabel={t("start_btn")}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
         )}
       </Animated.View>
@@ -878,14 +878,14 @@ export default function CurtainOverlay({
     <View pointerEvents={canTouch ? "none" : "auto"} style={styles.container}>
       <Animated.View
         style={[
-          StyleSheet.absoluteFillObject,
+          StyleSheet.absoluteFill,
           { opacity: curtainBackdropOpacity, backgroundColor: "#000" },
         ]}
       />
 
       <Animated.View
         style={[
-          StyleSheet.absoluteFillObject,
+          StyleSheet.absoluteFill,
           { backgroundColor: "#000", opacity: blackOverlayOpacity, zIndex: 10 },
         ]}
       />
@@ -933,7 +933,7 @@ export default function CurtainOverlay({
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 9999,
     backgroundColor: "transparent",
   },
@@ -952,7 +952,7 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   logoWrap: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: "center",
     alignItems: "center",
     zIndex: 20,

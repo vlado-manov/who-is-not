@@ -581,15 +581,10 @@ export default function RatingSlider({
             ]}
             pointerEvents="none"
           >
-            <ImageBackground
-              source={{ uri: THUMB_BACKGROUND }}
-              style={styles.thumbBackground}
-              imageStyle={styles.thumbBackgroundImage}
-              resizeMode="stretch"
-            >
+            <View style={styles.thumbBackground}>
               <View style={styles.thumbBorder} />
               <Text style={styles.thumbText}>{value}</Text>
-            </ImageBackground>
+            </View>
           </Animated.View>
         </View>
       </GestureDetector>
@@ -643,7 +638,7 @@ const styles = StyleSheet.create({
     // borderRadius: 30,
   },
   thumbBorder: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     // borderRadius: 30,
     // borderWidth: 2,
     // borderColor: "rgba(255,255,255,0.5)",

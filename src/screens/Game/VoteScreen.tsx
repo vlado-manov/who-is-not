@@ -63,7 +63,7 @@ const VoteScreen = () => {
     onReady: () => {
       setWaitingVotesSync(false);
       // Let last vote_cast reach all devices before reveal (relay order vs phase_ready).
-      setTimeout(() => navigation.navigate("PreReveal"), 100);
+      setTimeout(() => navigation.replace("PreReveal"), 100);
     },
   });
 
@@ -142,7 +142,7 @@ const VoteScreen = () => {
   useEffect(() => {
     if (mode === "ONLINE") return;
     if (!voter) {
-      navigation.navigate("PreReveal" as never);
+      navigation.replace("PreReveal" as never);
     }
   }, [voter, navigation, mode]);
 
@@ -183,11 +183,12 @@ const VoteScreen = () => {
 
     const isLast = voterIndex >= players.length - 1;
     if (!isLast) {
-      navigation.navigate("VoteNow", {
+      // replace keeps the vote stack flat — old Vote/VoteNow instances unmount
+      navigation.replace("VoteNow", {
         voterIndex: voterIndex + 1,
       });
     } else {
-      navigation.navigate("PreReveal");
+      navigation.replace("PreReveal");
     }
   };
 
@@ -357,6 +358,7 @@ const VoteScreen = () => {
       </ImageBackgroundWithLoadGate>
       <OnlineWaitPlayersOverlay
         visible={mode === "ONLINE" && waitingVotesSync}
+        variant="popup"
       />
     </SafeAreaView>
   );

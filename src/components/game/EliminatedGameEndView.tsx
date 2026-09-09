@@ -107,12 +107,12 @@ export default function EliminatedGameEndView({ playerId }: Props) {
               <View style={{ width: heroImgSize, height: heroImgSize }}>
                 <AppImage
                   source={loseImage}
-                  style={StyleSheet.absoluteFillObject}
+                  style={StyleSheet.absoluteFill}
                   contentFit="contain"
                 />
                 <View
                   pointerEvents="none"
-                  style={[StyleSheet.absoluteFillObject, { opacity: 1 }]}
+                  style={[StyleSheet.absoluteFill, { opacity: 1 }]}
                 >
                   <PlayerDeathGrayscaleImage
                     source={loseImage}
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(110, 20, 90, 0.48)",
   },
   crossAbs: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
   },

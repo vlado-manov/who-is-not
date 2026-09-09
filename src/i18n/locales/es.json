@@ -292,6 +292,7 @@
   "online_guest_wait_host": "Esperando al anfitrión…",
   "online_hero_taken": "Otro jugador acaba de elegir ese héroe. Elige otro.",
   "online_wait_other_players": "Esperando a los demás jugadores…",
+  "online_wait_subtitle": "Espera mientras los demás terminan",
   "online_wait_hero_intro": "Esperando a que todos terminen de elegir héroe, nombre e intro…",
   "hero_picker_sniped_title": "¡Uy, tarde!",
   "hero_picker_sniped_hint": "Otro jugador acaba de elegir este héroe. Pasamos al siguiente.",

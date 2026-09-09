@@ -424,18 +424,18 @@ function TypeCard({
             colors={active ? g.active : g.base}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
           {/* Pulse overlay — animated */}
           <Animated.View
-            style={[StyleSheet.absoluteFillObject, { opacity: pulseAnim }]}
+            style={[StyleSheet.absoluteFill, { opacity: pulseAnim }]}
             pointerEvents="none"
           >
             <LinearGradient
               colors={g.pulse}
               start={{ x: 1, y: 0 }}
               end={{ x: 0, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
+              style={StyleSheet.absoluteFill}
             />
           </Animated.View>
 

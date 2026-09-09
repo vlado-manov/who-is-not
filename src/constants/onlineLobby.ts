@@ -52,6 +52,9 @@ export const DEATHMATCH_GUESS_MESSAGE_TYPE = "deathmatch_guess";
 /** Deathmatch: host broadcasts the final result (winnerIds). */
 export const DEATHMATCH_DONE_MESSAGE_TYPE = "deathmatch_done";
 
+/** Deathmatch: host broadcasts a tie — both guessed correctly. Includes newRange for the rematch. */
+export const DEATHMATCH_TIE_MESSAGE_TYPE = "deathmatch_tie";
+
 export function mpPhaseRound1Start(): string {
   return "round1_start";
 }

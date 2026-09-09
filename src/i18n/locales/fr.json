@@ -292,6 +292,7 @@
   "online_guest_wait_host": "En attente de l'hôte…",
   "online_hero_taken": "Un autre joueur vient de choisir ce héros. Choisis-en un autre.",
   "online_wait_other_players": "En attente des autres joueurs…",
+  "online_wait_subtitle": "Attends que les autres aient terminé",
   "online_wait_hero_intro": "En attente que tout le monde ait choisi un héros, un nom et vu l’intro…",
   "hero_picker_sniped_title": "Oups — trop tard !",
   "hero_picker_sniped_hint": "Quelqu’un d’autre vient de prendre ce héros. Passage au suivant.",

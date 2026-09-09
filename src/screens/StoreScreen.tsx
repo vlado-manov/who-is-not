@@ -982,7 +982,7 @@ const styles = StyleSheet.create({
 
   // ── Premium success overlay
   premiumSuccessOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.88)",
     alignItems: "center",
     justifyContent: "center",

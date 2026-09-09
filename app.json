@@ -17,8 +17,12 @@
       "supportsTablet": true,
       "requireFullScreen": true,
       "infoPlist": {
-        "UISupportedInterfaceOrientations": ["UIInterfaceOrientationPortrait"],
-        "UISupportedInterfaceOrientations~ipad": ["UIInterfaceOrientationPortrait"]
+        "UISupportedInterfaceOrientations": [
+          "UIInterfaceOrientationPortrait"
+        ],
+        "UISupportedInterfaceOrientations~ipad": [
+          "UIInterfaceOrientationPortrait"
+        ]
       },
       "icon": "./assets/images/icon.png"
     },
@@ -44,7 +48,9 @@
           "color": "#ffffff",
           "defaultChannel": "default"
         }
-      ]
+      ],
+      "expo-image",
+      "expo-status-bar"
     ]
   }
 }

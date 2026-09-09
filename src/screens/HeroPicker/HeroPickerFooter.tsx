@@ -139,7 +139,7 @@ const namePlateStyles = StyleSheet.create({
     alignItems: "center",
   },
   inputLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 8,

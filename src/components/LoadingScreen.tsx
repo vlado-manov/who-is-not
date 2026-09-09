@@ -45,8 +45,6 @@ type LoadingScreenProps = {
   hint1Key?: string;
   /** i18n ключ за hint 2 (default: "loading_hint_2") */
   hint2Key?: string;
-  /** При true, toggle на звука пуска playBackgroundGame (за gameplay екрани) */
-  useGameMusic?: boolean;
   /**
    * HeroPicker: фонът покрива целия екран; съдържанието е отместено под статус лентата
    * и над home indicator (видима статус лента, без да „яде“ layout от навигацията).
@@ -62,7 +60,6 @@ const LoadingScreen = ({
   titleKey = "loading",
   hint1Key = "loading_hint",
   hint2Key = "loading_hint_2",
-  useGameMusic = false,
   fullScreenWithStatusBar = false,
   backgroundSource,
 }: LoadingScreenProps) => {
@@ -79,7 +76,9 @@ const LoadingScreen = ({
   const screenShake = useRef(new Animated.Value(0)).current;
 
   const logoSource = useMemo(() => {
-    const sound = settings.soundEnabled ? "MusicOn" : "MusicOff";
+    // Music is "on" only when both settings allow it AND logo hasn't muted it.
+    const musicActive = (settings.musicLevel ?? 0) > 0 && settings.soundEnabled;
+    const sound = musicActive ? "MusicOn" : "MusicOff";
 
     switch (i18n.language) {
       case "fr":
@@ -91,12 +90,12 @@ const LoadingScreen = ({
       default:
         return game_images[`logo${sound}`];
     }
-  }, [i18n.language, settings.soundEnabled]);
+  }, [i18n.language, settings.soundEnabled, settings.musicLevel]);
 
   const toggleSound = () => {
     const newVal = !settings.soundEnabled;
     updateSettings({ soundEnabled: newVal });
-    AudioManager.setSoundEnabled(newVal, useGameMusic);
+    AudioManager.setSoundEnabled(newVal);
   };
 
   const frames = useMemo(
@@ -217,7 +216,7 @@ const LoadingScreen = ({
         ]}
       >
         <View style={styles.brandBlock}>
-          <Pressable onPress={toggleSound}>
+          <Pressable onPress={toggleSound} disabled={(settings.musicLevel ?? 0) === 0}>
             <View
               style={{
                 width: logo.width,

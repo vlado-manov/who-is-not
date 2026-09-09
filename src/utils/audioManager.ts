@@ -1,36 +1,63 @@
-// src/utils/audioManager.ts
-
-import { Audio, AVPlaybackSource } from "expo-av";
+import { createAudioPlayer, type AudioSource, type AudioPlayer } from "expo-audio";
 import { Platform } from "react-native";
-
-type OneShotOptions = {
-  volume?: number;
-};
 
 /**
  * AudioManager — centralised sound controller.
  *
+ * ─── BACKGROUND MUSIC LEGEND (LAW — do not deviate) ────────────────────────
+ *
+ *  Screen / Component               Track method              Tag
+ *  ───────────────────────────────  ──────────────────────    ──────────────
+ *  Lobby / menu / HeroPicker        playBackground()          "menu"
+ *  RoundScreen (via transition)     playBackgroundGame()      "gameplay"
+ *  QuestionScreen                   playBackgroundGame()      "gameplay"
+ *  PassDeviceGameplayScreen         playBackgroundGame()      "gameplay"
+ *  VoteNowScreen                    playBackgroundGame()      "gameplay"
+ *  VoteScreen                       (inherits gameplay)       "gameplay"
+ *  VoteResultsScreen                (inherits gameplay)       "gameplay"
+ *  StandingsScreen                  (inherits gameplay)       "gameplay"
+ *  DeathMatchScreen                 (inherits gameplay)       "gameplay"
+ *  ResultsScreen (answers phase)    playResultsBgMusic()      "results"
+ *  PreRevealScreen                  playPreRevealBg()         "prereveal"
+ *  RevealScreen (win path)          playRevealWinBg()         "reveal-win"
+ *  RevealScreen (lose path)         playRevealLoseBg()        "reveal-lose"
+ *  PlayerDeathScreen                playDeathScreenBg()       "death"
+ *  LivesRevealScreen                (no music — silent)       —
+ *  WinnerScreen                     playWinnerScreenBg()      "winner"
+ *
+ *  Rules:
+ *  • Each screen CLAIMS its music on focus (useFocusEffect or useEffect on mount).
+ *  • "inherits" screens must not call stopBackground() — the previous screen's
+ *    music continues until the next explicit claim.
+ *  • WinnerScreen uses useFocusEffect + setTimeout(50ms) so it always starts
+ *    AFTER any stopBackground() from screens that unmount during navigation.
+ *  • Music plays automatically when both `musicEnabled` and `enabled` are true.
+ *    Re-enabling settings resumes `intendedBg` without any extra screen logic.
+ *
+ * ─── Settings hierarchy (absolute — settings always win) ───────────────────
+ *   enabled      — master mute (the logo toggle on menu screens)
+ *   musicEnabled — background / loop tracks only
+ *   sfxEnabled   — all fire-and-forget SFX, keyboard loop, curtain sounds
+ *
+ * Intent tracking:
+ *   intendedBg   — the bg track the current screen WANTS to play.
+ *                  Set every time switchBgTrackInner is called (even when disabled).
+ *                  Cleared only when a screen explicitly requests silence via stopBackground().
+ *                  Preserved on settings-driven stops so re-enabling resumes the right track.
+ *
  * Two serialisation queues:
- *   bgChain   — ALL background / looping music operations (universal, all platforms).
- *               Ensures only one bg track can start or stop at a time.
- *   sfxChain  — Android-only chain for short SFX that share a single Audio.Sound slot
- *               (curtain sounds, hero sounds, counts).  Kept narrow on purpose.
- *
- * Game-event sounds (one-shots fired during gameplay) use playFireAndForget:
- *   – No setOnPlaybackStatusUpdate callbacks → zero bridge overhead during playback.
- *   – Not serialised in any chain → never blocks UI, button clicks, or animations.
- *   – Auto-unloads via a timeout derived from the track's actual duration.
- *
- * Volume helpers (duckBackground / restoreBackground) and the keyboard typing
- * loop are direct async calls — no chain needed because they only touch an
- * already-loaded Sound object and must respond immediately.
+ *   bgChain  — ALL background / looping music operations.
+ *   sfxChain — Android-only, SFX that share one AudioPlayer slot.
  */
 class AudioManager {
   // ── State ──────────────────────────────────────────────────────────────────
-  private static bgSound: Audio.Sound | null = null;
-  private static tensionSound: Audio.Sound | null = null;
-  private static curtainSound: Audio.Sound | null = null;
-  private static keyboardSound: Audio.Sound | null = null;
+  private static bgPlayer: AudioPlayer | null = null;
+  private static tensionPlayer: AudioPlayer | null = null;
+  private static curtainPlayer: AudioPlayer | null = null;
+  private static keyboardPlayer: AudioPlayer | null = null;
+
+  /** What the current screen intends to play. Preserved across settings toggles. */
+  private static intendedBg: { source: AudioSource; volume: number; tag: string } | null = null;
 
   /** Tag of the currently-playing bg track, used to skip redundant reloads. */
   private static currentBgTag: string | null = null;
@@ -43,10 +70,6 @@ class AudioManager {
 
   // ── Queues ─────────────────────────────────────────────────────────────────
 
-  /**
-   * Universal serialisation for ALL background music operations.
-   * Prevents two bg tracks from loading / playing simultaneously on any platform.
-   */
   private static bgChain: Promise<void> = Promise.resolve();
 
   private static enqueueBg<T>(fn: () => Promise<T>): Promise<T> {
@@ -58,10 +81,6 @@ class AudioManager {
     return next;
   }
 
-  /**
-   * Android-only serialisation for SFX that share a single Audio.Sound slot
-   * (curtain, hero, count sounds). Intentionally narrow scope.
-   */
   private static sfxChain: Promise<void> = Promise.resolve();
 
   private static enqueueSfx<T>(fn: () => Promise<T>): Promise<T> {
@@ -76,48 +95,115 @@ class AudioManager {
 
   // ── Settings ───────────────────────────────────────────────────────────────
 
-  static applySettingsFromStore(enabled: boolean, musicEnabled = true) {
-    this.enabled = enabled;
-    this.musicEnabled = musicEnabled;
-    if (!enabled) void this.stopBackground();
-  }
-
-  static setSoundEnabled(enabled: boolean, useGameMusic = false) {
-    this.enabled = enabled;
-    if (!enabled) {
-      void this.stopBackground();
-      void this.stopTensionLoop();
-    } else {
-      if (useGameMusic) {
-        void this.playBackgroundGameFromStart();
-      } else {
-        void this.playBackgroundFromStart();
-      }
+  /**
+   * Called once on app boot from App.tsx to apply persisted settings.
+   * Does NOT restart any music — screens start their own tracks on mount.
+   */
+  static applySettingsFromStore(settings: {
+    soundEnabled: boolean;
+    musicLevel?: number;
+    sfxLevel?: number;
+  }) {
+    const ml = settings.musicLevel ?? 0.7;
+    const sl = settings.sfxLevel ?? 0.8;
+    this.enabled = settings.soundEnabled;
+    // soundEnabled is the single source of truth for music on/off.
+    // musicLevel is volume only; a stale 0 from a past settings-modal disable must not
+    // block playback when the logo toggle is ON.
+    this.musicEnabled = settings.soundEnabled;
+    this.musicLevel = ml > 0 ? ml : 0.7;
+    this.sfxEnabled = sl > 0; // SFX is independent of the logo mute toggle
+    this.sfxLevel = sl;
+    // If audio should be off, stop whatever may be playing (edge case: hot-reload).
+    if (!this.enabled || !this.musicEnabled) {
+      void this.enqueueBg(async () => {
+        await this.stopBackgroundInner(false); // preserve intent for re-enable
+        await this.stopTensionLoopInner();
+      });
+    }
+    if (!this.sfxEnabled) {
+      void this.stopKeyboardLoop();
     }
   }
 
+  /**
+   * Logo music toggle — controls only background music, never SFX.
+   * Off → pauses bg music, preserves intendedBg for re-enable.
+   * On  → resumes bg music unconditionally (logo ON is the authoritative "play" signal).
+   */
+  static setSoundEnabled(enabled: boolean) {
+    this.enabled = enabled;
+    if (!enabled) {
+      void this.enqueueBg(async () => {
+        await this.stopBackgroundInner(false); // preserve intent
+        await this.stopTensionLoopInner();
+      });
+    } else {
+      // Logo ON is the authoritative "play music" signal — restore musicEnabled so that
+      // a prior setMusicEnabled(false) call cannot silently block resumption.
+      this.musicEnabled = true;
+      this.resumeBgIfNeeded();
+    }
+  }
+
+  /**
+   * Music-only toggle (from settings modal).
+   * Off → stops bg immediately, intent is preserved for re-enable.
+   * On  → also clears the logo mute so music actually resumes.
+   */
   static setMusicEnabled(enabled: boolean, level = 0.7) {
     this.musicEnabled = enabled;
     this.musicLevel = Math.max(0, Math.min(level, 1));
-    if (!enabled) void this.stopBackground();
+    if (!enabled) {
+      void this.enqueueBg(async () => {
+        await this.stopBackgroundInner(false); // preserve intent
+        await this.stopTensionLoopInner();
+      });
+    } else {
+      // Enabling music from settings clears any logo-level mute.
+      this.enabled = true;
+      this.resumeBgIfNeeded();
+    }
   }
 
+  /**
+   * SFX-only toggle (from settings modal).
+   * Off → stops keyboard loop immediately, blocks all future SFX.
+   * On  → unblocks future SFX (event-driven, nothing to restart automatically).
+   */
   static setSfxEnabled(enabled: boolean, level = 0.8) {
     this.sfxEnabled = enabled;
     this.sfxLevel = Math.max(0, Math.min(level, 1));
+    if (!enabled) {
+      void this.stopKeyboardLoop();
+    }
+  }
+
+  /** Replays intendedBg when music re-enabled, if the screen set one. */
+  private static resumeBgIfNeeded() {
+    if (!this.intendedBg) return;
+    const { source, volume, tag } = this.intendedBg;
+    void this.enqueueBg(() => this.switchBgTrackInner(source, volume, tag, false));
   }
 
   // ── Private bg helpers ─────────────────────────────────────────────────────
 
-  /** Must only be called from inside enqueueBg. */
-  private static async stopBackgroundInner() {
-    if (!this.bgSound) return;
-    const sound = this.bgSound;
-    this.bgSound = null;
+  /**
+   * @param clearIntent  true  = screen explicitly wants silence → clear intendedBg.
+   *                     false = settings-driven stop → keep intendedBg for resume.
+   */
+  private static async stopBackgroundInner(clearIntent = true) {
+    if (clearIntent) this.intendedBg = null;
+    if (!this.bgPlayer) {
+      this.currentBgTag = null;
+      return;
+    }
+    const player = this.bgPlayer;
+    this.bgPlayer = null;
     this.currentBgTag = null;
     try {
-      await sound.stopAsync();
-      await sound.unloadAsync();
+      player.pause();
+      player.remove();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (!msg.includes("not loaded")) {
@@ -126,44 +212,41 @@ class AudioManager {
     }
   }
 
-  /** Must only be called from inside enqueueBg. */
   private static async stopTensionLoopInner() {
-    if (!this.tensionSound) return;
-    const sound = this.tensionSound;
-    this.tensionSound = null;
+    if (!this.tensionPlayer) return;
+    const player = this.tensionPlayer;
+    this.tensionPlayer = null;
     try {
-      await sound.stopAsync();
-      await sound.unloadAsync();
+      player.pause();
+      player.remove();
     } catch (e) {
       console.warn("AudioManager: error stopping tension", e);
     }
   }
 
   /**
-   * Core bg switcher — called from all bg-playing methods.
-   *
-   * @param tag   Short unique string for the track (e.g. "gameplay", "results").
-   *              Pass the same tag as the currently-playing track to skip reload.
-   * @param lazy  If true:  skip if the same tag is already playing (don't restart).
-   *              If false: always stop current and start fresh.
+   * Core bg switcher — all bg-playing methods funnel through here.
+   * Always records intendedBg first (even when disabled) so settings re-enable works.
    */
   private static async switchBgTrackInner(
-    source: AVPlaybackSource,
+    source: AudioSource,
     volume: number,
     tag: string,
     lazy: boolean,
   ) {
+    // Record intent regardless of enabled state — needed for settings re-enable.
+    this.intendedBg = { source, volume, tag };
+
     if (!this.enabled || !this.musicEnabled) return;
-    if (lazy && this.currentBgTag === tag && this.bgSound) return;
+    if (lazy && this.currentBgTag === tag && this.bgPlayer) return;
     try {
-      await this.stopBackgroundInner();
+      await this.stopBackgroundInner(false); // new track replaces old — keep intent (we just set it)
       await this.stopTensionLoopInner();
-      const sound = new Audio.Sound();
-      await sound.loadAsync(source);
-      await sound.setIsLoopingAsync(true);
-      await sound.setVolumeAsync(volume * this.musicLevel);
-      await sound.playAsync();
-      this.bgSound = sound;
+      const player = createAudioPlayer(source);
+      player.loop = true;
+      player.volume = volume * this.musicLevel;
+      player.play();
+      this.bgPlayer = player;
       this.currentBgTag = tag;
     } catch (error) {
       this.currentBgTag = null;
@@ -185,7 +268,7 @@ class AudioManager {
     );
   }
 
-  /** Restart menu music from the beginning (e.g. when re-enabling sound). */
+  /** Restart menu music from the beginning. */
   static async playBackgroundFromStart() {
     return this.enqueueBg(() =>
       this.switchBgTrackInner(
@@ -245,46 +328,84 @@ class AudioManager {
     );
   }
 
-  /** Stop the background track entirely. */
+  /** Death screen loop for PlayerDeathScreen. Always replaces whatever is playing. */
+  static async playDeathScreenBg() {
+    return this.enqueueBg(() =>
+      this.switchBgTrackInner(
+        require("../../assets/audio/new/deathscreen-2.wav"),
+        0.75,
+        "death",
+        false,
+      ),
+    );
+  }
+
+  /** Winner screen loop for WinnerScreen. Lazy — stays if already playing. */
+  static async playWinnerScreenBg() {
+    return this.enqueueBg(() =>
+      this.switchBgTrackInner(
+        require("../../assets/audio/new/winnerscreen.wav"),
+        0.75,
+        "winner",
+        true,
+      ),
+    );
+  }
+
+  /**
+   * Explicit screen-driven silence.
+   * Clears intendedBg — re-enabling music will NOT resume anything.
+   */
   static async stopBackground() {
-    return this.enqueueBg(() => this.stopBackgroundInner());
+    return this.enqueueBg(() => this.stopBackgroundInner(true));
+  }
+
+  /**
+   * Temporarily silences bg music WITHOUT clearing intendedBg.
+   * Use on screens that don't have music but shouldn't erase the previous
+   * screen's intent (e.g. dev lab) — music resumes via resumeBackground()
+   * when focus returns to the originating screen.
+   */
+  static async silenceBackground() {
+    return this.enqueueBg(() => this.stopBackgroundInner(false));
+  }
+
+  /**
+   * Resumes the bg track the current screen last requested, if any.
+   * No-op if nothing was playing before or if music is disabled.
+   */
+  static resumeBackground() {
+    this.resumeBgIfNeeded();
   }
 
   // ── Volume helpers — DIRECT, no chain ────────────────────────────────────
   //
-  // These are simple setVolumeAsync calls on an already-loaded sound.
-  // They must respond immediately (e.g. at the exact moment typing starts),
-  // so serialising them in bgChain would introduce unpredictable delays.
+  // Must respond immediately (e.g. at the exact moment typing starts).
 
-  static async duckBackground(volume = 0.05) {
-    if (!this.bgSound) return;
-    try {
-      await this.bgSound.setVolumeAsync(volume);
-    } catch {}
+  static duckBackground(volume = 0.05) {
+    if (!this.bgPlayer) return;
+    try { this.bgPlayer.volume = volume; } catch {}
   }
 
-  static async restoreBackground(volume = 0.35) {
-    if (!this.bgSound) return;
-    try {
-      await this.bgSound.setVolumeAsync(volume);
-    } catch {}
+  static restoreBackground(volume = 0.35) {
+    if (!this.bgPlayer) return;
+    try { this.bgPlayer.volume = volume; } catch {}
   }
 
   // ── Tension countdown loop ─────────────────────────────────────────────────
 
-  /** Short suspense loop that plays during the countdown; ducks bgSound first. */
   static async playTensionLoop() {
     return this.enqueueBg(async () => {
       if (!this.enabled || !this.musicEnabled) return;
-      if (this.tensionSound) return;
+      if (this.tensionPlayer) return;
       try {
-        this.tensionSound = new Audio.Sound();
-        await this.tensionSound.loadAsync(
+        const player = createAudioPlayer(
           require("../../assets/audio/maybe/A_short_sound.wav"),
         );
-        await this.tensionSound.setIsLoopingAsync(true);
-        await this.tensionSound.setVolumeAsync(0.7 * this.musicLevel);
-        await this.tensionSound.playAsync();
+        player.loop = true;
+        player.volume = 0.7 * this.musicLevel;
+        player.play();
+        this.tensionPlayer = player;
       } catch (error) {
         console.warn("AudioManager: error starting tension", error);
       }
@@ -295,99 +416,73 @@ class AudioManager {
     return this.enqueueBg(() => this.stopTensionLoopInner());
   }
 
-  // ── Fire-and-forget game events ────────────────────────────────────────────
-  //
-  // Creates a sound, starts playback, then auto-unloads after the track ends.
-  //
-  // Why this beats playOneShot + setOnPlaybackStatusUpdate for game events:
-  //   1. No status callbacks → zero bridge overhead while the sound plays.
-  //   2. Not serialised in any chain → never delays button clicks or animations.
-  //   3. Cleanup is handled by a simple setTimeout using the track's own duration.
+  // ── Fire-and-forget SFX ────────────────────────────────────────────────────
 
-  private static playFireAndForget(
-    source: AVPlaybackSource,
-    volume: number,
-  ): void {
-    if (!this.enabled || !this.sfxEnabled) return;
-    void (async () => {
-      try {
-        const { sound, status } = await Audio.Sound.createAsync(source, {
-          shouldPlay: true,
-          volume: volume * this.sfxLevel,
-        });
-        // Derive cleanup delay from the track's actual duration.
-        // Fall back to 8 s if durationMillis is not yet available (streamed assets).
-        const durationMs =
-          typeof (status as any).durationMillis === "number"
-            ? (status as any).durationMillis + 1000
-            : 8000;
-        setTimeout(() => {
-          void sound.unloadAsync().catch(() => {});
-        }, durationMs);
-      } catch (e) {
-        console.warn("AudioManager: playFireAndForget failed", e);
-      }
-    })();
+  private static playFireAndForget(source: AudioSource, volume: number): void {
+    if (!this.sfxEnabled) return;
+    try {
+      const player = createAudioPlayer(source);
+      player.volume = volume * this.sfxLevel;
+      player.addListener("playbackStatusUpdate", (status) => {
+        if (status.didJustFinish) {
+          try { player.remove(); } catch {}
+        }
+      });
+      player.play();
+    } catch (e) {
+      console.warn("AudioManager: playFireAndForget failed", e);
+    }
   }
 
-  // ── Keyboard typing loop — DIRECT, no sfxChain ────────────────────────────
-  //
-  // The keyboard loop starts/stops tightly coupled to the typewriter animation.
-  // Serialising it in sfxChain would let any game-event sound (e.g. title splash)
-  // delay the loop start by its full playback duration — which is the main
-  // source of the "laggy quote animation" issue.
+
+  // ── Keyboard typing loop — DIRECT ─────────────────────────────────────────
 
   static async startKeyboardLoop() {
-    if (!this.enabled || !this.sfxEnabled) return;
-    if (this.keyboardSound) return;
+    if (!this.sfxEnabled) return;
+    if (this.keyboardPlayer) return;
     try {
-      this.keyboardSound = new Audio.Sound();
-      await this.keyboardSound.loadAsync(
+      const player = createAudioPlayer(
         require("../../assets/audio/keyboard3.wav"),
       );
-      await this.keyboardSound.setIsLoopingAsync(true);
-      await this.keyboardSound.setVolumeAsync(1 * this.sfxLevel);
-      await this.keyboardSound.playAsync();
+      player.loop = true;
+      player.volume = 1 * this.sfxLevel;
+      player.play();
+      this.keyboardPlayer = player;
     } catch (e) {
-      this.keyboardSound = null;
+      this.keyboardPlayer = null;
       console.warn("AudioManager: error starting keyboard", e);
     }
   }
 
   static async stopKeyboardLoop() {
-    if (!this.keyboardSound) return;
-    const sound = this.keyboardSound;
-    this.keyboardSound = null;
+    if (!this.keyboardPlayer) return;
+    const player = this.keyboardPlayer;
+    this.keyboardPlayer = null;
     try {
-      await sound.stopAsync();
-      await sound.unloadAsync();
+      player.pause();
+      player.remove();
     } catch {}
   }
 
   // ── Curtain / misc SFX ─────────────────────────────────────────────────────
-  // These share the curtainSound slot, so they still use enqueueSfx on Android
-  // to avoid stop/start races on the same object.
 
   private static async stopCurtainSoundInner() {
-    if (!this.curtainSound) return;
-    try {
-      await this.curtainSound.stopAsync();
-      await this.curtainSound.unloadAsync();
-    } catch {}
-    this.curtainSound = null;
+    if (!this.curtainPlayer) return;
+    try { this.curtainPlayer.remove(); } catch {}
+    this.curtainPlayer = null;
   }
 
   static async playCurtainSound() {
     return this.enqueueSfx(async () => {
-      if (!this.enabled) return;
+      if (!this.sfxEnabled) return;
       try {
         await this.stopCurtainSoundInner();
-        this.curtainSound = new Audio.Sound();
-        await this.curtainSound.loadAsync(
+        const player = createAudioPlayer(
           require("../../assets/audio/audioCurtains.wav"),
         );
-        await this.curtainSound.setVolumeAsync(0.7 * this.sfxLevel);
-        await this.curtainSound.playAsync();
+        player.volume = 0.7 * this.sfxLevel;
+        player.play();
+        this.curtainPlayer = player;
       } catch (error) {
         console.warn("AudioManager: error playCurtainSound", error);
       }
@@ -396,15 +491,15 @@ class AudioManager {
 
   static async playCurtainSoundClose() {
     return this.enqueueSfx(async () => {
-      if (!this.enabled || !this.sfxEnabled) return;
+      if (!this.sfxEnabled) return;
       try {
         await this.stopCurtainSoundInner();
-        this.curtainSound = new Audio.Sound();
-        await this.curtainSound.loadAsync(
+        const player = createAudioPlayer(
           require("../../assets/audio/closeCurtain.wav"),
         );
-        await this.curtainSound.setVolumeAsync(1 * this.sfxLevel);
-        await this.curtainSound.playAsync();
+        player.volume = 1 * this.sfxLevel;
+        player.play();
+        this.curtainPlayer = player;
       } catch (error) {
         console.warn("AudioManager: error playCurtainSoundClose", error);
       }
@@ -413,14 +508,14 @@ class AudioManager {
 
   static async playHeroSound() {
     return this.enqueueSfx(async () => {
-      if (!this.enabled || !this.sfxEnabled) return;
+      if (!this.sfxEnabled) return;
       try {
-        this.curtainSound = new Audio.Sound();
-        await this.curtainSound.loadAsync(
+        const player = createAudioPlayer(
           require("../../assets/audio/screena.wav"),
         );
-        await this.curtainSound.setVolumeAsync(1 * this.sfxLevel);
-        await this.curtainSound.playAsync();
+        player.volume = 1 * this.sfxLevel;
+        player.play();
+        this.curtainPlayer = player;
       } catch (error) {
         console.warn("AudioManager: error playHeroSound", error);
       }
@@ -429,15 +524,15 @@ class AudioManager {
 
   static async playCount() {
     return this.enqueueSfx(async () => {
-      if (!this.enabled || !this.sfxEnabled) return;
+      if (!this.sfxEnabled) return;
       try {
         await this.stopCurtainSoundInner();
-        this.curtainSound = new Audio.Sound();
-        await this.curtainSound.loadAsync(
+        const player = createAudioPlayer(
           require("../../assets/audio/count.wav"),
         );
-        await this.curtainSound.setVolumeAsync(1 * this.sfxLevel);
-        await this.curtainSound.playAsync();
+        player.volume = 1 * this.sfxLevel;
+        player.play();
+        this.curtainPlayer = player;
       } catch (error) {
         console.warn("AudioManager: error playCount", error);
       }
@@ -446,53 +541,42 @@ class AudioManager {
 
   static async playHeroBuy() {
     return this.enqueueSfx(async () => {
-      if (!this.enabled || !this.sfxEnabled) return;
+      if (!this.sfxEnabled) return;
       try {
-        this.curtainSound = new Audio.Sound();
-        await this.curtainSound.loadAsync(
+        const player = createAudioPlayer(
           require("../../assets/audio/audioHorn.mp3"),
         );
-        await this.curtainSound.setVolumeAsync(0.7 * this.sfxLevel);
-        await this.curtainSound.playAsync();
+        player.volume = 0.7 * this.sfxLevel;
+        player.play();
+        this.curtainPlayer = player;
       } catch (error) {
         console.warn("AudioManager: error playHeroBuy", error);
       }
     });
   }
 
-  // ── HeroPicker SFX — fire-and-forget ─────────────────────────────────────
-  // No ordering requirement; fire-and-forget avoids all bridge callback overhead.
+  // ── HeroPicker SFX ────────────────────────────────────────────────────────
 
   static playPickingHero() {
     this.playFireAndForget(require("../../assets/audio/pickingHero.wav"), 0.95);
   }
 
   static playHeroPickerEnd() {
-    this.playFireAndForget(
-      require("../../assets/audio/heroPickerEnd.wav"),
-      0.95,
-    );
+    this.playFireAndForget(require("../../assets/audio/heroPickerEnd.wav"), 0.95);
   }
 
   static heroPickerSwipe() {
-    this.playFireAndForget(
-      require("../../assets/audio/maybe/UISounds_027.wav"),
-      1,
-    );
+    this.playFireAndForget(require("../../assets/audio/maybe/UISounds_027.wav"), 1);
   }
 
   // ── Button click ───────────────────────────────────────────────────────────
 
   static playButtonClick() {
-    this.playFireAndForget(
-      require("../../assets/audio/buttonClick.wav"),
-      0.7,
-    );
+    this.playFireAndForget(require("../../assets/audio/buttonClick.wav"), 0.7);
   }
 
-  // ── Game-event SFX — fire-and-forget ─────────────────────────────────────
+  // ── Game-event SFX ────────────────────────────────────────────────────────
 
-  /** Splash whoosh fired when a title / question plate animates into view. */
   static playRevealTitleSplash() {
     this.playFireAndForget(
       require("../../assets/audio/new/revealScreenTitleSplashSound.mp3"),
@@ -500,7 +584,6 @@ class AudioManager {
     );
   }
 
-  /** Played on RevealScreen after the title animation finishes — impostor lost. */
   static playImposterLossSound() {
     this.playFireAndForget(
       require("../../assets/audio/new/imposterLossSound.wav"),
@@ -508,7 +591,6 @@ class AudioManager {
     );
   }
 
-  /** Played on RevealScreen after the title animation finishes — impostor won. */
   static playImposterWinSound() {
     this.playFireAndForget(
       require("../../assets/audio/new/imposterWinSound.mp3"),
@@ -516,10 +598,28 @@ class AudioManager {
     );
   }
 
-  /**
-   * Played on LivesRevealScreen when the impostor won and we first show
-   * that they didn't lose a life (happy-jump moment).
-   */
+  static async playRevealWinBg() {
+    return this.enqueueBg(() =>
+      this.switchBgTrackInner(
+        require("../../assets/audio/new/reveal-win.wav"),
+        0.75,
+        "reveal-win",
+        false,
+      ),
+    );
+  }
+
+  static async playRevealLoseBg() {
+    return this.enqueueBg(() =>
+      this.switchBgTrackInner(
+        require("../../assets/audio/new/reveal-lose2.wav"),
+        0.75,
+        "reveal-lose",
+        false,
+      ),
+    );
+  }
+
   static playImposterNotLosingLiveSound() {
     this.playFireAndForget(
       require("../../assets/audio/new/imposterNotLosingLiveSound.mp3"),
@@ -527,7 +627,6 @@ class AudioManager {
     );
   }
 
-  /** Plays every time a life-loss animation starts. */
   static playLosingLiveSound() {
     this.playFireAndForget(
       require("../../assets/audio/new/losingLiveSound.mp3"),
@@ -535,7 +634,6 @@ class AudioManager {
     );
   }
 
-  /** One-shot played when the player taps "continue" to start a new round. */
   static playTransitionBetweenRounds() {
     this.playFireAndForget(
       require("../../assets/audio/new/transitionBetweenRoundsSound.mp3"),
@@ -543,11 +641,61 @@ class AudioManager {
     );
   }
 
-  /** Pop sound played for each answer card that stamps onto the ResultsScreen. */
   static playAnswerPop(): void {
     this.playFireAndForget(
       require("../../assets/audio/new/resultscreenAnswerPop.wav"),
       0.9,
+    );
+  }
+
+  static playVoteNowLanding(): void {
+    this.playFireAndForget(
+      require("../../assets/audio/maybe/UISounds_046.wav"),
+      0.85,
+    );
+  }
+
+  static playHeartDeath(): void {
+    this.playFireAndForget(
+      require("../../assets/audio/new/heartDeath01.wav"),
+      1,
+    );
+  }
+
+  static playWinnerStart01(): void {
+    this.playFireAndForget(require("../../assets/audio/new/winningscreen-start01.wav"), 1);
+  }
+
+  static playWinnerStart02(): void {
+    this.playFireAndForget(require("../../assets/audio/new/winningscreen-start02.wav"), 1);
+  }
+
+  static playWinnerStart03(): void {
+    this.playFireAndForget(require("../../assets/audio/new/winnerscreen-start03.wav"), 1);
+  }
+
+  static playFactOpen(): void {
+    this.playFireAndForget(require("../../assets/audio/new/factOpen.wav"), 1);
+  }
+
+  static playItemDrop(): void {
+    this.playFireAndForget(
+      require("../../assets/audio/new/itemDrop2.wav"),
+      1,
+    );
+  }
+
+  static playItemDropAlt(): void {
+    this.playFireAndForget(
+      require("../../assets/audio/new/itemDrop.wav"),
+      1,
+    );
+  }
+
+  static playDeathScreenSfx(): void {
+    this.playFireAndForget(
+      require("../../assets/audio/new/deathscreen-2.wav"),
+      1,
     );
   }
 }

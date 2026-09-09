@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 0,
   },
 });

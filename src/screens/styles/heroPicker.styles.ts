@@ -32,12 +32,12 @@ export const createHeroPickerStyles = (
     },
 
     heroImageWrap: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       alignItems: "center",
       justifyContent: "center",
     },
     heroImage: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       width: "100%",
       height: "100%",
     },
@@ -65,7 +65,7 @@ export const createHeroPickerStyles = (
       zIndex: 10,
     },
     backgroundOverlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: "black",
       zIndex: 5,
     },

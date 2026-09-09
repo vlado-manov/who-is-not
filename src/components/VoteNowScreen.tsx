@@ -126,7 +126,8 @@ const VoteNowScreen = () => {
     continuedRef.current = true;
     const resolvedVoterIndex =
       mode === "ONLINE" ? getOnlinePlayerIndex(players, onlinePlayerId) : voterIndex;
-    navigation.navigate("Vote", { voterIndex: resolvedVoterIndex });
+    // replace keeps the vote stack flat during the pass-device vote cycle
+    navigation.replace("Vote", { voterIndex: resolvedVoterIndex });
   };
 
   useEffect(() => {
@@ -134,7 +135,9 @@ const VoteNowScreen = () => {
   }, []);
 
   useEffect(() => {
-    Animated.sequence([
+    const shakeRef = { current: null as Animated.CompositeAnimation | null };
+
+    const mainAnim = Animated.sequence([
       Animated.parallel([
         Animated.spring(animatedVoteMarkTranslateY, {
           toValue: 0,
@@ -167,7 +170,11 @@ const VoteNowScreen = () => {
           useNativeDriver: true,
         }),
       ]),
-      Animated.sequence([
+    ]);
+    mainAnim.start(({ finished }) => {
+      if (!finished) return;
+      AudioManager.playItemDropAlt();
+      const shakeAnim = Animated.sequence([
         Animated.timing(screenShake, {
           toValue: 1,
           duration: 60,
@@ -188,8 +195,14 @@ const VoteNowScreen = () => {
           duration: 60,
           useNativeDriver: true,
         }),
-      ]),
-    ]).start();
+      ]);
+      shakeRef.current = shakeAnim;
+      shakeAnim.start();
+    });
+    return () => {
+      mainAnim.stop();
+      shakeRef.current?.stop();
+    };
   }, []);
 
   return (

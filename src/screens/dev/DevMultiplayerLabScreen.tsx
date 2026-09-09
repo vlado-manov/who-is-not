@@ -1,9 +1,11 @@
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ScrollView, View, StyleSheet } from "react-native";
 import {
   CompositeNavigationProp,
+  useFocusEffect,
   useNavigation,
 } from "@react-navigation/native";
+import AudioManager from "../../utils/audioManager";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
@@ -48,12 +50,16 @@ import {
   seedWinnerCelebration,
   seedWinnerEliminatedOnline,
   seedDeathMatchLocal,
+  seedDeathMatchOnline,
   seedDeathMatchWinnerSingle,
   seedDeathMatchWinnerTie,
   seedHeroButtonsGroup1,
   seedHeroButtonsGroup2,
+  seedOnlineSpectatorQuestion,
+  seedOnlineSpectatorVote,
 } from "../../dev/seedDevMultiplayerLab";
 import { useGameStore } from "../../store/useGameStore";
+import DevHeroPickerModal from "./DevHeroPickerModal";
 
 type Nav = CompositeNavigationProp<
   StackNavigationProp<OnboardingStackParamList, "DevMultiplayerLab">,
@@ -68,9 +74,36 @@ export default function DevMultiplayerLabScreen() {
   const { t } = useTranslation();
   const { horizontalPadding, topIconSize } = useResponsive();
 
+  const [heroPickerVisible, setHeroPickerVisible] = useState(false);
+  const pendingHeroAction = useRef<((heroId: string) => void) | null>(null);
+
+  const openHeroPicker = useCallback((action: (heroId: string) => void) => {
+    pendingHeroAction.current = action;
+    setHeroPickerVisible(true);
+  }, []);
+
+  const handleHeroSelected = useCallback((heroId: string) => {
+    pendingHeroAction.current?.(heroId);
+    pendingHeroAction.current = null;
+    setHeroPickerVisible(false);
+  }, []);
+
+  const handleHeroPickerClose = useCallback(() => {
+    pendingHeroAction.current = null;
+    setHeroPickerVisible(false);
+  }, []);
+
   useEffect(() => {
     void useHeroesStore.getState().loadHeroes();
   }, []);
+
+  useFocusEffect(useCallback(() => {
+    void AudioManager.silenceBackground();
+    void AudioManager.stopTensionLoop();
+    return () => {
+      AudioManager.resumeBackground();
+    };
+  }, []));
 
   const go = <T extends keyof GameStackParamList>(
     seed: () => void,
@@ -247,11 +280,11 @@ export default function DevMultiplayerLabScreen() {
     },
     {
       label: "Reveal (win)",
-      onPress: () => go(seedRevealWin, "Reveal"),
+      onPress: () => openHeroPicker((heroId) => go(() => seedRevealWin(heroId), "Reveal")),
     },
     {
       label: "Reveal (lose)",
-      onPress: () => go(seedRevealLose, "Reveal"),
+      onPress: () => openHeroPicker((heroId) => go(() => seedRevealLose(heroId), "Reveal")),
     },
     {
       label: "Lives reveal (long)",
@@ -260,10 +293,12 @@ export default function DevMultiplayerLabScreen() {
     {
       label: "Player death — continue",
       onPress: () =>
-        go(seedPlayerDeathContinue, "PlayerDeath", {
-          variant: "continue",
-          deadPlayerId: DEV_IDS.p2,
-        }),
+        openHeroPicker((heroId) =>
+          go(() => seedPlayerDeathContinue(heroId), "PlayerDeath", {
+            variant: "continue",
+            deadPlayerId: DEV_IDS.p2,
+          })
+        ),
     },
     {
       label: "Player death — game over",
@@ -290,8 +325,20 @@ export default function DevMultiplayerLabScreen() {
       onPress: () => go(seedHeroButtonsGroup2, "Vote", { voterIndex: 0 }),
     },
     {
+      label: "Online wait — spectator (eliminated, answers phase)",
+      onPress: () => go(seedOnlineSpectatorQuestion, "Question", { playerIndex: 0 }),
+    },
+    {
+      label: "Online wait — spectator (eliminated, votes phase)",
+      onPress: () => go(seedOnlineSpectatorVote, "Vote", { voterIndex: 0 }),
+    },
+    {
       label: "Deathmatch (local setup)",
       onPress: () => go(seedDeathMatchLocal, "DeathMatch"),
+    },
+    {
+      label: "Deathmatch (online — each player's own phone)",
+      onPress: () => go(seedDeathMatchOnline, "DeathMatch"),
     },
     {
       label: "Deathmatch winner — single",
@@ -303,7 +350,7 @@ export default function DevMultiplayerLabScreen() {
     },
     {
       label: "Winner (celebration)",
-      onPress: () => go(seedWinnerCelebration, "Winner"),
+      onPress: () => openHeroPicker((heroId) => go(() => seedWinnerCelebration(heroId), "Winner")),
     },
     {
       label: "Winner — eliminated (online UI)",
@@ -470,6 +517,11 @@ export default function DevMultiplayerLabScreen() {
             ))}
           </ScrollView>
       </SafeAreaView>
+      <DevHeroPickerModal
+        visible={heroPickerVisible}
+        onClose={handleHeroPickerClose}
+        onSelect={handleHeroSelected}
+      />
     </FullBleedStack>
   );
 }

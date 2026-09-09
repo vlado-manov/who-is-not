@@ -174,7 +174,7 @@ const switchStyles = StyleSheet.create({
     elevation: 6,
   },
   glow: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: 999,
     opacity: 0,
   },
@@ -360,16 +360,13 @@ export default function UserSettingsModal({
   const sfxOn = settings.sfxLevel > 0;
 
   const applyAudio = (nextMusic: boolean, nextSfx: boolean) => {
-    const lvlM = nextMusic ? 0.7 : 0;
-    const lvlS = nextSfx ? 0.8 : 0;
     updateSettings({
-      soundEnabled: nextMusic || nextSfx,
-      musicLevel: lvlM,
-      sfxLevel: lvlS,
+      soundEnabled: nextMusic, // tracks logo mute state; enabling music clears logo mute
+      musicLevel: nextMusic ? 0.7 : 0,
+      sfxLevel: nextSfx ? 0.8 : 0,
     });
-    AudioManager.setSoundEnabled(nextMusic || nextSfx);
-    AudioManager.setMusicEnabled(nextMusic, lvlM);
-    AudioManager.setSfxEnabled(nextSfx, lvlS);
+    AudioManager.setMusicEnabled(nextMusic, 0.7);
+    AudioManager.setSfxEnabled(nextSfx, 0.8);
   };
 
   const handleExitConfirm = () => {

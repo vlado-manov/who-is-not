@@ -684,11 +684,18 @@ export default function PlayerDeathScreen() {
       });
     });
 
+  useEffect(() => () => {
+    void AudioManager.stopBackground();
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     let titleSoundTimer: ReturnType<typeof setTimeout> | undefined;
 
     const run = async () => {
+      void AudioManager.playDeathScreenBg();
+      AudioManager.playDeathScreenSfx();
+
       setShowFlyingTitle(false);
       setShowFlyingHearts(false);
       setHeartsActive(false);
@@ -1084,7 +1091,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   titleFlyOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 50,
@@ -1101,12 +1108,12 @@ const styles = StyleSheet.create({
     overflow: "visible",
   },
   heroImageWrap: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
   },
   heroImage: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     width: "100%",
     height: "100%",
   },
@@ -1116,21 +1123,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   heartsFlyOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 45,
   },
   bgBlurOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 40,
   },
   bgBlurWebFallback: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(10, 4, 18, 0.62)",
   },
   bgBlurTint: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(8, 2, 16, 0.16)",
   },
   heartsRow: {
@@ -1224,7 +1231,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   feedBgTint: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(4,0,10,0.50)",
   },
   feedItem: {

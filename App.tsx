@@ -195,9 +195,19 @@ export default function App() {
     });
   }, []);
 
+  const soundEnabledRef = useRef(soundEnabled);
+  const musicLevelRef = useRef(musicLevel);
+  useEffect(() => { soundEnabledRef.current = soundEnabled; }, [soundEnabled]);
+  useEffect(() => { musicLevelRef.current = musicLevel; }, [musicLevel]);
+
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
       void addCrashBreadcrumb("app_state", { state });
+      if (state === "active" && soundEnabledRef.current && musicLevelRef.current > 0) {
+        // Audio session may have been interrupted (phone call, OS preemption).
+        // Re-claim the bg track the current screen last requested.
+        AudioManager.resumeBackground();
+      }
     });
     return () => sub.remove();
   }, []);
@@ -222,14 +232,16 @@ export default function App() {
   };
 
   const soundEnabled = useAuthStore((s) => s.settings.soundEnabled);
+  const musicLevel = useAuthStore((s) => s.settings.musicLevel ?? 0.7);
+  const sfxLevel = useAuthStore((s) => s.settings.sfxLevel ?? 0.8);
   const userId = useAuthStore((s) => s.user.id);
   const notificationsEnabled = useAuthStore((s) => s.settings.notificationsEnabled);
   const setGameState = useGameStore((s) => s.set);
   const pendingNavRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    AudioManager.applySettingsFromStore(soundEnabled);
-  }, [soundEnabled]);
+    AudioManager.applySettingsFromStore({ soundEnabled, musicLevel, sfxLevel });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!notificationsEnabled || !userId) return;

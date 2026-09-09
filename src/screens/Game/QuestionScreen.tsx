@@ -178,7 +178,7 @@ const QuestionScreen = () => {
     phase: answersPhase,
     onReady: () => {
       setWaitingAnswersSync(false);
-      navigation.navigate("Results");
+      navigation.replace("Results");
     },
   });
 
@@ -246,7 +246,7 @@ const QuestionScreen = () => {
   React.useEffect(() => {
     // Splash sound fires in sync with the plate flying in
     void AudioManager.playRevealTitleSplash();
-    Animated.sequence([
+    const anim = Animated.sequence([
       Animated.parallel([
         Animated.timing(plateScale, {
           toValue: 1,
@@ -283,7 +283,9 @@ const QuestionScreen = () => {
           useNativeDriver: true,
         }),
       ]),
-    ]).start();
+    ]);
+    anim.start();
+    return () => anim.stop();
   }, []);
 
   React.useEffect(() => {
@@ -292,7 +294,7 @@ const QuestionScreen = () => {
     numberInputScale.setValue(0.8);
     numberInputOpacity.setValue(0);
 
-    Animated.parallel([
+    const anim = Animated.parallel([
       Animated.timing(numberInputScale, {
         toValue: 1,
         duration: 420,
@@ -304,7 +306,9 @@ const QuestionScreen = () => {
         duration: 260,
         useNativeDriver: true,
       }),
-    ]).start();
+    ]);
+    anim.start();
+    return () => anim.stop();
   }, [isNumber, isInput, numberInputOpacity, numberInputScale]);
 
   if (!currentPlayer) return null;
@@ -345,11 +349,13 @@ const QuestionScreen = () => {
     const isLast = playerIndex >= players.length - 1;
 
     if (!isLast) {
-      navigation.navigate("PassDeviceGameplay", {
+      // replace instead of navigate: removes this screen from the stack so
+      // old Question instances don't stay mounted during the whole round.
+      navigation.replace("PassDeviceGameplay", {
         playerIndex: playerIndex + 1,
       });
     } else {
-      navigation.navigate("Results");
+      navigation.replace("Results");
     }
   };
 
@@ -902,6 +908,7 @@ const QuestionScreen = () => {
         </KeyboardAvoidingView>
       <OnlineWaitPlayersOverlay
         visible={mode === "ONLINE" && waitingAnswersSync}
+        variant="popup"
       />
     </SafeAreaView>
     </FullBleedStack>
@@ -1076,14 +1083,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   numberInputImageContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: 18,
   },
   numberInputImage: {
     // borderRadius: 18,
   },
   numberInputOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     paddingHorizontal: 16,
     paddingVertical: 12,
     justifyContent: "center",
@@ -1147,7 +1154,7 @@ const styles = StyleSheet.create({
       : {}),
   },
   numberImageValueDisplay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
   },

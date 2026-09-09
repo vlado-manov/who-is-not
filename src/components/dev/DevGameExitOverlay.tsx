@@ -4,6 +4,7 @@ import { CommonActions, useNavigation } from "@react-navigation/native";
 
 import { useGameStore } from "../../store/useGameStore";
 import CustomText from "../common/CustomText";
+import AudioManager from "../../utils/audioManager";
 
 /**
  * Floating exit when a dev-seeded game is active (gameId prefix dev_).
@@ -15,6 +16,8 @@ export default function DevGameExitOverlay() {
   if (!__DEV__ || !gameId?.startsWith("dev_")) return null;
 
   const exit = () => {
+    void AudioManager.stopBackground();
+    void AudioManager.stopTensionLoop();
     useGameStore.getState().reset();
     // Overlay sits outside Stack.Navigator; useNavigation() may already be the
     // root navigator, so getParent() is undefined and nothing ran before.

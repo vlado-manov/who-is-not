@@ -14,10 +14,9 @@ export function reportMultiplayerDiagnostic(
   metadata: MultiplayerDiagnosticPayload = {}
 ): void {
   const now = Date.now();
-  const key = `${step}:${JSON.stringify(metadata)}`;
-  const prev = lastSentAt.get(key) ?? 0;
+  const prev = lastSentAt.get(step) ?? 0;
   if (now - prev < THROTTLE_MS) return;
-  lastSentAt.set(key, now);
+  lastSentAt.set(step, now);
 
   void trackPlayerSessionStarted({
     source: "MULTIPLAYER",

@@ -267,14 +267,14 @@ export default function PreRevealLoadingLayer({ onDone }: Props) {
     >
       <Animated.View
         style={[
-          StyleSheet.absoluteFillObject,
+          StyleSheet.absoluteFill,
           { transform: [{ scale: bgScale }] },
         ]}
       >
         <Image
           source={bgUri}
           contentFit="cover"
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           cachePolicy="memory-disk"
           transition={200}
           priority="high"
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
   },
   vignette: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.16)",
   },
   scanBeam: {
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   flash: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "#fff4cf",
   },
   bottomBlock: {

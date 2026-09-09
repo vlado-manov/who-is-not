@@ -44,7 +44,7 @@ import { game_images } from "../../assets/images";
 import { backgrounds } from "../../assets/backgrounds";
 import { useIconPressAnim } from "../hooks/useIconPressAnim";
 import { createHeroPickerStyles } from "./styles/heroPicker.styles";
-import { QuoteBubble } from "./HeroPicker/QuoteBubble";
+import { QuoteBubble, QuoteBubbleHandle } from "./HeroPicker/QuoteBubble";
 import { HeroPickerHeader } from "./HeroPicker/HeroPickerHeader";
 import { HeroStage } from "./HeroPicker/HeroStage";
 import { HeroPickerFooter } from "./HeroPicker/HeroPickerFooter";
@@ -540,22 +540,19 @@ export default function HeroPickerScreen() {
       },
     }),
   ).current;
-  const [quoteTyped, setQuoteTyped] = useState("");
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const bubbleTranslateY = useRef(new Animated.Value(-28)).current;
   const bubbleOpacity = useRef(new Animated.Value(0)).current;
   const bubbleScale = useRef(new Animated.Value(0.98)).current;
-  const typeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const quoteBubbleRef = useRef<QuoteBubbleHandle>(null);
   const holdTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const quoteExitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const navigatedRef = useRef(false);
 
   const cleanupTimers = () => {
-    if (typeIntervalRef.current) {
-      clearInterval(typeIntervalRef.current);
-      typeIntervalRef.current = null;
-    }
+    quoteBubbleRef.current?.stopTyping();
     if (holdTimeoutRef.current) {
       clearTimeout(holdTimeoutRef.current);
       holdTimeoutRef.current = null;
@@ -619,8 +616,10 @@ export default function HeroPickerScreen() {
       setWaitingForHeroIntroOthers(true);
       return;
     }
+    if (navigatedRef.current) return;
+    navigatedRef.current = true;
     if (target && index < target) {
-      navigation.navigate("PassDevice", { index: index + 1 });
+      navigation.replace("PassDevice", { index: index + 1 });
     } else {
       setShowRound1Transition(true);
     }
@@ -817,33 +816,15 @@ export default function HeroPickerScreen() {
   };
 
   const typeQuote = (text: string, onDone?: () => void) => {
-    if (typeIntervalRef.current) {
-      clearInterval(typeIntervalRef.current);
-      typeIntervalRef.current = null;
-    }
     const safeText = text.trim() || t("hero_picker_quote_fallback");
-    // 🔉 START: duck + keyboard ВЕДНАГА
     AudioManager.duckBackground(0.12);
-    AudioManager.startKeyboardLoop();
-
-    setQuoteTyped("");
-    let i = 0;
-
-    typeIntervalRef.current = setInterval(() => {
-      i += 1;
-      setQuoteTyped(safeText.slice(0, i));
-
-      if (i >= safeText.length) {
-        if (typeIntervalRef.current) {
-          clearInterval(typeIntervalRef.current);
-          typeIntervalRef.current = null;
-        }
-        // 🔇 STOP: keyboard + restore bg ВЕДНАГА
-        AudioManager.stopKeyboardLoop();
-        AudioManager.restoreBackground(0.35);
-        onDone?.();
-      }
-    }, TYPE_INTERVAL_MS);
+    quoteBubbleRef.current?.typeText(safeText, () => {
+      AudioManager.stopKeyboardLoop();
+      AudioManager.restoreBackground(0.35);
+      onDone?.();
+    });
+    // Start keyboard on first character — slight delay matches TYPE_INTERVAL_MS.
+    setTimeout(() => AudioManager.startKeyboardLoop(), TYPE_INTERVAL_MS);
   };
 
   const runCoordinatedSequence = (text: string, shouldNavigate = true) => {
@@ -1307,8 +1288,8 @@ export default function HeroPickerScreen() {
               )}
 
               <QuoteBubble
+                ref={quoteBubbleRef}
                 visible={selected || isNaming}
-                text={quoteTyped}
                 opacity={bubbleOpacity}
                 translateY={bubbleTranslateY}
                 scale={bubbleScale}
@@ -1585,6 +1566,7 @@ export default function HeroPickerScreen() {
                 ? "online_wait_hero_intro"
                 : "online_wait_other_players"
             }
+            variant="popup"
           />
         </SafeAreaView>
       </FullBleedStack>

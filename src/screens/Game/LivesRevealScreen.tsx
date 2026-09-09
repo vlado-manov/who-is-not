@@ -8,9 +8,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   View,
-  ViewStyle,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
@@ -28,6 +26,7 @@ import { usePreventBack } from "../../hooks/usePreventBack";
 import { useTranslation } from "react-i18next";
 
 import AppImage from "../../components/AppImage";
+import BottomSkipAction from "../../components/common/BottomSkipAction";
 import CustomButton from "../../components/common/CustomButton";
 import CustomText from "../../components/common/CustomText";
 import AudioManager from "../../utils/audioManager";
@@ -75,68 +74,6 @@ const LIVES_REVEAL_ACTION_BG_URI =
 const LIVES_REVEAL_STANDINGS_BG_URI =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/a139ba52-e82f-4b13-b10b-25b962ce9785-livesRevealBackground.webp";
 
-const CARD_ACCENTS = [
-  {
-    border: "#4da6ff",
-    glow: "rgba(77,166,255,0.55)",
-    ribbon: ["#3b8fd9", "#1e5fa8"] as [string, string],
-    avatarRing: "#5bb8ff",
-  },
-  {
-    border: "#ffb84d",
-    glow: "rgba(255,184,77,0.55)",
-    ribbon: ["#f0a020", "#c87800"] as [string, string],
-    avatarRing: "#ffcc66",
-  },
-  {
-    border: "#c084fc",
-    glow: "rgba(192,132,252,0.55)",
-    ribbon: ["#a855f7", "#7e22ce"] as [string, string],
-    avatarRing: "#d8b4fe",
-  },
-  {
-    border: "#34d399",
-    glow: "rgba(52,211,153,0.55)",
-    ribbon: ["#10b981", "#047857"] as [string, string],
-    avatarRing: "#6ee7b7",
-  },
-  {
-    border: "#fb7185",
-    glow: "rgba(251,113,133,0.55)",
-    ribbon: ["#f43f5e", "#be123c"] as [string, string],
-    avatarRing: "#fda4af",
-  },
-  {
-    border: "#22d3ee",
-    glow: "rgba(34,211,238,0.55)",
-    ribbon: ["#06b6d4", "#0e7490"] as [string, string],
-    avatarRing: "#67e8f9",
-  },
-  {
-    border: "#facc15",
-    glow: "rgba(250,204,21,0.55)",
-    ribbon: ["#eab308", "#a16207"] as [string, string],
-    avatarRing: "#fde047",
-  },
-  {
-    border: "#818cf8",
-    glow: "rgba(129,140,248,0.55)",
-    ribbon: ["#6366f1", "#4338ca"] as [string, string],
-    avatarRing: "#a5b4fc",
-  },
-  {
-    border: "#e879f9",
-    glow: "rgba(232,121,249,0.55)",
-    ribbon: ["#d946ef", "#a21caf"] as [string, string],
-    avatarRing: "#f0abfc",
-  },
-  {
-    border: "#84cc16",
-    glow: "rgba(132,204,22,0.55)",
-    ribbon: ["#65a30d", "#3f6212"] as [string, string],
-    avatarRing: "#bef264",
-  },
-] as const;
 
 type Phase = "focus" | "grid";
 type HeartPlateVariant = "center" | "grid";
@@ -219,120 +156,6 @@ function startAnim(animation: Animated.CompositeAnimation) {
   });
 }
 
-type GameShowTitleTone = "danger" | "gold";
-
-/** Chunky stacked-outline title — Cyrillic-safe (AmaticSC-Bold). */
-function GameShowTitle({
-  text,
-  tone,
-  fontSize,
-  style,
-}: {
-  text: string;
-  tone: GameShowTitleTone;
-  fontSize: number;
-  style?: ViewStyle;
-}) {
-  const fill = tone === "danger" ? "#fffdf8" : "#ffe047";
-  const stroke = tone === "danger" ? "#9b0a0a" : "#6b3200";
-  const deep = tone === "danger" ? "#4a0202" : "#3a1800";
-  const highlight = tone === "gold" ? "#fff9b8" : "#ffffff";
-
-  const outlineLayers =
-    tone === "danger"
-      ? [
-          { dx: 0, dy: 5, color: deep },
-          { dx: 0, dy: 4, color: stroke },
-          { dx: 3, dy: 4, color: stroke },
-          { dx: -3, dy: 4, color: stroke },
-          { dx: 2, dy: 3, color: stroke },
-          { dx: -2, dy: 3, color: stroke },
-        ]
-      : [
-          { dx: 0, dy: 6, color: deep },
-          { dx: 0, dy: 5, color: stroke },
-          { dx: 3, dy: 5, color: stroke },
-          { dx: -3, dy: 5, color: stroke },
-          { dx: 2, dy: 4, color: "#9a4e00" },
-          { dx: -2, dy: 4, color: "#9a4e00" },
-        ];
-
-  const baseTextStyle = {
-    fontFamily: "AmaticSC-Bold",
-    fontSize,
-    lineHeight: fontSize * 1.05,
-    letterSpacing: tone === "gold" ? 2 : 1,
-    textAlign: "center" as const,
-    includeFontPadding: false,
-  };
-
-  return (
-    <View style={[styles.gameShowTitleWrap, { minHeight: fontSize * 1.15 }, style]}>
-      {outlineLayers.map((layer, i) => (
-        <Text
-          key={`stroke-${i}`}
-          style={[
-            baseTextStyle,
-            styles.gameShowTitleLayer,
-            {
-              color: layer.color,
-              transform: [{ translateX: layer.dx }, { translateY: layer.dy }],
-            },
-          ]}
-        >
-          {text}
-        </Text>
-      ))}
-      <Text
-        style={[
-          baseTextStyle,
-          styles.gameShowTitleLayer,
-          {
-            color: fill,
-            textShadowColor: tone === "gold" ? "#ff9900" : "#ff5555",
-            textShadowOffset: { width: 0, height: 1 },
-            textShadowRadius: tone === "gold" ? 6 : 4,
-          },
-        ]}
-      >
-        {text}
-      </Text>
-      <Text
-        style={[
-          baseTextStyle,
-          styles.gameShowTitleLayer,
-          styles.gameShowTitleHighlight,
-          { color: highlight },
-        ]}
-      >
-        {text}
-      </Text>
-    </View>
-  );
-}
-
-/** Bold ribbon label with slight skew — Cyrillic-safe (OpenSans-ExtraBold). */
-function RibbonLabel({
-  text,
-  style,
-  compact = false,
-}: {
-  text: string;
-  style?: ViewStyle;
-  compact?: boolean;
-}) {
-  const fontSize = compact ? 13 : 16;
-  return (
-    <View style={[styles.ribbonLabelWrap, style]}>
-      <Text style={[styles.ribbonLabelStroke, { fontSize, lineHeight: fontSize + 4 }]}>
-        {text}
-      </Text>
-      <Text style={[styles.ribbonLabelFill, { fontSize, lineHeight: fontSize + 4 }]}>
-        {text}
-      </Text>
-    </View>
-  );
-}
 
 const LivesRevealScreen = () => {
   const { t } = useTranslation();
@@ -389,6 +212,9 @@ const LivesRevealScreen = () => {
   const [displayLives, setDisplayLives] = useState<Record<string, number>>({});
   const displayLivesRef = useRef<Record<string, number>>({});
   const [canContinue, setCanContinue] = useState(false);
+  const [showFocusSkip, setShowFocusSkip] = useState(false);
+  const skipFocusRef = useRef(false);
+  const gridScrollRef = useRef<ScrollView>(null);
   const [showGameOver, setShowGameOver] = useState(false);
   const [deadIds, setDeadIds] = useState<string[]>([]);
   const [centerDeadId, setCenterDeadId] = useState<string | null>(null);
@@ -461,19 +287,16 @@ const LivesRevealScreen = () => {
     [playersUi]
   );
 
-  const playerAccentIndex = useMemo(() => {
-    const map: Record<string, number> = {};
-    playersUi.forEach((p, i) => {
-      map[p.id] = i % CARD_ACCENTS.length;
-    });
-    return map;
-  }, [playersUi]);
 
   const gridItemAnimsRef = useRef<Record<string, Animated.Value>>({});
   const deathShakeRef = useRef<Record<string, Animated.Value>>({});
   const deathGrayRef = useRef<Record<string, Animated.Value>>({});
   const deathX1Ref = useRef<Record<string, Animated.Value>>({});
   const deathX2Ref = useRef<Record<string, Animated.Value>>({});
+  useEffect(() => () => {
+    void AudioManager.stopBackground();
+  }, []);
+
   useEffect(() => {
     playersUi.forEach((p) => {
       if (!gridItemAnimsRef.current[p.id]) {
@@ -1248,6 +1071,7 @@ const LivesRevealScreen = () => {
     });
 
     for (let i = 0; i < cardAnims.length; i++) {
+      gridScrollRef.current?.scrollToEnd({ animated: true });
       void AudioManager.playAnswerPop();
       await startAnim(cardAnims[i]);
       await startAnim(Animated.delay(50));
@@ -1260,6 +1084,8 @@ const LivesRevealScreen = () => {
     const x1 = deathX1Ref.current[playerId];
     const x2 = deathX2Ref.current[playerId];
     if (!shake || !gray || !x1 || !x2) return;
+
+    AudioManager.playHeartDeath();
 
     shake.setValue(0);
     gray.setValue(0);
@@ -1306,6 +1132,8 @@ const LivesRevealScreen = () => {
   };
 
   const animateDeadPlayerInCenter = async (playerId: string) => {
+    AudioManager.playHeartDeath();
+
     setCenterDeadId(playerId);
     centerDeathShakeX.setValue(0);
     centerDeathGray.setValue(0);
@@ -1524,7 +1352,9 @@ const LivesRevealScreen = () => {
         await switchCenterTo(onlinePlayerId);
         void AudioManager.playImposterNotLosingLiveSound();
         await runFocusSpotlightMoment(happyJumpDiagonal);
+        let shownOnline = 0;
         for (const id of orderedLosingIds) {
+          if (skipFocusRef.current) break;
           await switchCenterTo(id);
           await runFocusSpotlightMoment(async () => {
             await animateLifeLoss(id, true);
@@ -1532,12 +1362,19 @@ const LivesRevealScreen = () => {
               await animateDeadPlayerInCenter(id);
             }
           });
+          shownOnline += 1;
+          if (shownOnline >= 2 && orderedLosingIds.length > shownOnline) {
+            setShowFocusSkip(true);
+          }
         }
+        setShowFocusSkip(false);
         await switchCenterTo(oddOneId);
       } else {
         void AudioManager.playImposterNotLosingLiveSound();
         await runFocusSpotlightMoment(happyJumpDiagonal);
+        let shownLocal = 0;
         for (const id of losingIds) {
+          if (skipFocusRef.current) break;
           await switchCenterTo(id);
           await runFocusSpotlightMoment(async () => {
             await animateLifeLoss(id, true);
@@ -1545,7 +1382,12 @@ const LivesRevealScreen = () => {
               await animateDeadPlayerInCenter(id);
             }
           });
+          shownLocal += 1;
+          if (shownLocal >= 2 && losingIds.length > shownLocal) {
+            setShowFocusSkip(true);
+          }
         }
+        setShowFocusSkip(false);
         await switchCenterTo(oddOneId);
       }
 
@@ -1760,11 +1602,12 @@ const LivesRevealScreen = () => {
 
         {!showGameOver && (
           <ScrollView
+            ref={gridScrollRef}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             bounces
           >
-            <View style={styles.content}>
+            <View style={[styles.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 140 }]}>
               {/* ── FOCUS HEADER ─────────────────────────────────────────── */}
               {phase === "focus" && (
                 <Animated.View
@@ -1780,11 +1623,13 @@ const LivesRevealScreen = () => {
                     },
                   ]}
                 >
-                  <GameShowTitle
-                    text={t("lives_reveal_life_lost_title")}
-                    tone="danger"
-                    fontSize={56}
-                  />
+                  <CustomText
+                    variant="h2"
+                    textColor="#fffdf8"
+                    style={{ textAlign: "center" }}
+                  >
+                    {t("lives_reveal_life_lost_title")}
+                  </CustomText>
                   <Animated.View style={{ opacity: subtitleOp, width: "100%" }}>
                     <LinearGradient
                       colors={["#f02828", "#9b0f0f"]}
@@ -1792,7 +1637,13 @@ const LivesRevealScreen = () => {
                       end={{ x: 1, y: 1 }}
                       style={styles.focusRibbon}
                     >
-                      <RibbonLabel text={t("lives_reveal_subtitle_focus")} />
+                      <CustomText
+                        variant="p-small"
+                        textColor="#fff"
+                        style={{ fontFamily: "Onest-SemiBold", letterSpacing: 0.6, textAlign: "center" }}
+                      >
+                        {t("lives_reveal_subtitle_focus")}
+                      </CustomText>
                     </LinearGradient>
                   </Animated.View>
                 </Animated.View>
@@ -1819,24 +1670,26 @@ const LivesRevealScreen = () => {
                     end={{ x: 1, y: 0 }}
                     style={styles.roundRibbon}
                   >
-                    <RibbonLabel
-                      text={t("lives_reveal_round_label", {
-                        round: Math.max(1, round),
-                      })}
-                      compact
-                    />
+                    <CustomText
+                      variant="p-small"
+                      textColor="#fff"
+                      style={{ fontFamily: "Onest-SemiBold", letterSpacing: 0.6, textAlign: "center" }}
+                    >
+                      {t("lives_reveal_round_label", { round: Math.max(1, round) })}
+                    </CustomText>
                   </LinearGradient>
-                  <GameShowTitle
-                    text={t("lives_reveal_title")}
-                    tone="gold"
-                    fontSize={64}
-                    style={styles.livesHeroTitle}
-                  />
+                  <CustomText
+                    variant="h2"
+                    textColor="#ffe047"
+                    style={[styles.livesHeroTitle, { textAlign: "center" }]}
+                  >
+                    {t("lives_reveal_title")}
+                  </CustomText>
                   <Animated.View style={[styles.standingsRow, { opacity: subtitleOp }]}>
                     <View style={styles.standingsLine} />
-                    <Text style={styles.standingsText}>
+                    <CustomText variant="p-small" textColor="#fff8e8" style={{ letterSpacing: 0.8 }}>
                       {t("lives_reveal_subtitle_grid")}
-                    </Text>
+                    </CustomText>
                     <View style={styles.standingsLine} />
                   </Animated.View>
                 </Animated.View>
@@ -1941,8 +1794,6 @@ const LivesRevealScreen = () => {
                         const isDead =
                           (displayLives[p.id] ?? 0) <= 0 ||
                           deadIds.includes(p.id);
-                        const accentIdx = playerAccentIndex[p.id] ?? 0;
-                        const accent = CARD_ACCENTS[accentIdx];
                         const cardWidth =
                           row.players.length === 1
                             ? containerWidth * 0.52
@@ -1952,16 +1803,9 @@ const LivesRevealScreen = () => {
                           <Animated.View
                             key={p.id}
                             style={[
-                              styles.gridCard,
+                              styles.gridCell,
                               {
                                 width: cardWidth,
-                                borderColor: isDead
-                                  ? "rgba(180,60,60,0.55)"
-                                  : accent.border,
-                                shadowColor: isDead ? "#b03030" : accent.border,
-                              },
-                              isDead && styles.gridCardDead,
-                              {
                                 opacity: v,
                                 transform: [
                                   {
@@ -2000,109 +1844,93 @@ const LivesRevealScreen = () => {
                               },
                             ]}
                           >
-                            <LinearGradient
-                              colors={["rgba(25,12,40,0.92)", "rgba(12,6,22,0.96)"]}
-                              style={styles.gridCardInner}
-                            >
-                              <LinearGradient
-                                colors={accent.ribbon}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={styles.gridNameRibbon}
-                              >
-                                <CustomText
-                                  variant="p-small"
-                                  style={styles.gridNameRibbonText}
-                                  numberOfLines={1}
-                                >
-                                  {getDisplayName(p.id, p.name)}
-                                </CustomText>
-                              </LinearGradient>
+                            {renderHeartsPlate(
+                              displayLives[p.id] ?? 0,
+                              p.id,
+                              "grid",
+                              isDead,
+                            )}
 
-                              {renderHeartsPlate(
-                                displayLives[p.id] ?? 0,
-                                p.id,
-                                "grid",
-                                isDead,
+                            <View style={styles.gridAvatarWrap}>
+                              {p.image && (
+                                <AppImage
+                                  source={p.image}
+                                  contentFit="contain"
+                                  style={styles.gridAvatarImage}
+                                />
                               )}
-
-                              <View
-                                style={[
-                                  styles.gridImageWrap,
-                                  {
-                                    borderColor: isDead
-                                      ? "rgba(180,80,80,0.5)"
-                                      : accent.avatarRing,
-                                  },
-                                ]}
+                              <Animated.View
+                                pointerEvents="none"
+                                style={[styles.grayFilterLayer, { opacity: gray }]}
                               >
                                 {p.image && (
                                   <AppImage
                                     source={p.image}
-                                    contentFit="cover"
-                                    style={styles.gridImage}
+                                    contentFit="contain"
+                                    style={styles.gridAvatarImageGray}
                                   />
                                 )}
-                                <Animated.View
-                                  pointerEvents="none"
-                                  style={[styles.grayFilterLayer, { opacity: gray }]}
-                                >
-                                  {p.image && (
-                                    <AppImage
-                                      source={p.image}
-                                      contentFit="cover"
-                                      style={styles.gridImageGray}
-                                    />
-                                  )}
-                                </Animated.View>
-                                <Animated.View
-                                  pointerEvents="none"
-                                  style={[
-                                    styles.crossLineWrap,
-                                    {
-                                      opacity: x1,
-                                      transform: [
-                                        {
-                                          scale: x1.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [0.86, 1],
-                                          }),
-                                        },
-                                      ],
-                                    },
-                                  ]}
-                                >
-                                  <AppImage
-                                    source={{ uri: X_PART_1_URI }}
-                                    contentFit="contain"
-                                    style={styles.crossLineImage}
-                                  />
-                                </Animated.View>
-                                <Animated.View
-                                  pointerEvents="none"
-                                  style={[
-                                    styles.crossLineWrap,
-                                    {
-                                      opacity: x2,
-                                      transform: [
-                                        {
-                                          scale: x2.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [0.86, 1],
-                                          }),
-                                        },
-                                      ],
-                                    },
-                                  ]}
-                                >
-                                  <AppImage
-                                    source={{ uri: X_PART_2_URI }}
-                                    contentFit="contain"
-                                    style={styles.crossLineImage}
-                                  />
-                                </Animated.View>
-                              </View>
-                            </LinearGradient>
+                              </Animated.View>
+                              <Animated.View
+                                pointerEvents="none"
+                                style={[
+                                  styles.crossLineWrap,
+                                  {
+                                    opacity: x1,
+                                    transform: [
+                                      {
+                                        scale: x1.interpolate({
+                                          inputRange: [0, 1],
+                                          outputRange: [0.86, 1],
+                                        }),
+                                      },
+                                    ],
+                                  },
+                                ]}
+                              >
+                                <AppImage
+                                  source={{ uri: X_PART_1_URI }}
+                                  contentFit="contain"
+                                  style={styles.crossLineImage}
+                                />
+                              </Animated.View>
+                              <Animated.View
+                                pointerEvents="none"
+                                style={[
+                                  styles.crossLineWrap,
+                                  {
+                                    opacity: x2,
+                                    transform: [
+                                      {
+                                        scale: x2.interpolate({
+                                          inputRange: [0, 1],
+                                          outputRange: [0.86, 1],
+                                        }),
+                                      },
+                                    ],
+                                  },
+                                ]}
+                              >
+                                <AppImage
+                                  source={{ uri: X_PART_2_URI }}
+                                  contentFit="contain"
+                                  style={styles.crossLineImage}
+                                />
+                              </Animated.View>
+                            </View>
+
+                            <CustomButton
+                              title={getDisplayName(p.id, p.name)}
+                              btnSize="xs"
+                              fontSize="sm"
+                              fullWidth
+                              buttonClassName="-mt-4"
+                              backgroundImage={backgrounds.bg018}
+                              glow
+                              glowColor="rgba(255,204,0,1)"
+                              glowIntensity={8}
+                              shadowColor="#834400"
+                            />
                           </Animated.View>
                         );
                       })}
@@ -2430,6 +2258,16 @@ const LivesRevealScreen = () => {
             />
           </Animated.View>
         )}
+
+        {phase === "focus" && showFocusSkip && (
+          <BottomSkipAction
+            label={t("skip")}
+            onPress={() => {
+              skipFocusRef.current = true;
+              setShowFocusSkip(false);
+            }}
+          />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -2440,19 +2278,19 @@ export default LivesRevealScreen;
 const styles = StyleSheet.create({
   bg: { flex: 1 },
   bgBlurOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 40,
   },
   bgBlurWebFallback: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(10, 4, 18, 0.62)",
   },
   bgBlurTint: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(8, 2, 16, 0.16)",
   },
   centerFocusOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 50,
     alignItems: "center",
     pointerEvents: "none",
@@ -2464,9 +2302,7 @@ const styles = StyleSheet.create({
   content: {
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 12,
     paddingHorizontal: 16,
-    paddingBottom: 120,
   },
   scrollContent: {
     flexGrow: 1,
@@ -2479,48 +2315,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
-  gameShowTitleWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 64,
-    paddingHorizontal: 8,
-  },
-  gameShowTitleLayer: {
-    position: "absolute",
-    textAlign: "center",
-  },
-  gameShowTitleHighlight: {
-    opacity: 0.2,
-    transform: [{ translateY: -1 }],
-  },
   livesHeroTitle: {
     marginTop: 2,
     marginBottom: 4,
-  },
-  ribbonLabelWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  ribbonLabelStroke: {
-    position: "absolute",
-    fontFamily: "OpenSans-ExtraBold",
-    fontSize: 16,
-    lineHeight: 20,
-    color: "#3a0505",
-    textAlign: "center",
-    letterSpacing: 0.6,
-    transform: [{ translateX: 1 }, { translateY: 2 }],
-  },
-  ribbonLabelFill: {
-    fontFamily: "OpenSans-ExtraBold",
-    fontSize: 16,
-    lineHeight: 20,
-    color: "#fff",
-    textAlign: "center",
-    letterSpacing: 0.6,
-    textShadowColor: "rgba(0,0,0,0.35)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
   focusRibbon: {
     marginTop: 12,
@@ -2561,16 +2358,6 @@ const styles = StyleSheet.create({
     height: 1.5,
     backgroundColor: "rgba(255,220,160,0.35)",
   },
-  standingsText: {
-    color: "#fff8e8",
-    fontFamily: "OpenSans-ExtraBold",
-    fontSize: 15,
-    letterSpacing: 0.8,
-    textShadowColor: "rgba(0,0,0,0.45)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-
   /* Focus center */
   centerBlock: {
     width: "100%",
@@ -2720,55 +2507,30 @@ const styles = StyleSheet.create({
   gridRowCentered: {
     justifyContent: "center",
   },
-  gridCard: {
-    borderRadius: 18,
-    overflow: "hidden",
-    borderWidth: 2.5,
-    ...Platform.select({
-      ios: {
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.45,
-        shadowRadius: 10,
-      },
-      android: { elevation: 8 },
-    }),
-  },
-  gridCardDead: { opacity: 0.82 },
-  gridCardInner: {
+  gridCell: {
     alignItems: "center",
-    paddingBottom: 14,
-    paddingTop: 0,
+    paddingHorizontal: 4,
   },
-  gridNameRibbon: {
-    alignSelf: "stretch",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    alignItems: "center",
-  },
-  gridNameRibbonText: {
+  gridAvatarWrap: {
     width: "100%",
-    color: "#fff",
-    fontWeight: "800",
-    textAlign: "center",
-    letterSpacing: 0.4,
-  },
-  gridImageWrap: {
-    width: "78%",
     aspectRatio: 1,
-    borderRadius: 999,
-    overflow: "hidden",
-    borderWidth: 3,
-    marginTop: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: -16,
+    zIndex: 1,
   },
-  gridImage: { width: "100%", height: "100%" },
-  gridImageGray: {
+  gridAvatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+  gridAvatarImageGray: {
     width: "100%",
     height: "100%",
     tintColor: "rgba(120,120,120,0.6)",
     opacity: 0.95,
   },
   grayFilterLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     overflow: "hidden",
   },
   crossLineWrap: {
@@ -2807,7 +2569,7 @@ const styles = StyleSheet.create({
   },
   winnerHeroImage: { width: "100%", height: "60%", zIndex: 3 },
   winnerPlatformImage: { width: "100%", height: 180, zIndex: 2 },
-  winnerConfettiLayer: { ...StyleSheet.absoluteFillObject, zIndex: 10 },
+  winnerConfettiLayer: { ...StyleSheet.absoluteFill, zIndex: 10 },
   confettiTopCenter: {
     position: "absolute",
     top: -20,

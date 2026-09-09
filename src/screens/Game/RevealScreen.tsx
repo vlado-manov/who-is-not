@@ -1,5 +1,5 @@
 // src/screens/Game/RevealScreen.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   ImageBackground,
@@ -14,7 +14,7 @@ import AppImage from "../../components/AppImage";
 import { BlurView } from "expo-blur";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StackNavigationProp } from "@react-navigation/stack";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 import { Player, useGameStore } from "../../store/useGameStore";
 import { GameStackParamList } from "../../navigation/types";
@@ -62,7 +62,6 @@ const RevealScreen = () => {
   const shockwaveScale2 = useRef(new Animated.Value(0.3)).current;
   const shockwaveOpacity2 = useRef(new Animated.Value(0)).current;
   const impactFlash = useRef(new Animated.Value(0)).current;
-  const [characterLoaded, setCharacterLoaded] = useState(false);
   const [showCTA, setShowCTA] = useState(false);
   // -- QUOTE BUBBLE (commented out for now) --
   // const [showQuoteBubble, setShowQuoteBubble] = useState(false);
@@ -158,7 +157,9 @@ const RevealScreen = () => {
   const trackRoundEndedMutation = useTrackRoundEndedMutation();
   const shouldTrackLifecycle = mode !== "ONLINE" || onlineIsHost;
   useEffect(() => {
-    if (!characterLoaded) return;
+    // Start immediately on mount — don't wait for the character image to load.
+    // The title animation is independent of the character image layer; the image
+    // will appear in place when it finishes decoding without blocking the reveal.
     if (hasRevealedCTA.current) return;
     // Reset shockwave/impact state before starting
     shockwaveScale.setValue(0.3);
@@ -353,12 +354,10 @@ const RevealScreen = () => {
     setTimeout(() => void AudioManager.playRevealTitleSplash(), 1000);
     entryAnimRef.current.start(() => {
       if (isContinuingRef.current) return;
-      // Stop the pre-reveal suspense bg, then play the outcome sting
-      void AudioManager.stopBackground();
       if (impostorWon) {
-        void AudioManager.playImposterWinSound();
+        AudioManager.playImposterWinSound();
       } else {
-        void AudioManager.playImposterLossSound();
+        AudioManager.playImposterLossSound();
       }
       setHideAnimatedTitle(true);
       Animated.timing(titleOpacity, {
@@ -371,7 +370,8 @@ const RevealScreen = () => {
         revealCTA();
       }, 2000);
     });
-  }, [characterLoaded]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const revealCTA = () => {
     if (hasRevealedCTA.current) return;
@@ -579,6 +579,19 @@ const RevealScreen = () => {
   ).length;
   const impostorWon = !impostorLost;
 
+  useFocusEffect(
+    useCallback(() => {
+      const t = setTimeout(() => {
+        if (impostorWon) {
+          void AudioManager.playRevealWinBg();
+        } else {
+          void AudioManager.playRevealLoseBg();
+        }
+      }, 50);
+      return () => clearTimeout(t);
+    }, [impostorWon]),
+  );
+
   const revealVariant: WinVariant | LoseVariant = getRevealVariant(
     votesForImpostor,
     totalEligibleVoters,
@@ -673,32 +686,25 @@ const RevealScreen = () => {
   const characterImageSource = useMemo(() => {
     if (!imposterCharacter) return null;
 
-    const byVariant = impostorWon
-      ? imposterCharacter.winImagesByVariant
-      : imposterCharacter.loseImagesByVariant;
+    // Use all win/lose images regardless of variant — pick is random but deterministic per round.
     const flatImages = impostorWon
       ? imposterCharacter.winImages
       : imposterCharacter.loseImages;
 
-    const variantKey = revealVariant as string;
-
-    const variantList =
-      (byVariant && (byVariant[variantKey] || byVariant.NORMAL)) || undefined;
-
     const pool: ImageSourcePropType[] =
-      (variantList && variantList.length > 0 && variantList) ||
-      (flatImages && flatImages.length > 0 && flatImages) ||
-      (imposterCharacter.main_image
-        ? [imposterCharacter.main_image]
-        : heroes
-            .map((h) => h.main_image)
-            .filter((img): img is ImageSourcePropType => Boolean(img)));
+      flatImages?.length > 0
+        ? flatImages
+        : imposterCharacter.main_image
+          ? [imposterCharacter.main_image]
+          : heroes
+              .map((h) => h.main_image)
+              .filter((img): img is ImageSourcePropType => Boolean(img));
 
     if (!pool || pool.length === 0) return null;
 
     const idx = deterministicPickIndex(`${revealVisualSeed}-char`, pool.length);
     return pool[idx];
-  }, [heroes, imposterCharacter, impostorWon, revealVariant, revealVisualSeed]);
+  }, [heroes, imposterCharacter, impostorWon, revealVisualSeed]);
 
   /* -------------------------------------------------------------------------- */
   /* ACTION */
@@ -722,7 +728,7 @@ const RevealScreen = () => {
       }
     }
 
-    navigation.navigate("LivesReveal");
+    navigation.replace("LivesReveal");
   };
 
   if (!imposter || !imposterCharacter) return null;
@@ -737,7 +743,7 @@ const RevealScreen = () => {
         <BlurView
           intensity={15}
           tint="dark"
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
         <RevealAmbienceOverlay variant={impostorWon ? "win" : "lose"} />
@@ -927,7 +933,6 @@ const RevealScreen = () => {
               source={characterImageSource}
               contentFit="contain"
               style={styles.characterImage}
-              onLoadEnd={() => setCharacterLoaded(true)}
             />
           )}
         </View>

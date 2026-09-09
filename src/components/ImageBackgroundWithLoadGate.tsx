@@ -71,14 +71,14 @@ export default function ImageBackgroundWithLoadGate({
       <View style={containerWrapperStyle(style)}>
         <View
           style={[
-            StyleSheet.absoluteFillObject,
+            StyleSheet.absoluteFill,
             { backgroundColor: bgUnderlay, zIndex: 0 },
           ]}
         />
         <ImageBackground
           {...rest}
           style={[
-            StyleSheet.absoluteFillObject,
+            StyleSheet.absoluteFill,
             { opacity: imageReady ? 1 : 0, zIndex: 1 },
           ]}
           onLoad={onLoad}
@@ -88,12 +88,12 @@ export default function ImageBackgroundWithLoadGate({
           <BlurView
             intensity={10}
             tint="dark"
-            style={[StyleSheet.absoluteFillObject, { zIndex: 2 }]}
+            style={[StyleSheet.absoluteFill, { zIndex: 2 }]}
             pointerEvents="none"
           />
         )}
         <View
-          style={[StyleSheet.absoluteFillObject, { zIndex: 3 }]}
+          style={[StyleSheet.absoluteFill, { zIndex: 3 }]}
           pointerEvents="box-none"
         >
           {children}
@@ -107,7 +107,7 @@ export default function ImageBackgroundWithLoadGate({
     <View style={containerWrapperStyle(style)}>
       <View
         style={[
-          StyleSheet.absoluteFillObject,
+          StyleSheet.absoluteFill,
           {
             backgroundColor: underlayColor ?? "#000",
             zIndex: 0,
@@ -117,7 +117,7 @@ export default function ImageBackgroundWithLoadGate({
       <ImageBackground
         {...rest}
         style={[
-          StyleSheet.absoluteFillObject,
+          StyleSheet.absoluteFill,
           { opacity: showContent ? 1 : 0, zIndex: 1 },
         ]}
         onLoad={onLoad}
@@ -127,7 +127,7 @@ export default function ImageBackgroundWithLoadGate({
           <BlurView
             intensity={10}
             tint="dark"
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             pointerEvents="none"
           />
         )}

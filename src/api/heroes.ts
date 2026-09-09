@@ -24,6 +24,7 @@ type CharacterDto = {
   rateImageUrl?: string | null;
   mainImageUrl: string | null;
   secondaryImageUrl?: string | null;
+  winnerImageUrl?: string | null;
   finalWinnerImageUrl?: string | null;
   finalLoserImageUrl?: string | null;
   deathmatchImageUrl?: string | null;
@@ -121,6 +122,7 @@ export async function fetchCharacters(lang?: string, userId?: string): Promise<I
       main_image: asImage(row.mainImageUrl, fallbackMain),
       secondaryImage: asImage(row.secondaryImageUrl),
       profileImage: asImage(row.profileImageUrl, fallbackAvatar),
+      winnerImage: asImage(row.winnerImageUrl, null),
       finalWinnerImage: asImage(row.finalWinnerImageUrl, null),
       finalLoserImage: asImage(row.finalLoserImageUrl, null),
       deathmatch_image: asImage(row.deathmatchImageUrl, null),
@@ -218,11 +220,13 @@ export function collectCharacterImageUris(list: ICharacter[]): string[] {
     const main = getImageUri(hero.main_image);
     const profile = getImageUri(hero.profileImage);
     const rate = getImageUri(hero.rateImage);
+    const winner = getImageUri(hero.winnerImage);
     const finalWinner = getImageUri(hero.finalWinnerImage);
     const finalLoser = getImageUri(hero.finalLoserImage);
     if (main) uris.push(main);
     if (profile) uris.push(profile);
     if (rate) uris.push(rate);
+    if (winner) uris.push(winner);
     if (finalWinner) uris.push(finalWinner);
     if (finalLoser) uris.push(finalLoser);
     uris.push(...collectUrisFromImages(hero.winImages));

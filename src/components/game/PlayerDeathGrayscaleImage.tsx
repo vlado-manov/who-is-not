@@ -47,7 +47,7 @@ export default function PlayerDeathGrayscaleImage({
       <Image
         source={source}
         style={[
-          StyleSheet.absoluteFillObject,
+          StyleSheet.absoluteFill,
           { filter: "grayscale(1) sepia(0.18) hue-rotate(290deg) saturate(1.4)" } as object,
         ]}
         contentFit="contain"
@@ -57,7 +57,7 @@ export default function PlayerDeathGrayscaleImage({
   }
 
   return (
-    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
       <FilterImage
         source={source}
         width={w}

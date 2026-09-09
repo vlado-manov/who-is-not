@@ -166,11 +166,11 @@ const iiStyles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.3)",
   },
   headerWhiten: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(255,255,255,0.65)",
   },
   headerTint: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   name: {
     flexShrink: 1,
@@ -203,13 +203,13 @@ function ResultsBackground() {
       <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0a0a0a" }]} />
       <AppImage
         source={{ uri: RESULTS_BG_URI }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         contentFit="cover"
       />
       <BlurView
         intensity={20}
         tint="dark"
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
       <ResultsAmbience />
@@ -309,6 +309,7 @@ const ResultsScreen = () => {
   /* ── Tension pulse (last 20 s) ───────────────────────────────────────────── */
   const tensionPulse = useRef(new Animated.Value(0)).current;
   const tensionPulseLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+  const tensionPulseSpeedRef = useRef<"slow" | "fast" | null>(null);
 
   /* ── Exit transition overlay ─────────────────────────────────────────────── */
   const exitFlashOp = useRef(new Animated.Value(0)).current;
@@ -465,10 +466,10 @@ const ResultsScreen = () => {
   const navigateToVote = useCallback(() => {
     if (mode === "ONLINE") {
       const voterIndex = getOnlinePlayerIndex(players, onlinePlayerId);
-      navigation.navigate("Vote", { voterIndex });
+      navigation.replace("Vote", { voterIndex });
     } else {
       // Local / party mode: always pass device to first voter before they see the vote screen
-      navigation.navigate("VoteNow", { voterIndex: 0 });
+      navigation.replace("VoteNow", { voterIndex: 0 });
     }
   }, [mode, navigation, players, onlinePlayerId]);
 
@@ -509,6 +510,11 @@ const ResultsScreen = () => {
     finalizeDiscussionRef.current = finalizeDiscussion;
   }, [finalizeDiscussion]);
 
+  useEffect(() => () => {
+    void AudioManager.stopBackground();
+    void AudioManager.stopTensionLoop();
+  }, []);
+
   useMultiplayerPhaseGate({
     enabled: mode === "ONLINE" && waitingPreVoteSync,
     phase: preVotePhase,
@@ -546,32 +552,42 @@ const ResultsScreen = () => {
     void AudioManager.playTensionLoop();
   }, [secondsLeft]);
 
-  /* Tension pulse animation — starts when music kicks in, stops at 0. */
+  /* Tension pulse animation — starts when music kicks in, stops at 0.
+     Last 10 s: 2× faster (300 ms half-cycle instead of 600 ms). */
   useEffect(() => {
     const shouldPulse = secondsLeft > 0 && secondsLeft <= 20;
-    if (shouldPulse && !tensionPulseLoopRef.current) {
-      tensionPulse.setValue(0);
-      const loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(tensionPulse, {
-            toValue: 1,
-            duration: 600,
-            easing: Easing.inOut(Easing.quad),
-            useNativeDriver: true,
-          }),
-          Animated.timing(tensionPulse, {
-            toValue: 0,
-            duration: 600,
-            easing: Easing.inOut(Easing.quad),
-            useNativeDriver: true,
-          }),
-        ]),
-      );
-      tensionPulseLoopRef.current = loop;
-      loop.start();
+    const neededSpeed = secondsLeft <= 10 ? "fast" : "slow";
+
+    if (shouldPulse) {
+      if (tensionPulseSpeedRef.current !== neededSpeed) {
+        tensionPulseLoopRef.current?.stop();
+        tensionPulseLoopRef.current = null;
+        tensionPulseSpeedRef.current = neededSpeed;
+        tensionPulse.setValue(0);
+        const dur = neededSpeed === "fast" ? 300 : 600;
+        const loop = Animated.loop(
+          Animated.sequence([
+            Animated.timing(tensionPulse, {
+              toValue: 1,
+              duration: dur,
+              easing: Easing.inOut(Easing.quad),
+              useNativeDriver: true,
+            }),
+            Animated.timing(tensionPulse, {
+              toValue: 0,
+              duration: dur,
+              easing: Easing.inOut(Easing.quad),
+              useNativeDriver: true,
+            }),
+          ]),
+        );
+        tensionPulseLoopRef.current = loop;
+        loop.start();
+      }
     } else if (!shouldPulse && tensionPulseLoopRef.current) {
       tensionPulseLoopRef.current.stop();
       tensionPulseLoopRef.current = null;
+      tensionPulseSpeedRef.current = null;
       tensionPulse.setValue(0);
     }
   }, [secondsLeft, tensionPulse]);
@@ -727,7 +743,7 @@ const ResultsScreen = () => {
         }
         timerFinishTimeoutRef.current = setTimeout(
           () => finalizeDiscussionRef.current(),
-          Math.max(1, secondsLeftRef.current) * 1000 + 300,
+          Math.max(1, secondsLeftRef.current) * 1000 + 5000,
         );
         if (timerIntervalRef.current) {
           clearInterval(timerIntervalRef.current);
@@ -783,7 +799,11 @@ const ResultsScreen = () => {
               useNativeDriver: true,
             } as Parameters<typeof Animated.spring>[1]),
           ]).start(() => {
-            void AudioManager.playResultsBgMusic();
+            // Guard: don't start music if the user already pressed skip
+            // before this spring animation settled.
+            if (!hasFinishedRef.current) {
+              void AudioManager.playResultsBgMusic();
+            }
             safe(() => {
               phaseRef.current = "running";
               setPhase("running");
@@ -1477,7 +1497,7 @@ const ResultsScreen = () => {
                     />
                     <View
                       style={[
-                        StyleSheet.absoluteFillObject,
+                        StyleSheet.absoluteFill,
                         styles.timerTextLayer,
                       ]}
                     >
@@ -1531,6 +1551,7 @@ const ResultsScreen = () => {
         {/* ── OVERLAYS ─────────────────────────────────────────────────────── */}
         <OnlineWaitPlayersOverlay
           visible={mode === "ONLINE" && waitingPreVoteSync}
+          variant="popup"
         />
         {mode === "ONLINE" && (
           <FloatingChatDock
@@ -1636,7 +1657,7 @@ const styles = StyleSheet.create({
   },
   /* ── Timer intro overlay ──────────────────────────────────────────────── */
   timerIntroOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(4, 1, 16, 0.92)",
     justifyContent: "center",
     alignItems: "center",
@@ -1736,7 +1757,7 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   rateNumberOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
   },
   rateNumberValue: {

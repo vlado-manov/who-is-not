@@ -292,6 +292,7 @@
   "online_guest_wait_host": "Чакаме домакина да започне…",
   "online_hero_taken": "Друг играч току-що избра този герой. Избери друг.",
   "online_wait_other_players": "Чакаме останалите играчи…",
+  "online_wait_subtitle": "Изчакай останалите да приключат",
   "online_wait_hero_intro": "Чакаме всички да приключат с герой, име и представяне…",
   "hero_picker_sniped_title": "Опа — късно!",
   "hero_picker_sniped_hint": "Някой друг току-що избра този герой. Преминаваме към следващия.",

@@ -1,12 +1,14 @@
 // src/screens/Game/PassDeviceGameplayScreen.tsx
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import {
+  Animated,
+  Easing,
+  ImageBackground,
   View,
-  Pressable,
   useWindowDimensions,
   StyleSheet,
-  ScrollView,
 } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AppImage from "../AppImage";
 import FullBleedStack from "../FullBleedStack";
 import ImageBackgroundWithLoadGate from "../ImageBackgroundWithLoadGate";
@@ -26,9 +28,7 @@ import CustomText from "../../components/common/CustomText";
 import { game_images } from "../../../assets/images";
 import CustomButton from "../../components/common/CustomButton";
 import AudioManager from "../../utils/audioManager";
-import { useAuthStore } from "../../store/useUserStore";
 import { usePreventBack } from "../../hooks/usePreventBack";
-import i18n from "../../i18n";
 import { useResponsive } from "../../utils/responsive";
 
 type R = RouteProp<GameStackParamList, "PassDeviceGameplay">;
@@ -48,37 +48,42 @@ const PassDeviceGameplayScreen = () => {
 
   const players = useGameStore((s) => s.players);
   const currentPlayer = players[playerIndex];
-  const { settings, updateSettings } = useAuthStore();
 
   const onContinue = useCallback(() => {
     if (continuedRef.current) return;
     continuedRef.current = true;
-    navigation.navigate("Question", { playerIndex });
+    // replace keeps the stack at depth 1 during pass-device cycle
+    navigation.replace("Question", { playerIndex });
   }, [navigation, playerIndex]);
 
-  const logoSource = useMemo(() => {
-    const sound = settings.soundEnabled ? "MusicOn" : "MusicOff";
-    switch (i18n.language) {
-      case "fr":
-        return game_images[`logoFr${sound}`];
-      case "es":
-        return game_images[`logoEs${sound}`];
-      case "bg":
-        return game_images[`logoBg${sound}`];
-      default:
-        return game_images[`logo${sound}`];
-    }
-  }, [i18n.language, settings.soundEnabled]);
+  const plateScale  = useRef(new Animated.Value(40)).current;
+  const plateOpacity = useRef(new Animated.Value(0)).current;
+  const screenShake = useRef(new Animated.Value(0)).current;
 
-  const toggleSound = () => {
-    const newVal = !settings.soundEnabled;
-    updateSettings({ soundEnabled: newVal });
-    AudioManager.setSoundEnabled(newVal, true);
-  };
+  useEffect(() => {
+    AudioManager.playItemDrop();
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(plateScale,   { toValue: 1, duration: 400, easing: Easing.out(Easing.back(3)), useNativeDriver: true }),
+        Animated.timing(plateOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]),
+      Animated.sequence([
+        Animated.timing(screenShake, { toValue: 1,  duration: 60, useNativeDriver: true }),
+        Animated.timing(screenShake, { toValue: -1, duration: 60, useNativeDriver: true }),
+        Animated.timing(screenShake, { toValue: 1,  duration: 60, useNativeDriver: true }),
+        Animated.timing(screenShake, { toValue: 0,  duration: 60, useNativeDriver: true }),
+      ]),
+    ]).start();
+  }, []);
 
-  const { width: windowWidth } = useWindowDimensions();
-  const { logo, horizontalPadding } = useResponsive();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const { horizontalPadding } = useResponsive();
   const padH = horizontalPadding;
+
+  const gap = Math.min(40, windowHeight * 0.055);
+  const imageHeight = Math.min(windowWidth * (320 / 350), windowHeight * 0.38);
+
+  const shakeX = screenShake.interpolate({ inputRange: [-1, 1], outputRange: [-8, 8] });
 
   return (
     <FullBleedStack
@@ -93,54 +98,50 @@ const PassDeviceGameplayScreen = () => {
         </ImageBackgroundWithLoadGate>
       }
     >
-      <SafeAreaView
-        style={{ flex: 1, backgroundColor: "transparent" }}
-        edges={["right", "left"]}
-      >
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[
-            styles.column,
-            {
-              paddingTop: insets.top + 8,
-              paddingBottom: insets.bottom + 16,
-              paddingHorizontal: padH,
-            },
-          ]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          bounces
-        >
-          <View className="items-center w-full">
-            <Pressable onPress={toggleSound}>
-              <AppImage
-                source={logoSource}
-                style={{ width: logo.width, height: logo.height }}
-                contentFit="contain"
-              />
-            </Pressable>
-            <CustomText
-              variant="h4-headline"
-              className="text-center z-50 px-2 mt-4"
-              style={{ fontFamily: "Tektur-SemiBold" }}
-            >
-              {t("hand_phone_to")}
-            </CustomText>
-            <CustomText variant="h3" shadow className="capitalize">
-              {currentPlayer?.name}
-            </CustomText>
-            <CustomText variant="p-small" sizeDelta={4} style={{ fontFamily: "Tektur-SemiBold" }}>({t("no_peeking")})</CustomText>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["right", "left"]}>
+        <View style={styles.container}>
+
+          {/* Nameplate */}
+          <View style={{ paddingHorizontal: padH }}>
+            <Animated.View style={{ transform: [{ translateX: shakeX }] }}>
+              <Animated.View style={[styles.namePlateShadow, { opacity: plateOpacity, transform: [{ scale: plateScale }] }]}>
+                <ImageBackground
+                  source={backgrounds.bg005}
+                  resizeMode="stretch"
+                  imageStyle={{ borderRadius: 18 }}
+                  style={styles.namePlate}
+                >
+                  <CustomText variant="p-small" className="text-center" textColor="#762a05" sizeDelta={2} style={{ fontFamily: "Tektur-SemiBold" }}>
+                    {t("hand_phone_to")}
+                  </CustomText>
+                  <View style={styles.nameDivider} />
+                  <CustomText variant="h5" className="text-center" textColor="#592410" allowWrap sizeDelta={10} style={{ fontFamily: "SofiaSansExtraCondensed-SemiBold" }}>
+                    {currentPlayer?.name ?? ""}
+                  </CustomText>
+                  <View style={styles.nameDivider} />
+                  <CustomText variant="p-small" className="text-center" textColor="#762a05" sizeDelta={2} style={{ fontFamily: "Onest-SemiBold" }}>
+                    {`(${t("no_peeking")})`}
+                  </CustomText>
+                </ImageBackground>
+              </Animated.View>
+            </Animated.View>
           </View>
 
-          <View style={styles.illustrationBlock}>
+          <View style={{ height: gap }} />
+
+          {/* Illustration */}
+          <View style={{ overflow: "hidden" }}>
             <AppImage
               source={game_images.passDevice}
               contentFit="cover"
-              style={[styles.passDeviceImageFullWidth, { width: windowWidth }]}
+              style={{ width: windowWidth, height: imageHeight }}
             />
           </View>
 
-          <View className="w-full" style={styles.ctaBlock}>
+          <View style={{ height: gap }} />
+
+          {/* Button + hint */}
+          <View style={{ paddingHorizontal: padH, paddingBottom: insets.bottom + 16 }}>
             <CustomButton
               title={t("its_me")}
               backgroundImage={backgrounds.bg026}
@@ -151,45 +152,68 @@ const PassDeviceGameplayScreen = () => {
               fullWidth
               onPress={onContinue}
             />
-            <CustomText
-              variant="p"
-              className="text-center px-2"
-              style={[styles.ctaHint, { fontFamily: "Onest-SemiBold" }]}
-            >
-              {currentPlayer
-                ? `${currentPlayer.name}, ${t("click_next_phone")}`
-                : t("click_next_phone")}
-            </CustomText>
+            <View style={styles.hintRow}>
+              <View style={styles.hintIconGlow}>
+                <MaterialCommunityIcons name="gesture-tap" size={20} color="#fbbf24" />
+              </View>
+              <CustomText variant="footnote" textColor="rgba(255,255,255,0.88)" style={{ fontFamily: "Onest-SemiBold", flexShrink: 1 }}>
+                {currentPlayer ? `${currentPlayer.name}, ${t("click_next_phone")}` : t("click_next_phone")}
+              </CustomText>
+            </View>
           </View>
-        </ScrollView>
+
+        </View>
       </SafeAreaView>
     </FullBleedStack>
   );
 };
 
 const styles = StyleSheet.create({
-  scroll: {
+  container: {
     flex: 1,
+    justifyContent: "flex-end",
   },
-  column: {
-    flexGrow: 1,
-    justifyContent: "space-between",
-    minHeight: "100%",
+  hintRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 8,
   },
-  illustrationBlock: {
-    marginTop: -16,
-    width: "100%",
+  hintIconGlow: {
+    shadowColor: "#fbbf24",
+    shadowOpacity: 0.9,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 5,
   },
-  ctaBlock: {
-    marginTop: -80,
-    flexShrink: 0,
+  namePlateShadow: {
+    shadowColor: "#fff",
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 14,
   },
-  ctaHint: {
-    marginTop: 10,
+  namePlate: {
+    borderRadius: 18,
+    paddingHorizontal: 32,
+    paddingVertical: 18,
+    alignItems: "center",
+    shadowColor: "#ffd800",
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 14,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(251,192,32,1)",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(160,110,60,0.7)",
   },
-  passDeviceImageFullWidth: {
-    alignSelf: "center",
-    aspectRatio: 350 / 320,
+  nameDivider: {
+    width: "88%",
+    height: 1,
+    marginVertical: 7,
+    backgroundColor: "rgba(89,36,16,0.5)",
   },
 });
 

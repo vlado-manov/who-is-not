@@ -668,7 +668,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#0a0a0a" },
   safe: { flex: 1, backgroundColor: "transparent" },
   plateModalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.82)",
     justifyContent: "center",
     alignItems: "stretch",

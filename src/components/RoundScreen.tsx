@@ -106,25 +106,22 @@ const RoundScreen = () => {
   // RoundScreen е само за Round 2+; Round 1 е в HeroPicker
   const [showBonusTutorial, setShowBonusTutorial] = useState(isBonusRound);
 
-  const runRoundStart = useCallback(async () => {
+  const runRoundStart = useCallback(() => {
     if (!players.length) return;
 
     const roundIndex = (round || 0) + 1;
     const roundId = `${gameId ?? "game_local"}_round_${roundIndex}`;
     setCurrentRoundId(roundId);
 
+    // Fire-and-forget — analytics must never block gameplay navigation.
     if (gameId && shouldTrackLifecycle) {
-      try {
-        await trackRoundStartedMutation.mutateAsync({
-          gameId,
-          roundId,
-          mode,
-          roundIndex,
-          userId,
-        });
-      } catch (e) {
-        console.warn("track ROUND_STARTED failed", e);
-      }
+      void trackRoundStartedMutation.mutateAsync({
+        gameId,
+        roundId,
+        mode,
+        roundIndex,
+        userId,
+      }).catch((e) => console.warn("track ROUND_STARTED failed", e));
     }
 
     startRound();
@@ -140,21 +137,21 @@ const RoundScreen = () => {
     trackRoundStartedMutation,
   ]);
 
-  const onContinue = async () => {
-    await runRoundStart();
-    navigation.navigate("PassDeviceGameplay", {
+  const onContinue = () => {
+    runRoundStart();
+    navigation.replace("PassDeviceGameplay", {
       playerIndex: 0,
     } as never);
   };
 
   const onlineRoundNavigatedRef = useRef(false);
 
-  const onContinueOnline = useCallback(async () => {
+  const onContinueOnline = useCallback(() => {
     if (onlineRoundNavigatedRef.current) return;
     onlineRoundNavigatedRef.current = true;
-    await runRoundStart();
+    runRoundStart();
     const idx = getOnlinePlayerIndex(players, onlinePlayerId);
-    navigation.navigate("Question", { playerIndex: idx } as never);
+    navigation.replace("Question", { playerIndex: idx } as never);
   }, [runRoundStart, players, onlinePlayerId, navigation]);
 
   const bonusTutorialVisible = isBonusRound && showBonusTutorial;
@@ -258,15 +255,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   bonusOverlayRoot: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 99,
   },
   bonusOverlayBackdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.88)",
   },
   bonusOverlayContentWrap: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 24,

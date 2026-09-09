@@ -20,7 +20,7 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import { CommonActions, useNavigation } from "@react-navigation/native";
+import { CommonActions, useFocusEffect, useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { useTranslation } from "react-i18next";
 import LottieView from "lottie-react-native";
@@ -42,7 +42,6 @@ import { useGameStore } from "../../store/useGameStore";
 import { useAuthStore } from "../../store/useUserStore";
 import { useHeroesStore } from "../../store/useHeroesStore";
 import { usePreventBack } from "../../hooks/usePreventBack";
-import { getRevealVariant } from "../../utils/revealQuotes";
 import { fetchRandomFunFact } from "../../api/questions";
 import { useTrackGameFinishedMutation } from "../../api/hooks/useAnalyticsMutations";
 import AppImage from "../../components/AppImage";
@@ -67,8 +66,6 @@ const WINNER_TEXT_FR_URI =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/f25ab702-f763-4278-8b39-042d07e657fd-winner_fr.webp";
 const WINNER_TEXT_ES_URI =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/7d99cb67-4307-4922-8295-b67bacc8dc3b-winner_es.webp";
-const WINNER_NAMEPLATE_URI =
-  "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/786a78da-ae7c-4663-bebd-304dd8b0f548-nameplate.webp";
 const WINNER_PLATFORM_URI =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/33c7abd1-9ef1-40a7-9609-6e1b2eb78ce1-winnerScreenPlatform.webp";
 const ALSO_WINNER_STICKER_URI =
@@ -98,9 +95,7 @@ export default function WinnerScreen() {
 
   const players = useGameStore((s) => s.players);
   const lives = useGameStore((s) => s.lives);
-  const oddOneId = useGameStore((s) => s.oddOneId);
   const deathMatchWinnerIds = useGameStore((s) => s.deathMatchWinnerIds);
-  const votes = useGameStore((s) => s.votes);
   const mode = useGameStore((s) => s.mode) as GameMode;
   const onlinePlayerId = useGameStore((s) => s.onlinePlayerId);
   const onlineIsHost = useGameStore((s) => s.onlineIsHost);
@@ -155,6 +150,10 @@ export default function WinnerScreen() {
   const coWinnerStickerOpacity = useRef(new Animated.Value(0)).current;
   const coWinnerStickerScale = useRef(new Animated.Value(1.55)).current;
   const coWinnerStickerY = useRef(new Animated.Value(-34)).current;
+  const congratsPlateScale = useRef(new Animated.Value(40)).current;
+  const congratsPlateOpacity = useRef(new Animated.Value(0)).current;
+  const congratsShake = useRef(new Animated.Value(0)).current;
+
   const stageFunFactsRef = useRef<Record<string, string>>({});
   const hasTwoWinnersRef = useRef(false);
   const winnerFactDismissRecvRef = useRef(0);
@@ -253,55 +252,14 @@ export default function WinnerScreen() {
     maybeTrackGameFinished();
   }, [showButtons, shouldShowContinueButton, maybeTrackGameFinished]);
 
-  const votedWinner = useMemo(() => {
-    if (!oddOneId) return null;
-    const votedWinnerMap = Object.entries(votes).reduce(
-      (acc, [voterId, targetId]) => {
-        if (voterId === oddOneId) return acc;
-        acc[targetId] = (acc[targetId] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
-    const maxVotes = Math.max(0, ...Object.values(votedWinnerMap));
-    const topTargets = Object.entries(votedWinnerMap)
-      .filter(([, v]) => v === maxVotes && maxVotes > 0)
-      .map(([id]) => id);
-    if (topTargets.length !== 1) return null;
-    return topTargets[0];
-  }, [oddOneId, votes]);
 
-  const impostorLost = !!oddOneId && votedWinner === oddOneId;
-  const totalEligibleVoters = players.length > 0 ? players.length - 1 : 0;
-  const votesForImpostor = Object.entries(votes).filter(
-    ([voterId, targetId]) => voterId !== oddOneId && targetId === oddOneId,
-  ).length;
-  const revealVariant = getRevealVariant(
-    votesForImpostor,
-    totalEligibleVoters,
-    !impostorLost,
-  );
 
   const winnerHeroImage = useMemo(() => {
     if (!winnerPlayer) return null;
     const hero = heroes.find((h) => h.id === winnerPlayer.characterId);
     if (!hero) return null;
-
-    const pickRandom = (arr: any[] | undefined) =>
-      arr && arr.length > 0
-        ? arr[Math.floor(Math.random() * arr.length)]
-        : null;
-
-    const isImpostorWinner = winnerPlayer.id === oddOneId && !impostorLost;
-    const perfect = pickRandom(hero.winImagesByVariant?.PERFECT_BLUFF);
-    const normal =
-      pickRandom(hero.winImagesByVariant?.NORMAL) ?? pickRandom(hero.winImages);
-
-    if (isImpostorWinner && revealVariant === "PERFECT_BLUFF") {
-      return perfect ?? normal ?? hero.main_image ?? hero.profileImage ?? null;
-    }
-    return normal ?? hero.main_image ?? hero.profileImage ?? null;
-  }, [heroes, impostorLost, oddOneId, revealVariant, winnerPlayer]);
+    return hero.winnerImage ?? hero.main_image ?? hero.profileImage ?? null;
+  }, [heroes, winnerPlayer]);
 
   const winnerTitleUri = useMemo(() => {
     const lang = (i18n.language ?? "en").toLowerCase();
@@ -556,6 +514,35 @@ export default function WinnerScreen() {
     triggerNextBurst(3);
   };
 
+  // useFocusEffect + setTimeout pattern: if StrictMode cancels the timer on its
+  // fake-unmount, music never fires incorrectly. On genuine focus it plays after
+  // the previous screen's blur effects have settled. No cleanup needed on unmount
+  // — the next screen's music call will naturally replace the winner track.
+  useFocusEffect(
+    useCallback(() => {
+      if (isLocalEliminated) return;
+      const t = setTimeout(() => {
+        void AudioManager.playWinnerScreenBg();
+      }, 50);
+      return () => clearTimeout(t);
+    }, [isLocalEliminated]),
+  );
+
+  useEffect(() => {
+    if (isLocalEliminated) return;
+    const t1 = setTimeout(() => AudioManager.playWinnerStart01(), 900);
+    return () => { clearTimeout(t1); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // one-shot on mount
+
+  useEffect(() => {
+    if (showSecondWave) AudioManager.playWinnerStart02();
+  }, [showSecondWave]);
+
+  useEffect(() => {
+    if (showThirdWave) AudioManager.playWinnerStart02();
+  }, [showThirdWave]);
+
   useEffect(() => {
     if (isLocalEliminated) return;
 
@@ -578,6 +565,9 @@ export default function WinnerScreen() {
       coWinnerStickerOpacity.setValue(0);
       coWinnerStickerScale.setValue(1.55);
       coWinnerStickerY.setValue(-34);
+      congratsPlateScale.setValue(40);
+      congratsPlateOpacity.setValue(0);
+      congratsShake.setValue(0);
       titleX.setValue(0);
       titleY.setValue(0);
       animTitleScale.setValue(80);
@@ -600,6 +590,7 @@ export default function WinnerScreen() {
       setConfettiKey((k) => k + 1);
       setShowSecondWave(false);
       setShowThirdWave(false);
+      AudioManager.playWinnerStart02();
       prepareConfettiBursts();
 
       await startAnim(
@@ -672,6 +663,11 @@ export default function WinnerScreen() {
       );
       timersRef.current.push(
         setTimeout(() => {
+          if (canSeeWinnerSurpriseOnline) AudioManager.playWinnerStart02();
+        }, 4800),
+      );
+      timersRef.current.push(
+        setTimeout(() => {
           if (!canSeeWinnerSurpriseOnline) return;
           setShowRevealButton(true);
           Animated.parallel([
@@ -687,7 +683,32 @@ export default function WinnerScreen() {
               easing: Easing.out(Easing.cubic),
               useNativeDriver: false,
             }),
-          ]).start();
+          ]).start(() => {
+            AudioManager.playItemDrop();
+            Animated.sequence([
+              Animated.parallel([
+                Animated.timing(congratsPlateScale, {
+                  toValue: 1,
+                  duration: 400,
+                  easing: Easing.out(Easing.back(3)),
+                  useNativeDriver: true,
+                }),
+                Animated.timing(congratsPlateOpacity, {
+                  toValue: 1,
+                  duration: 200,
+                  useNativeDriver: true,
+                }),
+              ]),
+              Animated.sequence([
+                Animated.timing(congratsShake, { toValue: 1, duration: 60, useNativeDriver: true }),
+                Animated.timing(congratsShake, { toValue: -1, duration: 60, useNativeDriver: true }),
+                Animated.timing(congratsShake, { toValue: 1, duration: 60, useNativeDriver: true }),
+                Animated.timing(congratsShake, { toValue: 0, duration: 60, useNativeDriver: true }),
+              ]),
+            ]).start(() => {
+              AudioManager.playWinnerStart03();
+            });
+          });
         }, 6500),
       );
     };
@@ -750,7 +771,9 @@ export default function WinnerScreen() {
   }, [buttonsOpacity, buttonsY]);
 
   useEffect(() => {
-    if (mode !== "ONLINE" || isLocalEliminated) return;
+    if (mode !== "ONLINE") return;
+    // Non-host eliminated players don't need the relay subscription
+    if (isLocalEliminated && !onlineIsHost) return;
     winnerFactDismissRecvRef.current = 0;
     const unsub = subscribeMultiplayerRelay((raw) => {
       const d = raw as { type?: string };
@@ -763,7 +786,7 @@ export default function WinnerScreen() {
       }
     });
     return unsub;
-  }, [animateFinalButtonsIn, isLocalEliminated, mode]);
+  }, [animateFinalButtonsIn, isLocalEliminated, mode, onlineIsHost]);
 
   const handleRevealSurprise = () => {
     setShowRevealButton(false);
@@ -782,6 +805,7 @@ export default function WinnerScreen() {
       }),
     ]).start(() => {
       setShowSurpriseOverlay(true);
+      setTimeout(() => AudioManager.playFactOpen(), 150);
       Animated.timing(overlayOpacity, {
         toValue: 1,
         duration: 260,
@@ -975,8 +999,67 @@ export default function WinnerScreen() {
     setWinnerStageIndex(1);
   };
 
-  if (isLocalEliminated && onlinePlayerId) {
+  // Non-host eliminated players: only see the defeat screen
+  if (isLocalEliminated && !onlineIsHost && onlinePlayerId) {
     return <EliminatedGameEndView playerId={onlinePlayerId} />;
+  }
+
+  // Eliminated HOST: defeat screen + restart buttons appear after winner dismisses fact
+  if (isLocalEliminated && onlineIsHost && onlinePlayerId) {
+    return (
+      <View style={{ flex: 1 }}>
+        <EliminatedGameEndView playerId={onlinePlayerId} />
+        {showButtons && (
+          <>
+            <Animated.View
+              pointerEvents="none"
+              style={[StyleSheet.absoluteFill, { zIndex: 8, opacity: buttonsOpacity }]}
+            >
+              <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFill} />
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.25)" }]} />
+            </Animated.View>
+            <Animated.View
+              style={[
+                styles.buttonsWrap,
+                {
+                  paddingHorizontal: tabletBtnPad,
+                  opacity: buttonsOpacity,
+                  transform: [{ translateY: buttonsY }],
+                },
+              ]}
+            >
+              <View style={{ gap: 12 }}>
+                <CustomButton
+                  title={t("winner_start_new_game_btn")}
+                  fullWidth
+                  onPress={handleStartNewGame}
+                  backgroundImage={backgrounds.bg026}
+                  glow btnSize="sm" fontSize="sm"
+                  glowColor="rgba(41,255,25,0.8)"
+                  shadowColor="#005f07"
+                />
+                <CustomButton
+                  title={t("winner_start_diff_heroes_btn")}
+                  fullWidth
+                  onPress={handleStartWithDifferentHeroes}
+                  btnSize="sm" fontSize="sm"
+                  backgroundImage={backgrounds.bg022}
+                  shadowColor="#410047"
+                />
+                <CustomButton
+                  title={t("winner_close_session_btn")}
+                  fullWidth
+                  onPress={handleCloseSessionForEveryone}
+                  btnSize="sm" fontSize="sm"
+                  backgroundImage={backgrounds.bg015}
+                  shadowColor="#540d0d"
+                />
+              </View>
+            </Animated.View>
+          </>
+        )}
+      </View>
+    );
   }
 
   return (
@@ -990,7 +1073,7 @@ export default function WinnerScreen() {
         <BlurView
           intensity={10}
           tint="dark"
-          style={[StyleSheet.absoluteFillObject, { zIndex: 0 }]}
+          style={[StyleSheet.absoluteFill, { zIndex: 0 }]}
           pointerEvents="none"
         />
         <Animated.View
@@ -1251,22 +1334,47 @@ export default function WinnerScreen() {
                 },
               ]}
             >
-              <View style={styles.nameplateWrap}>
-                <AppImage
-                  source={{ uri: WINNER_NAMEPLATE_URI }}
-                  contentFit="fill"
-                  style={styles.nameplateImage}
-                />
-                <View style={styles.nameplateTextWrap} pointerEvents="none">
-                  <CustomText
-                    variant="h5"
-                    textColor="#000000"
-                    numberOfLines={1}
+              <Animated.View
+                style={{
+                  transform: [
+                    {
+                      translateX: congratsShake.interpolate({
+                        inputRange: [-1, 1],
+                        outputRange: [-8, 8],
+                      }),
+                    },
+                  ],
+                  marginBottom: 12,
+                }}
+              >
+                <Animated.View
+                  style={[
+                    styles.congratsNameplateShadow,
+                    {
+                      opacity: congratsPlateOpacity,
+                      transform: [{ scale: congratsPlateScale }],
+                    },
+                  ]}
+                >
+                  <ImageBackground
+                    source={backgrounds.bg005}
+                    resizeMode="stretch"
+                    imageStyle={{ borderRadius: 18 }}
+                    style={styles.congratsNameplate}
                   >
-                    {winnerPlayer?.name ?? ""}
-                  </CustomText>
-                </View>
-              </View>
+                    <CustomText
+                      variant="h5"
+                      className="text-center"
+                      textColor="#592410"
+                      allowWrap
+                      sizeDelta={10}
+                      style={{ fontFamily: "SofiaSansExtraCondensed-SemiBold" }}
+                    >
+                      {`Congratulations, ${winnerPlayer?.name ?? ""}!`}
+                    </CustomText>
+                  </ImageBackground>
+                </Animated.View>
+              </Animated.View>
 
               <CustomButton
                 title={t("winner_reveal_surprise_btn")}
@@ -1333,6 +1441,8 @@ export default function WinnerScreen() {
                         className="text-center"
                         textColor="#592410"
                         allowWrap
+                        sizeDelta={10}
+                        style={{ fontFamily: "SofiaSansExtraCondensed-SemiBold" }}
                       >
                         {funFactDisplay}
                       </CustomText>
@@ -1481,7 +1591,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bgOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.25)",
     zIndex: 0,
   },
@@ -1583,7 +1693,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   surpriseOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.8)",
     justifyContent: "center",
     alignItems: "center",
@@ -1636,10 +1746,10 @@ const styles = StyleSheet.create({
     zIndex: 32,
   },
   confettiLayerBack: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   confettiLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 20,
   },
   confettiA: {
@@ -1809,20 +1919,26 @@ const styles = StyleSheet.create({
     height: 860,
     transform: [{ rotate: "10deg" }],
   },
-  nameplateWrap: {
-    width: "100%",
-    marginBottom: 16,
-    position: "relative",
+  congratsNameplateShadow: {
+    shadowColor: "#fff",
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 14,
   },
-  nameplateImage: {
-    width: "100%",
-    height: 80,
-  },
-  nameplateTextWrap: {
-    position: "absolute",
-    bottom: 8,
-    left: 16,
-    right: 16,
+  congratsNameplate: {
+    borderRadius: 18,
+    paddingHorizontal: 32,
+    paddingVertical: 24,
     alignItems: "center",
+    shadowColor: "#ffd800",
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 14,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(251,192,32,1)",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(160,110,60,0.7)",
   },
 });

@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState, useMemo } from "react"
 import {
   Animated,
   Easing,
-  FlatList,
   ImageBackground,
   Pressable,
   ScrollView,
@@ -29,6 +28,7 @@ import {
   DEATHMATCH_DONE_MESSAGE_TYPE,
   DEATHMATCH_GUESS_MESSAGE_TYPE,
   DEATHMATCH_SECRET_MESSAGE_TYPE,
+  DEATHMATCH_TIE_MESSAGE_TYPE,
 } from "../../constants/onlineLobby";
 import { backgrounds } from "../../../assets/backgrounds";
 import { BlurView } from "expo-blur";
@@ -102,7 +102,6 @@ type PendingResult = {
 };
 
 const ONLINE_RESULT_DELAY_MS = 1600;
-const DRUM_ITEM_H = 64;
 
 type Phase =
   | "intro"
@@ -114,13 +113,14 @@ type Phase =
   | "pass_1"           // LOCAL: pass device to next player
   | "local_lets_go"    // LOCAL: "Let the game begin!" screen
   | "guessing"
-  | "opp_confirm"     // LOCAL: opponent confirms LOWER/CORRECT/HIGHER
-  | "setup_online"    // ONLINE: drum picker
-  | "online_wait";    // ONLINE: waiting for opponent
+  | "opp_confirm"      // LOCAL: opponent confirms LOWER/CORRECT/HIGHER
+  | "tie_rematch"      // Both modes: tie — escalate range, pick new numbers
+  | "setup_online"     // ONLINE: drum picker (first game) or stepper (rematch)
+  | "online_wait";     // ONLINE: waiting for opponent
 
-function computeValidRange(history: GuessEntry[]): [number, number] {
+function computeValidRange(history: GuessEntry[], maxRange = 100): [number, number] {
   let lo = 1;
-  let hi = 100;
+  let hi = maxRange;
   for (const e of history) {
     if (e.hint === "higher" && e.value + 1 > lo) lo = e.value + 1;
     if (e.hint === "lower" && e.value - 1 < hi) hi = e.value - 1;
@@ -128,62 +128,16 @@ function computeValidRange(history: GuessEntry[]): [number, number] {
   return [lo, hi];
 }
 
+function getNextRange(current: number): number {
+  if (current < 1000) return 1000;
+  if (current < 5000) return 5000;
+  return 5000;
+}
+
 function startAnim(anim: Animated.CompositeAnimation): Promise<void> {
   return new Promise((resolve) => anim.start(() => resolve()));
 }
 
-// ── Drum picker (online setup) ─────────────────────────────────────────────────
-
-function DrumPicker({ value, onChange }: { value: number; onChange: (n: number) => void }) {
-  const VISIBLE = 5;
-  const PAD = Math.floor(VISIBLE / 2);
-  const listRef = useRef<FlatList<number>>(null);
-  const items = useMemo(() => Array.from({ length: 100 }, (_, i) => i + 1), []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      listRef.current?.scrollToOffset({ offset: (value - 1) * DRUM_ITEM_H, animated: false });
-    }, 80);
-    return () => clearTimeout(timer);
-  // only on mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return (
-    <View style={styles.drumWrap}>
-      {/* center highlight bar */}
-      <View pointerEvents="none" style={styles.drumHighlight} />
-      {/* top fade */}
-      <View pointerEvents="none" style={[styles.drumFade, { top: 0 }]} />
-      {/* bottom fade */}
-      <View pointerEvents="none" style={[styles.drumFade, { bottom: 0 }]} />
-      <FlatList
-        ref={listRef}
-        data={items}
-        keyExtractor={(n) => n.toString()}
-        snapToInterval={DRUM_ITEM_H}
-        decelerationRate="fast"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingVertical: PAD * DRUM_ITEM_H }}
-        getItemLayout={(_, index) => ({ length: DRUM_ITEM_H, offset: DRUM_ITEM_H * index, index })}
-        renderItem={({ item: n }) => (
-          <View style={styles.drumItem}>
-            <CustomText
-              variant={n === value ? "h3" : "h5"}
-              textColor={n === value ? "#22c55e" : "rgba(255,255,255,0.28)"}
-            >
-              {n.toString()}
-            </CustomText>
-          </View>
-        )}
-        onMomentumScrollEnd={(e) => {
-          const idx = Math.round(e.nativeEvent.contentOffset.y / DRUM_ITEM_H);
-          onChange(Math.max(1, Math.min(100, idx + 1)));
-        }}
-      />
-    </View>
-  );
-}
 
 // ── Hero avatar circle ─────────────────────────────────────────────────────────
 
@@ -272,7 +226,7 @@ function ResultBanner({ hint }: { hint: GuessEntry["hint"] }) {
       ]}
     >
       <CustomText variant="h2" textColor={color}>{emoji}</CustomText>
-      <CustomText variant="h4" textColor={color}>{label}</CustomText>
+      <CustomText variant="h4" textColor={color} numberOfLines={1} adjustsFontSizeToFit style={{ flexShrink: 1 }}>{label}</CustomText>
     </Animated.View>
   );
 }
@@ -357,6 +311,43 @@ function GradientGuessCircle({ children }: { children: React.ReactNode }) {
   );
 }
 
+// ── Guess history scroll ──────────────────────────────────────────────────────
+
+function GuessHistoryScroll({
+  history,
+  badgeColorFn,
+}: {
+  history: GuessEntry[];
+  badgeColorFn: (hint: GuessEntry["hint"]) => string;
+}) {
+  const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (history.length > 0) {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }
+  }, [history.length]);
+
+  if (history.length === 0) return null;
+
+  return (
+    <ScrollView
+      ref={scrollRef}
+      style={{ maxHeight: 96 }}
+      showsVerticalScrollIndicator={false}
+      nestedScrollEnabled
+    >
+      <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 6, paddingHorizontal: 4, paddingVertical: 4 }}>
+        {history.map((entry, idx) => (
+          <View key={idx} style={{ backgroundColor: badgeColorFn(entry.hint) + "cc", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6 }}>
+            <CustomText variant="p-small" sizeDelta={10} textColor="#fff">{entry.value}</CustomText>
+          </View>
+        ))}
+      </View>
+    </ScrollView>
+  );
+}
+
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function DeathMatchScreen() {
@@ -371,6 +362,7 @@ export default function DeathMatchScreen() {
   const players = useGameStore((s) => s.players);
   const lives = useGameStore((s) => s.lives);
   const mode = useGameStore((s) => s.mode) as GameMode;
+  const gameId = useGameStore((s) => s.gameId);
   const onlinePlayerId = useGameStore((s) => s.onlinePlayerId);
   const onlineIsHost = useGameStore((s) => s.onlineIsHost);
   const setDeathMatchWinners = useGameStore((s) => s.setDeathMatchWinners);
@@ -413,6 +405,16 @@ export default function DeathMatchScreen() {
     return heroes.find((h) => h.id === p1.characterId)?.profileImage ?? null;
   }, [heroes, p1]);
 
+  // Online: local player always on the left, opponent on the right
+  const introLeftHeroImage = useMemo(() => {
+    if (mode !== "ONLINE" || !onlinePlayerId) return p0HeroImage;
+    return onlinePlayerId === p0?.id ? p0HeroImage : p1HeroImage;
+  }, [mode, onlinePlayerId, p0?.id, p0HeroImage, p1HeroImage]);
+  const introRightHeroImage = useMemo(() => {
+    if (mode !== "ONLINE" || !onlinePlayerId) return p1HeroImage;
+    return onlinePlayerId === p0?.id ? p1HeroImage : p0HeroImage;
+  }, [mode, onlinePlayerId, p0?.id, p0HeroImage, p1HeroImage]);
+
   // ── State ────────────────────────────────────────────────────────────────────
   const secretsRef = useRef<Record<string, number>>({});
   const [secretsReady, setSecretsReady] = useState<Set<string>>(new Set());
@@ -421,24 +423,26 @@ export default function DeathMatchScreen() {
   const firstCorrectIdRef = useRef<string | null>(null);
   const [firstCorrectId, setFirstCorrectIdState] = useState<string | null>(null);
   const doneRef = useRef(false);
+  const tieRef = useRef(false);
+
+  const [dmRange, setDmRange] = useState(100);
 
   // Numpad input (setup phases + opp_confirm entry)
   const [input, setInput] = useState("");
 
   // Stepper guess value (guessing phase)
   const [guess, setGuess] = useState(50);
+  // String representation for the keyboard input — can be empty so user can clear and retype
+  const [guessStr, setGuessStr] = useState("");
 
   // Online drum picker value
-  const [onlinePickerValue, setOnlinePickerValue] = useState(50);
 
   const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Pending results
   const [pendingResult, setPendingResult] = useState<PendingResult | null>(null);
 
-  const [phase, setPhase] = useState<Phase>(
-    mode === "ONLINE" ? "how_to_play" : "intro",
-  );
+  const [phase, setPhase] = useState<Phase>("intro");
   // which player is shown in the "player_intro" screen (1 = p1 picks first, 0 = p0 picks second)
   const [introPlayerIdx, setIntroPlayerIdx] = useState<0 | 1>(1);
 
@@ -465,7 +469,6 @@ export default function DeathMatchScreen() {
   const staticTitleOpacity = useRef(new Animated.Value(0)).current;
   const [hideAnimTitle, setHideAnimTitle] = useState(false);
 
-  const gameSlideY = useRef(new Animated.Value(0)).current;
   const cameFromIntroRef = useRef(false);
 
   // ── Setup circle animation refs ───────────────────────────────────────────
@@ -475,6 +478,7 @@ export default function DeathMatchScreen() {
   const setupBtnOpacity = useRef(new Animated.Value(0)).current;
   const setupPulseAnim = useRef(new Animated.Value(1)).current;
   const setupTextInputRef = useRef<TextInput>(null);
+  const guessInputRef = useRef<TextInput>(null);
 
   // ── Let's go → guessing transition refs ──────────────────────────────────
   const letsGoTitleY = useRef(new Animated.Value(0)).current;
@@ -807,15 +811,48 @@ export default function DeathMatchScreen() {
     });
   }, [heroLeftX, heroOpacity, heroRightX, letsGoOpacity, vsOpacity]);
 
+  // ── Rematch (tie escalation) ──────────────────────────────────────────────
+  const resetForRematch = useCallback((newRange: number) => {
+    secretsRef.current = {};
+    setSecretsReady(new Set());
+    setHistories({});
+    setTurnIdx(0);
+    firstCorrectIdRef.current = null;
+    setFirstCorrectIdState(null);
+    doneRef.current = false;
+    setInput("");
+    setGuess(1);
+    setGuessStr("");
+    setPendingResult(null);
+    setShowingLocalResult(false);
+    setLocalResultHintState(null);
+    setDmRange(newRange);
+  }, []);
+
+  const handleTie = useCallback((newRange: number) => {
+    if (tieRef.current) return;
+    tieRef.current = true;
+    resetForRematch(newRange);
+    setPhase("tie_rematch");
+  }, [resetForRematch]);
+
   // ── Finish ────────────────────────────────────────────────────────────────
   const finish = useCallback(
     (winnerIds: string[]) => {
       if (doneRef.current) return;
       doneRef.current = true;
       setDeathMatchWinners(winnerIds);
-      navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: "Winner" }] }));
+      const iLost = mode === "ONLINE" && onlinePlayerId != null && !winnerIds.includes(onlinePlayerId);
+      if (iLost) {
+        navigation.dispatch(CommonActions.reset({
+          index: 0,
+          routes: [{ name: "PlayerDeath", params: { variant: "continue", deadPlayerId: onlinePlayerId } }],
+        }));
+      } else {
+        navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: "Winner" }] }));
+      }
     },
-    [navigation, setDeathMatchWinners],
+    [navigation, setDeathMatchWinners, mode, onlinePlayerId],
   );
 
   // ── Online auto-advance ───────────────────────────────────────────────────
@@ -829,7 +866,8 @@ export default function DeathMatchScreen() {
         finish(winnerIds);
       } else {
         setTurnIdx(nextTurnIdx);
-        setGuess(50);
+        setGuess(1);
+        setGuessStr("");
       }
     }, ONLINE_RESULT_DELAY_MS);
     return () => clearTimeout(timer);
@@ -853,8 +891,9 @@ export default function DeathMatchScreen() {
 
     if (computedHint === "correct") {
       if (prevFirstCorrect !== null && prevFirstCorrect !== guesserId) {
-        isGameOver = true;
-        winnerIds = [prevFirstCorrect, guesserId];
+        // Both guessed correctly — escalate to a larger range rematch
+        handleTie(getNextRange(dmRange));
+        return;
       } else if (prevFirstCorrect === null) {
         if (guesserId === alivePlayers[0].id) {
           firstCorrectIdRef.current = guesserId;
@@ -874,11 +913,12 @@ export default function DeathMatchScreen() {
     } else {
       const nextGuesser = alivePlayers[nextTurnIdx];
       const nextHistory = histories[nextGuesser?.id ?? ""] ?? [];
-      const [lo, hi] = computeValidRange(nextHistory);
-      setGuess(Math.round((lo + hi) / 2));
+      const [lo] = computeValidRange(nextHistory, dmRange);
+      setGuess(lo);
+      setGuessStr("");
       setTurnIdx(nextTurnIdx);
     }
-  }, [alivePlayers, finish, histories]);
+  }, [alivePlayers, dmRange, finish, handleTie, histories]);
 
   // ── Online applyGuess ─────────────────────────────────────────────────────
   const applyGuess = useCallback(
@@ -905,11 +945,13 @@ export default function DeathMatchScreen() {
 
       if (hint === "correct") {
         if (prevFirstCorrect !== null && prevFirstCorrect !== guesserId) {
-          isGameOver = true;
-          winnerIds = [prevFirstCorrect, guesserId];
+          // Both guessed correctly — host escalates to a larger range rematch
+          const newRange = getNextRange(dmRange);
           if (mode === "ONLINE" && onlineIsHost) {
-            sendMultiplayerRelay({ type: DEATHMATCH_DONE_MESSAGE_TYPE, winnerIds });
+            sendMultiplayerRelay({ type: DEATHMATCH_TIE_MESSAGE_TYPE, newRange });
           }
+          handleTie(newRange);
+          return;
         } else if (prevFirstCorrect === null) {
           if (guesserId === alivePlayers[0].id) {
             firstCorrectIdRef.current = guesserId;
@@ -932,7 +974,7 @@ export default function DeathMatchScreen() {
 
       setPendingResult({ hint, nextTurnIdx, isGameOver, winnerIds });
     },
-    [alivePlayers, mode, onlineIsHost],
+    [alivePlayers, dmRange, handleTie, mode, onlineIsHost],
   );
 
   // ── Online relay ──────────────────────────────────────────────────────────
@@ -954,9 +996,12 @@ export default function DeathMatchScreen() {
       if (d.type === DEATHMATCH_DONE_MESSAGE_TYPE) {
         finish(d.winnerIds as string[]);
       }
+      if (d.type === DEATHMATCH_TIE_MESSAGE_TYPE) {
+        handleTie(d.newRange as number);
+      }
     });
     return unsub;
-  }, [applyGuess, finish, mode, onlinePlayerId]);
+  }, [applyGuess, finish, handleTie, mode, onlinePlayerId]);
 
   useEffect(() => {
     if (mode !== "ONLINE" || !p0 || !p1) return;
@@ -965,10 +1010,40 @@ export default function DeathMatchScreen() {
     }
   }, [mode, p0, p1, secretsReady]);
 
+  // Dev: auto-simulate opponent picking a number after 5s in online_wait
+  useEffect(() => {
+    if (!gameId?.startsWith("dev_")) return;
+    if (mode !== "ONLINE" || phase !== "online_wait") return;
+    const opp = alivePlayers.find((p) => p.id !== onlinePlayerId);
+    if (!opp) return;
+    const timer = setTimeout(() => {
+      const secret = Math.floor(Math.random() * dmRange) + 1;
+      secretsRef.current[opp.id] = secret;
+      setSecretsReady((prev) => new Set([...prev, opp.id]));
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [alivePlayers, dmRange, gameId, mode, onlinePlayerId, phase]);
+
+  // Dev: auto-simulate opponent guessing after 2s when it's their turn
+  useEffect(() => {
+    if (!gameId?.startsWith("dev_")) return;
+    if (mode !== "ONLINE" || phase !== "guessing") return;
+    const guesser = alivePlayers[turnIdx];
+    if (!guesser || guesser.id === onlinePlayerId) return;
+    if (pendingResult) return;
+    const timer = setTimeout(() => {
+      const oppHistory = histories[guesser.id] ?? [];
+      const [lo, hi] = computeValidRange(oppHistory, dmRange);
+      const autoGuess = Math.round((lo + hi) / 2);
+      applyGuess(guesser.id, autoGuess);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [alivePlayers, applyGuess, dmRange, gameId, histories, mode, onlinePlayerId, pendingResult, phase, turnIdx]);
+
   // ── Confirm secret (setup phases) ─────────────────────────────────────────
   const handleConfirmSecret = useCallback(() => {
     const num = parseInt(input, 10);
-    if (!num || num < 1 || num > 100) { shake(); return; }
+    if (!num || num < 1 || num > dmRange) { shake(); return; }
 
     if (mode === "ONLINE") {
       const myId = onlinePlayerId!;
@@ -990,12 +1065,13 @@ export default function DeathMatchScreen() {
       setSetupSuccessTarget(phase === "setup_you" ? "pass_1" : "local_lets_go");
       setPhase("setup_good_job");
     }
-  }, [input, mode, onlinePlayerId, phase, p0, p1, shake]);
+  }, [dmRange, input, mode, onlinePlayerId, phase, p0, p1, shake]);
 
 
   // ── Setup circle: dramatic drop animation ─────────────────────────────────
   useEffect(() => {
-    if (phase !== "setup_opp" && phase !== "setup_you") return;
+    const isCircleSetup = phase === "setup_opp" || phase === "setup_you" || phase === "setup_online";
+    if (!isCircleSetup) return;
 
     setupCircleY.setValue(-400);
     setupCircleScale.setValue(0.4);
@@ -1021,9 +1097,10 @@ export default function DeathMatchScreen() {
 
   // ── Setup button: reveal when valid number entered ────────────────────────
   useEffect(() => {
-    if (phase !== "setup_opp" && phase !== "setup_you") return;
+    const isCircleSetup = phase === "setup_opp" || phase === "setup_you" || phase === "setup_online";
+    if (!isCircleSetup) return;
     const num = parseInt(input, 10);
-    const valid = input.length > 0 && !isNaN(num) && num >= 1 && num <= 100;
+    const valid = input.length > 0 && !isNaN(num) && num >= 1 && num <= dmRange;
     if (valid) {
       Animated.parallel([
         Animated.spring(setupBtnTranslateY, { toValue: 0, speed: 16, bounciness: 6, useNativeDriver: true }),
@@ -1049,9 +1126,9 @@ export default function DeathMatchScreen() {
   const handleSetupPlus = useCallback(() => {
     const current = parseInt(input, 10);
     if (isNaN(current)) { setInput("1"); return; }
-    if (current >= 100) { shake(); return; }
+    if (current >= dmRange) { shake(); return; }
     setInput(String(current + 1));
-  }, [input, shake]);
+  }, [dmRange, input, shake]);
 
 
   // ── Submit guess ──────────────────────────────────────────────────────────
@@ -1061,6 +1138,7 @@ export default function DeathMatchScreen() {
       histories[(mode === "ONLINE"
         ? alivePlayers.find((p) => p.id === onlinePlayerId)?.id
         : alivePlayers[turnIdx]?.id) ?? ""] ?? [],
+      dmRange,
     );
     if (guess < lo || guess > hi) { shake(); return; }
 
@@ -1110,7 +1188,7 @@ export default function DeathMatchScreen() {
   const isMyOnlineTurn = mode === "ONLINE" && currentGuesser?.id === onlinePlayerId;
   const isOnlineWaiting = mode === "ONLINE" && !isMyOnlineTurn;
   const currentHistory: GuessEntry[] = currentGuesser ? (histories[currentGuesser.id] ?? []) : [];
-  const [rangeLo, rangeHi] = computeValidRange(currentHistory);
+  const [rangeLo, rangeHi] = computeValidRange(currentHistory, dmRange);
   const firstCorrectPlayer = firstCorrectId
     ? alivePlayers.find((p) => p.id === firstCorrectId) ?? null
     : null;
@@ -1331,7 +1409,7 @@ export default function DeathMatchScreen() {
               className="text-center"
               allowWrap
             >
-              {"Pick a number between 1 and 100"}
+              {`Pick a number between 1 and ${dmRange.toLocaleString()}`}
             </CustomText>
           </View>
 
@@ -1397,8 +1475,8 @@ export default function DeathMatchScreen() {
               },
             ]}
           >
-            {p0HeroImage && (
-              <AppImage source={p0HeroImage} contentFit="contain" style={StyleSheet.absoluteFill} />
+            {introLeftHeroImage && (
+              <AppImage source={introLeftHeroImage} contentFit="contain" style={StyleSheet.absoluteFill} />
             )}
           </Animated.View>
 
@@ -1416,8 +1494,8 @@ export default function DeathMatchScreen() {
               },
             ]}
           >
-            {p1HeroImage && (
-              <AppImage source={p1HeroImage} contentFit="contain" style={StyleSheet.absoluteFill} />
+            {introRightHeroImage && (
+              <AppImage source={introRightHeroImage} contentFit="contain" style={StyleSheet.absoluteFill} />
             )}
           </Animated.View>
 
@@ -1530,55 +1608,84 @@ export default function DeathMatchScreen() {
     );
   }
 
-  // ── Phase: Online setup (drum picker) ────────────────────────────────────
+  // ── Phase: Online setup ───────────────────────────────────────────────────
   if (phase === "setup_online") {
     return (
       <SafeAreaView style={styles.fill} edges={["right", "left"]}>
         <ImageBackground source={{ uri: dmBgUri }} style={styles.bg} resizeMode="cover">
-          <View style={styles.bgDim} />
-          {renderPersistentTitle()}
-          <Animated.View
-            style={[
-              styles.container,
-              {
-                paddingTop: gameContentTop,
-                paddingBottom: insets.bottom + 16,
-                paddingHorizontal: hPad,
-                transform: [{ translateY: gameSlideY }],
-              },
-            ]}
-          >
-            <CustomText variant="h4" textColor="#fff" className="text-center" allowWrap>
-              {"CHOOSE\nYOUR NUMBER"}
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.76)" }]} />
+          <BlurView intensity={28} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" />
+          <TextInput
+            ref={setupTextInputRef}
+            value={input}
+            onChangeText={(text) => {
+              const cleaned = text.replace(/[^0-9]/g, "");
+              if (cleaned.length > dmRange.toString().length) return;
+              if (cleaned !== "" && parseInt(cleaned, 10) > dmRange) return;
+              setInput(cleaned);
+            }}
+            keyboardType="number-pad"
+            style={{ position: "absolute", opacity: 0, left: -9999, width: 1, height: 1 }}
+          />
+          <View style={[styles.playerIntroTop, { paddingTop: insets.top + 28, paddingHorizontal: hPad }]}>
+            <CustomText variant="h5-headline" textColor="#fff" className="text-center" allowWrap>
+              {"PICK YOUR SECRET NUMBER"}
             </CustomText>
-            <CustomText variant="p-small" textColor="rgba(255,255,255,0.55)" className="text-center">
-              {"Pick a number between 1 and 100"}
+            <CustomText variant="p-small" sizeDelta={-1} textColor="rgba(255,255,255,0.5)" className="text-center" allowWrap>
+              {`Between 1 and ${dmRange.toLocaleString()} — your opponent can't see!`}
             </CustomText>
-            <DrumPicker value={onlinePickerValue} onChange={setOnlinePickerValue} />
-            <CustomText variant="p-small" textColor="rgba(255,255,255,0.4)" className="text-center">
-              {"Your number is hidden from your opponent"}
-            </CustomText>
-            <View style={styles.actionRow}>
-              <CustomButton
-                title="LOCK IN"
-                fullWidth
-                onPress={() => {
-                  const myId = onlinePlayerId!;
-                  secretsRef.current[myId] = onlinePickerValue;
-                  setSecretsReady((prev) => new Set([...prev, myId]));
-                  sendMultiplayerRelay({
-                    type: DEATHMATCH_SECRET_MESSAGE_TYPE,
-                    playerId: myId,
-                    secret: onlinePickerValue,
-                  });
-                  setPhase("online_wait");
-                }}
-                backgroundImage={backgrounds.bg026}
-                glow btnSize="md" fontSize="md"
-                glowColor="rgba(34,197,94,0.7)"
-                shadowColor="#004400"
-              />
+          </View>
+          <View style={{ flex: 1 }}>
+            <View style={styles.setupCenterArea}>
+              <Animated.View style={{ alignItems: "center", transform: [{ translateY: setupCircleY }, { scale: setupCircleScale }] }}>
+                <View style={[styles.setupStepperRow, { zIndex: 1 }]}>
+                  <Pressable
+                    style={({ pressed }) => [styles.setupStepBtn, styles.setupMinusBtn, pressed && { opacity: 0.6 }]}
+                    onPress={handleSetupMinus}
+                    onLongPress={() => { const n = parseInt(input, 10); if (!isNaN(n) && n > 5) setInput(String(n - 5)); else if (!isNaN(n)) setInput("1"); }}
+                  >
+                    <CustomText variant="h2" textColor="#ef4444">{"−"}</CustomText>
+                  </Pressable>
+                  <Pressable onPress={() => setupTextInputRef.current?.focus()}>
+                    <GradientGuessCircle>
+                      <Animated.View style={[styles.setupCircle, { borderWidth: 0, transform: [{ translateX: shakeX }] }]}>
+                        <CustomText
+                          variant="h2"
+                          sizeDelta={input.length <= 1 ? -10 : input.length === 2 ? -16 : input.length === 3 ? -20 : input.length === 4 ? -26 : -30}
+                          textColor={input ? "#fff" : "rgba(255,255,255,0.2)"}
+                        >
+                          {input || "?"}
+                        </CustomText>
+                      </Animated.View>
+                    </GradientGuessCircle>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [styles.setupStepBtn, styles.setupPlusBtn, pressed && { opacity: 0.6 }]}
+                    onPress={handleSetupPlus}
+                    onLongPress={() => { const n = parseInt(input, 10); if (isNaN(n)) setInput("5"); else if (n <= dmRange - 5) setInput(String(n + 5)); else setInput(String(dmRange)); }}
+                  >
+                    <CustomText variant="h2" textColor="#22c55e">{"+"}</CustomText>
+                  </Pressable>
+                </View>
+                <Animated.View style={{ opacity: setupPulseAnim, marginTop: 18, zIndex: 1 }}>
+                  <CustomText variant="p-small" textColor="#fff" className="text-center">{"Tap the circle to type"}</CustomText>
+                </Animated.View>
+              </Animated.View>
             </View>
+          </View>
+          <Animated.View
+            style={[styles.setupBtnWrap, { bottom: insets.bottom + 24, paddingHorizontal: hPad, opacity: setupBtnOpacity, transform: [{ translateY: setupBtnTranslateY }] }]}
+            pointerEvents={input.length > 0 ? "auto" : "none"}
+          >
+            <CustomButton
+              title={"NUMBER LOCKED IN ✓"}
+              fullWidth
+              onPress={handleConfirmSecret}
+              backgroundImage={backgrounds.bg026}
+              glow btnSize="md" fontSize="md"
+              glowColor="rgba(34,197,94,0.85)"
+              shadowColor="#004400"
+            />
           </Animated.View>
         </ImageBackground>
       </SafeAreaView>
@@ -1621,8 +1728,8 @@ export default function DeathMatchScreen() {
             value={input}
             onChangeText={(text) => {
               const cleaned = text.replace(/[^0-9]/g, "");
-              if (cleaned.length > 3) return;
-              if (cleaned !== "" && parseInt(cleaned, 10) > 100) return;
+              if (cleaned.length > dmRange.toString().length) return;
+              if (cleaned !== "" && parseInt(cleaned, 10) > dmRange) return;
               setInput(cleaned);
             }}
             keyboardType="number-pad"
@@ -1640,7 +1747,7 @@ export default function DeathMatchScreen() {
               {"PICK YOUR SECRET NUMBER"}
             </CustomText>
             <CustomText variant="p-small" sizeDelta={-1} textColor="rgba(255,255,255,0.5)" className="text-center" allowWrap>
-              {"Between 1 and 100 — don't let the other player see!"}
+              {`Between 1 and ${dmRange.toLocaleString()} — don't let the other player see!`}
             </CustomText>
           </View>
 
@@ -1682,7 +1789,7 @@ export default function DeathMatchScreen() {
                       <Animated.View style={[styles.setupCircle, { borderWidth: 0, transform: [{ translateX: shakeX }] }]}>
                         <CustomText
                           variant="h2"
-                          sizeDelta={input.length <= 1 ? -10 : input.length === 2 ? -16 : -20}
+                          sizeDelta={input.length <= 1 ? -10 : input.length === 2 ? -16 : input.length === 3 ? -20 : input.length === 4 ? -26 : -30}
                           textColor={input ? "#fff" : "rgba(255,255,255,0.2)"}
                         >
                           {input || "?"}
@@ -1697,8 +1804,8 @@ export default function DeathMatchScreen() {
                     onLongPress={() => {
                       const n = parseInt(input, 10);
                       if (isNaN(n)) setInput("5");
-                      else if (n <= 95) setInput(String(n + 5));
-                      else setInput("100");
+                      else if (n <= dmRange - 5) setInput(String(n + 5));
+                      else setInput(String(dmRange));
                     }}
                   >
                     <CustomText variant="h2" textColor="#22c55e">{"+"}</CustomText>
@@ -1807,6 +1914,73 @@ export default function DeathMatchScreen() {
     );
   }
 
+  // ── Phase: Tie — escalate range and pick new numbers ─────────────────────
+  if (phase === "tie_rematch") {
+    const rangeLabel = dmRange.toLocaleString();
+    const btnBottom = insets.bottom + 20;
+
+    const handlePlayAgain = () => {
+      tieRef.current = false;
+      setInput("");
+      if (mode === "ONLINE") {
+        setPhase("setup_online");
+      } else {
+        setIntroPlayerIdx(0);
+        setPhase("player_intro");
+      }
+    };
+
+    return (
+      <SafeAreaView style={styles.fill} edges={["right", "left"]}>
+        <ImageBackground source={{ uri: dmBgUri }} style={styles.bg} resizeMode="cover">
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.75)" }]} />
+          <BlurView intensity={28} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" />
+
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: hPad, gap: 28 }}>
+            {/* Player avatars */}
+            <View style={styles.avatarRow}>
+              <HeroCircle source={p0ProfileImage} name={p0?.name ?? ""} active size={88} />
+              <View style={styles.vsBigWrap}>
+                <CustomText variant="h5-headline" textColor="#f5a623">{"VS"}</CustomText>
+              </View>
+              <HeroCircle source={p1ProfileImage} name={p1?.name ?? ""} active size={88} />
+            </View>
+
+            {/* Tie badge */}
+            <View style={{ backgroundColor: "rgba(245,197,24,0.12)", borderRadius: 16, borderWidth: 2, borderColor: "rgba(245,197,24,0.5)", paddingHorizontal: 28, paddingVertical: 18, alignItems: "center", gap: 8 }}>
+              <CustomText variant="h3" textColor="#f5c518">{"IT'S A TIE!"}</CustomText>
+              <CustomText variant="p-small" textColor="rgba(255,255,255,0.80)" className="text-center" allowWrap>
+                {"Both players guessed correctly!"}
+              </CustomText>
+            </View>
+
+            {/* New range announcement */}
+            <View style={{ alignItems: "center", gap: 8 }}>
+              <CustomText variant="h5-headline" textColor="#fff" className="text-center" allowWrap>
+                {`SUDDEN DEATH: 1 TO ${rangeLabel}`}
+              </CustomText>
+              <CustomText variant="p-small" textColor="rgba(255,255,255,0.55)" className="text-center" allowWrap>
+                {"Pick new secret numbers — the battle continues!"}
+              </CustomText>
+            </View>
+          </View>
+
+          <View style={{ position: "absolute", left: 0, right: 0, bottom: btnBottom, paddingHorizontal: hPad }}>
+            <CustomButton
+              title={"PLAY AGAIN!"}
+              fullWidth
+              onPress={handlePlayAgain}
+              backgroundImage={backgrounds.bg026}
+              glow btnSize="md" fontSize="md"
+              glowColor="rgba(245,197,24,0.8)"
+              shadowColor="#7a5500"
+            />
+          </View>
+        </ImageBackground>
+      </SafeAreaView>
+    );
+  }
+
   // ── Phase: Pass device (LOCAL) ────────────────────────────────────────────
   if (phase === "pass_1") {
     const targetName = p1?.name ?? "Opponent";
@@ -1896,7 +2070,8 @@ export default function DeathMatchScreen() {
         letsGoTitleY.setValue(0);
         letsGoProfilesY.setValue(0);
         setTurnIdx(0);
-        setGuess(50);
+        setGuess(1);
+        setGuessStr("");
         setPhase("guessing");
       });
     };
@@ -2004,10 +2179,6 @@ export default function DeathMatchScreen() {
               },
             ]}
           >
-            <CustomText variant="h3" textColor="#fff" className="text-center" allowWrap>
-              {"WAITING FOR\nOPPONENT"}
-            </CustomText>
-
             {/* Avatars with status */}
             <View style={styles.avatarRow}>
               <HeroCircle
@@ -2029,13 +2200,15 @@ export default function DeathMatchScreen() {
               />
             </View>
 
-            {/* Tip box */}
-            <View style={styles.tipBox}>
-              <CustomText variant="p-small" textColor="#f5c518" className="text-center">{"TIP"}</CustomText>
-              <CustomText variant="p-small" textColor="rgba(255,255,255,0.65)" className="text-center" allowWrap>
-                {"The lower the number, the easier to guess? Not always..."}
-              </CustomText>
-            </View>
+            <CustomText
+              variant="p-small"
+              sizeDelta={2}
+              textColor="rgba(255,255,255,0.40)"
+              className="text-center"
+              style={{ letterSpacing: 1.5 }}
+            >
+              {"WAITING FOR OPPONENT"}
+            </CustomText>
           </View>
         </ImageBackground>
       </SafeAreaView>
@@ -2092,16 +2265,10 @@ export default function DeathMatchScreen() {
           )}
         />
       </View>
-      {/* Guess history badges — 2.5× larger so they're readable */}
-      {playerHistory.length > 0 && (
-        <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 6, marginTop: 12, paddingHorizontal: 4 }}>
-          {playerHistory.map((entry, idx) => (
-            <View key={idx} style={{ backgroundColor: badgeColor(entry.hint) + "cc", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6 }}>
-              <CustomText variant="p-small" sizeDelta={10} textColor="#fff">{entry.value}</CustomText>
-            </View>
-          ))}
-        </View>
-      )}
+      {/* Guess history — scrollable, newest visible at bottom */}
+      <View style={{ marginTop: 12, width: "100%" }}>
+        <GuessHistoryScroll history={playerHistory} badgeColorFn={badgeColor} />
+      </View>
     </View>
   );
 
@@ -2146,32 +2313,54 @@ export default function DeathMatchScreen() {
         {/* Guessing circle — drops in, 24px above the LOCK IN button */}
         {!isOnlineWaiting && !showingOnlineResult && !showingLocalResult && (
           <View style={styles.guessingCircleArea}>
+            <TextInput
+              ref={guessInputRef}
+              value={guessStr}
+              onChangeText={(text) => {
+                const cleaned = text.replace(/[^0-9]/g, "");
+                if (cleaned.length > dmRange.toString().length) return;
+                setGuessStr(cleaned);
+                if (cleaned === "") return;
+                const n = parseInt(cleaned, 10);
+                if (!isNaN(n)) setGuess(Math.min(rangeHi, Math.max(rangeLo, n)));
+              }}
+              keyboardType="number-pad"
+              style={{ position: "absolute", opacity: 0, left: -9999, width: 1, height: 1 }}
+            />
             <Animated.View style={{ alignItems: "center", transform: [{ translateY: guessCircleDropY }, { scale: guessCircleDropScale }] }}>
               <View style={styles.setupStepperRow}>
                 <Pressable
                   style={({ pressed }) => [styles.setupStepBtn, styles.setupMinusBtn, pressed && { opacity: 0.6 }]}
-                  onPress={() => setGuess((g) => Math.max(rangeLo, g - 1))}
-                  onLongPress={() => setGuess((g) => Math.max(rangeLo, g - 5))}
+                  onPress={() => { const v = Math.max(rangeLo, guess - 1); setGuess(v); setGuessStr(String(v)); }}
+                  onLongPress={() => { const v = Math.max(rangeLo, guess - 5); setGuess(v); setGuessStr(String(v)); }}
                 >
                   <CustomText variant="h2" textColor="#ef4444">{"−"}</CustomText>
                 </Pressable>
-                <GradientGuessCircle>
-                  <Animated.View style={[styles.setupCircle, { borderWidth: 0, transform: [{ translateX: shakeX }] }]}>
-                    <CustomText variant="h2" sizeDelta={guess >= 100 ? -20 : guess >= 10 ? -16 : -10} textColor="#fff">
-                      {guess}
-                    </CustomText>
-                  </Animated.View>
-                </GradientGuessCircle>
+                <Pressable onPress={() => guessInputRef.current?.focus()}>
+                  <GradientGuessCircle>
+                    <Animated.View style={[styles.setupCircle, { borderWidth: 0, transform: [{ translateX: shakeX }] }]}>
+                      {guessStr === "" ? (
+                        <CustomText variant="h2" sizeDelta={guess >= 10000 ? -30 : guess >= 1000 ? -26 : guess >= 100 ? -20 : guess >= 10 ? -16 : -10} textColor="#fff">
+                          {guess}
+                        </CustomText>
+                      ) : (
+                        <CustomText variant="h2" sizeDelta={guessStr.length <= 1 ? -10 : guessStr.length === 2 ? -16 : guessStr.length === 3 ? -20 : guessStr.length === 4 ? -26 : -30} textColor={guessStr ? "#fff" : "rgba(255,255,255,0.2)"}>
+                          {guessStr || "?"}
+                        </CustomText>
+                      )}
+                    </Animated.View>
+                  </GradientGuessCircle>
+                </Pressable>
                 <Pressable
                   style={({ pressed }) => [styles.setupStepBtn, styles.setupPlusBtn, pressed && { opacity: 0.6 }]}
-                  onPress={() => setGuess((g) => Math.min(rangeHi, g + 1))}
-                  onLongPress={() => setGuess((g) => Math.min(rangeHi, g + 5))}
+                  onPress={() => { const v = Math.min(rangeHi, guess + 1); setGuess(v); setGuessStr(String(v)); }}
+                  onLongPress={() => { const v = Math.min(rangeHi, guess + 5); setGuess(v); setGuessStr(String(v)); }}
                 >
                   <CustomText variant="h2" textColor="#22c55e">{"+"}</CustomText>
                 </Pressable>
               </View>
               <CustomText variant="p-small" sizeDelta={-1} textColor="rgba(255,255,255,0.5)" className="text-center" allowWrap style={{ marginTop: 14 }}>
-                {"Choose a number to guess\nyour opponent's secret"}
+                {"Tap the circle to type · use ± to fine-tune"}
               </CustomText>
             </Animated.View>
           </View>
@@ -2206,9 +2395,11 @@ export default function DeathMatchScreen() {
         {showingLocalResult && (
           <Animated.View style={[StyleSheet.absoluteFill, { opacity: resultOverlayOpacity }]} pointerEvents="none">
             <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center", gap: 8 }]}>
-              <CustomText variant="h1" textColor={resColor}>{resArrow}</CustomText>
-              <CustomText variant="h3" textColor={resColor}>{resLabel}</CustomText>
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center" }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <CustomText variant="h1" textColor={resColor}>{resArrow}</CustomText>
+                <CustomText variant="h3" textColor={resColor} numberOfLines={1} adjustsFontSizeToFit style={{ flexShrink: 1 }}>{resLabel}</CustomText>
+              </View>
             </View>
           </Animated.View>
         )}
@@ -2221,7 +2412,7 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   bg: { flex: 1 },
   bgDim: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.52)",
   },
   container: {
@@ -2295,44 +2486,6 @@ const styles = StyleSheet.create({
   numpadKeyUtil: { backgroundColor: "rgba(255,255,255,0.05)" },
   actionRow: { gap: 10 },
 
-  // ── Drum picker ───────────────────────────────────────────────────────────
-  drumWrap: {
-    height: DRUM_ITEM_H * 5,
-    overflow: "hidden",
-    alignSelf: "center",
-    width: 180,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(34,197,94,0.3)",
-    backgroundColor: "rgba(0,0,0,0.3)",
-  },
-  drumHighlight: {
-    position: "absolute",
-    top: DRUM_ITEM_H * 2,
-    left: 0,
-    right: 0,
-    height: DRUM_ITEM_H,
-    borderTopWidth: 2,
-    borderBottomWidth: 2,
-    borderColor: "rgba(34,197,94,0.6)",
-    backgroundColor: "rgba(34,197,94,0.08)",
-    zIndex: 1,
-    pointerEvents: "none",
-  },
-  drumFade: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    height: DRUM_ITEM_H * 1.5,
-    zIndex: 2,
-    pointerEvents: "none",
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
-  drumItem: {
-    height: DRUM_ITEM_H,
-    justifyContent: "center",
-    alignItems: "center",
-  },
 
   // ── Hero circle / avatar bar ──────────────────────────────────────────────
   heroCircle: {
@@ -2393,17 +2546,6 @@ const styles = StyleSheet.create({
     borderColor: "rgba(34,197,94,0.35)",
     alignItems: "center",
     justifyContent: "center",
-  },
-  tipBox: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(245,197,24,0.3)",
-    backgroundColor: "rgba(245,197,24,0.08)",
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    gap: 6,
-    alignItems: "center",
-    width: "100%",
   },
 
   // ── Opp confirm ───────────────────────────────────────────────────────────
@@ -2496,8 +2638,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     paddingVertical: 14,
     paddingHorizontal: 20,
+    flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    justifyContent: "center",
+    gap: 10,
   },
 
   // ── Last chance banner ────────────────────────────────────────────────────
