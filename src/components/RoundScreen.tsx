@@ -23,8 +23,8 @@ import { getOnlinePlayerIndex } from "../utils/onlinePlayerIndex";
 type Nav = StackNavigationProp<GameStackParamList, "Round">;
 
 const { width: W } = Dimensions.get("window");
-const ROUND_CYCLE_LENGTH = 11;
-const BONUS_ROUND_POSITIONS = new Set([3, 6, 10]);
+const ROUND_CYCLE_LENGTH = 15;
+const BONUS_ROUND_POSITIONS = new Set([4, 11]);
 
 function isBonusRoundNumber(roundNumber: number): boolean {
   if (roundNumber < 1) return false;

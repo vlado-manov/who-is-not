@@ -22,6 +22,8 @@ export type Props = {
   onClose: () => void;
   fromHeroPicker?: boolean;
   onHeroSetupExit?: () => void;
+  fromGameplay?: boolean;
+  onRefresh?: () => void;
 };
 
 type SwitchVariant = "notifications" | "music" | "sfx";
@@ -309,6 +311,8 @@ export default function UserSettingsModal({
   onClose,
   fromHeroPicker = false,
   onHeroSetupExit,
+  fromGameplay = false,
+  onRefresh,
 }: Props) {
   const { t } = useTranslation();
   const { height } = useWindowDimensions();
@@ -317,14 +321,17 @@ export default function UserSettingsModal({
   const { settings, updateSettings } = useAuthStore();
 
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showRefreshConfirm, setShowRefreshConfirm] = useState(false);
   const [animNonce, setAnimNonce] = useState(0);
 
   useEffect(() => {
     if (visible) {
       setShowExitConfirm(false);
+      setShowRefreshConfirm(false);
       setAnimNonce((n) => n + 1);
     } else {
       setShowExitConfirm(false);
+      setShowRefreshConfirm(false);
     }
   }, [visible]);
 
@@ -387,7 +394,7 @@ export default function UserSettingsModal({
   return (
     <>
       <Modal
-        visible={visible && !showExitConfirm}
+        visible={visible && !showExitConfirm && !showRefreshConfirm}
         transparent
         animationType="none"
         statusBarTranslucent
@@ -472,6 +479,34 @@ export default function UserSettingsModal({
                       animKey={animNonce}
                     />
 
+                    {fromGameplay && onRefresh && (
+                      <>
+                        <View style={sheetStyles.divider} />
+                        <Pressable
+                          onPress={() => {
+                            AudioManager.playButtonClick();
+                            setShowRefreshConfirm(true);
+                          }}
+                          style={({ pressed }) => [
+                            sheetStyles.exitBtn,
+                            sheetStyles.refreshBtn,
+                            pressed && sheetStyles.exitBtnPressed,
+                          ]}
+                        >
+                          <LinearGradient
+                            colors={["#22c55e", "#15803d"]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={sheetStyles.exitBtnGrad}
+                          >
+                            <CustomText style={sheetStyles.exitBtnText}>
+                              {t("gameplay_refresh")}
+                            </CustomText>
+                          </LinearGradient>
+                        </Pressable>
+                      </>
+                    )}
+
                     {fromHeroPicker && (
                       <>
                         <View style={sheetStyles.divider} />
@@ -519,6 +554,22 @@ export default function UserSettingsModal({
         confirmLabel={t("settings_exit_confirm")}
         confirmColors={["#e03030", "#b01010"]}
         onConfirm={handleExitConfirm}
+      />
+      <PurpleConfirmModal
+        visible={showRefreshConfirm}
+        onClose={() => setShowRefreshConfirm(false)}
+        emoji="🔄"
+        title={t("gameplay_refresh_title")}
+        body={t("gameplay_refresh_body")}
+        cancelLabel={t("settings_cancel")}
+        confirmLabel={t("gameplay_refresh_confirm")}
+        confirmColors={["#22c55e", "#15803d"]}
+        onConfirm={() => {
+          AudioManager.playButtonClick();
+          setShowRefreshConfirm(false);
+          onClose();
+          onRefresh?.();
+        }}
       />
     </>
   );
@@ -578,6 +629,10 @@ const sheetStyles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.1)",
     marginVertical: 8,
     alignSelf: "stretch",
+  },
+  refreshBtn: {
+    borderColor: "rgba(134,239,172,0.55)",
+    shadowColor: "#22c55e",
   },
   exitBtn: {
     borderRadius: 14,

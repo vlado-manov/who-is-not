@@ -65,25 +65,29 @@ export type MultiplayerRoundStateSnapshot = {
 
 /**
  * Единна последователност за LOCAL (party) и ONLINE: `initRoundQuestions` + host snapshot.
- * Повтаря се на всеки 11 рунда. "Bonus" is a presentation flag in Results,
- * not a fake question slot: positions 3, 6, and 10 hide the question.
+ * Повтаря се на всеки 15 рунда. "Bonus" is a presentation flag in Results,
+ * not a fake question slot: positions 4 and 11 hide the question.
  */
 const ROUND_SCHEDULE: QuestionType[] = [
-  "pick", // 1
+  "pick",   // 1
   "number", // 2
-  "pick", // 3
-  "input", // 4
-  "pick", // 5
-  "number", // 6
-  "input", // 7
-  "number", // 8
-  "pick", // 9
-  "pick", // 10
-  "input", // 11
+  "pick",   // 3
+  "pick",   // 4  (bonus — pick)
+  "number", // 5
+  "input",  // 6
+  "pick",   // 7
+  "pick",   // 8
+  "number", // 9
+  "input",  // 10
+  "number", // 11 (bonus — number)
+  "pick",   // 12
+  "number", // 13
+  "number", // 14
+  "input",  // 15
 ];
 
 const NAME_PLACEHOLDER_RE = /\{\{name\}\}|\{name\}/;
-const BONUS_ROUND_POSITIONS = new Set([3, 6, 10]);
+const BONUS_ROUND_POSITIONS = new Set([4, 11]);
 
 function getCyclePositionForRound(roundIndex: number): number {
   if (roundIndex < 1) return 1;

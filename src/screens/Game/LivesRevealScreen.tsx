@@ -221,6 +221,9 @@ const LivesRevealScreen = () => {
   const [showWinnerButtons, setShowWinnerButtons] = useState(false);
   const [confettiBurstKey, setConfettiBurstKey] = useState(0);
 
+  const skipFadeOp = useRef(new Animated.Value(1)).current;
+  const skipFadePromiseRef = useRef<Promise<void> | null>(null);
+
   const winnerScreenOpacity = useRef(new Animated.Value(0)).current;
   const winnerScreenScale = useRef(new Animated.Value(1.08)).current;
   const winnerScreenY = useRef(new Animated.Value(36)).current;
@@ -1071,11 +1074,13 @@ const LivesRevealScreen = () => {
     });
 
     for (let i = 0; i < cardAnims.length; i++) {
-      gridScrollRef.current?.scrollToEnd({ animated: true });
       void AudioManager.playAnswerPop();
       await startAnim(cardAnims[i]);
-      await startAnim(Animated.delay(50));
+      await startAnim(Animated.delay(30));
+      gridScrollRef.current?.scrollToEnd({ animated: true });
     }
+    await startAnim(Animated.delay(400));
+    gridScrollRef.current?.scrollTo({ y: 0, animated: true });
   };
 
   const animateDeadPlayerInGrid = async (playerId: string) => {
@@ -1352,7 +1357,9 @@ const LivesRevealScreen = () => {
         await switchCenterTo(onlinePlayerId);
         void AudioManager.playImposterNotLosingLiveSound();
         await runFocusSpotlightMoment(happyJumpDiagonal);
-        let shownOnline = 0;
+        if (orderedLosingIds.length > 0) {
+          setShowFocusSkip(true);
+        }
         for (const id of orderedLosingIds) {
           if (skipFocusRef.current) break;
           await switchCenterTo(id);
@@ -1362,17 +1369,20 @@ const LivesRevealScreen = () => {
               await animateDeadPlayerInCenter(id);
             }
           });
-          shownOnline += 1;
-          if (shownOnline >= 2 && orderedLosingIds.length > shownOnline) {
-            setShowFocusSkip(true);
-          }
         }
         setShowFocusSkip(false);
-        await switchCenterTo(oddOneId);
+        if (skipFadePromiseRef.current) {
+          await skipFadePromiseRef.current;
+        }
+        if (!skipFocusRef.current) {
+          await switchCenterTo(oddOneId);
+        }
       } else {
         void AudioManager.playImposterNotLosingLiveSound();
         await runFocusSpotlightMoment(happyJumpDiagonal);
-        let shownLocal = 0;
+        if (losingIds.length > 0) {
+          setShowFocusSkip(true);
+        }
         for (const id of losingIds) {
           if (skipFocusRef.current) break;
           await switchCenterTo(id);
@@ -1382,13 +1392,14 @@ const LivesRevealScreen = () => {
               await animateDeadPlayerInCenter(id);
             }
           });
-          shownLocal += 1;
-          if (shownLocal >= 2 && losingIds.length > shownLocal) {
-            setShowFocusSkip(true);
-          }
         }
         setShowFocusSkip(false);
-        await switchCenterTo(oddOneId);
+        if (skipFadePromiseRef.current) {
+          await skipFadePromiseRef.current;
+        }
+        if (!skipFocusRef.current) {
+          await switchCenterTo(oddOneId);
+        }
       }
 
       await unfoldGrid();
@@ -1945,7 +1956,7 @@ const LivesRevealScreen = () => {
         {phase === "focus" && !showGameOver && (
           <Animated.View
             pointerEvents="none"
-            style={[styles.bgBlurOverlay, { opacity: bgBlurOpacity }]}
+            style={[styles.bgBlurOverlay, { opacity: Animated.multiply(bgBlurOpacity, skipFadeOp) }]}
           >
             {Platform.OS === "web" ? (
               <View style={styles.bgBlurWebFallback} />
@@ -1965,7 +1976,7 @@ const LivesRevealScreen = () => {
               styles.centerFocusOverlay,
               { paddingTop: insets.top + 118 },
               {
-                opacity: centerFade,
+                opacity: Animated.multiply(centerFade, skipFadeOp),
                 transform: [
                   { translateX: centerShakeX },
                   {
@@ -2265,6 +2276,15 @@ const LivesRevealScreen = () => {
             onPress={() => {
               skipFocusRef.current = true;
               setShowFocusSkip(false);
+              skipFadeOp.setValue(1);
+              skipFadePromiseRef.current = new Promise<void>((resolve) => {
+                Animated.timing(skipFadeOp, {
+                  toValue: 0,
+                  duration: 350,
+                  easing: Easing.out(Easing.cubic),
+                  useNativeDriver: true,
+                }).start(() => resolve());
+              });
             }}
           />
         )}

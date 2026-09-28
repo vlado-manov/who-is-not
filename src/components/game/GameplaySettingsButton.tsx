@@ -7,14 +7,18 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AudioManager from "../../utils/audioManager";
 import { useUserSettingsSheet } from "../../context/UserSettingsModalContext";
 
-export default function GameplaySettingsButton() {
+type Props = {
+  onRefresh: () => void;
+};
+
+export default function GameplaySettingsButton({ onRefresh }: Props) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { openUserSettings } = useUserSettingsSheet();
 
   const handlePress = () => {
     AudioManager.playButtonClick();
-    openUserSettings();
+    openUserSettings({ fromGameplay: true, onRefresh });
   };
 
   return (

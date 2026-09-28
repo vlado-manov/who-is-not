@@ -21,7 +21,6 @@ import StandingsScreen from "../screens/Game/StandingsScreen";
 import WinnerScreen from "../screens/Game/WinnerScreen";
 import PlayerDeathScreen from "../screens/Game/PlayerDeathScreen";
 import DeathMatchScreen from "../screens/Game/DeathMatchScreen";
-import GameplayRefreshButton from "../components/game/GameplayRefreshButton";
 import GameplaySettingsButton from "../components/game/GameplaySettingsButton";
 
 const Stack = createStackNavigator<GameStackParamList>();
@@ -90,8 +89,7 @@ export default function GameStackNavigator() {
         <Stack.Screen name="Winner" component={WinnerScreen} />
         <Stack.Screen name="Standings" component={StandingsScreen} />
       </Stack.Navigator>
-      <GameplayRefreshButton onRefresh={refreshCurrentScreen} />
-      <GameplaySettingsButton />
+      <GameplaySettingsButton onRefresh={refreshCurrentScreen} />
       {mode === "ONLINE" && <OnlineSessionSyncListener />}
 
       {mode === "ONLINE" && <OnlineRoomBanner />}

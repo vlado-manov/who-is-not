@@ -10,6 +10,8 @@ import UserSettingsModal from "../components/modals/UserSettingsModal";
 export type OpenUserSettingsOptions = {
   fromHeroPicker?: boolean;
   onHeroSetupExit?: () => void;
+  fromGameplay?: boolean;
+  onRefresh?: () => void;
 };
 
 type ContextValue = {
@@ -50,6 +52,8 @@ export function UserSettingsModalProvider({
         onClose={closeUserSettings}
         fromHeroPicker={options.fromHeroPicker === true}
         onHeroSetupExit={options.onHeroSetupExit}
+        fromGameplay={options.fromGameplay === true}
+        onRefresh={options.onRefresh}
       />
     </UserSettingsModalContext.Provider>
   );

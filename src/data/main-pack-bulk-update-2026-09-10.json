@@ -1,0 +1,1572 @@
+{
+  "questions": [
+    {
+      "id": "cmofltomt0003mx127edya812",
+      "textEn": "Who would actually wire money to a Nigerian prince in need?",
+      "textBg": "Кой би пратил пари на Нигерийски принц в нужда?",
+      "textFr": "Qui enverrait vraiment de l'argent à un prince nigérian dans le besoin ?",
+      "textEs": "¿Quién de verdad mandaría dinero a un príncipe nigeriano necesitado?"
+    },
+    {
+      "id": "cmofvguke0009mx12hdbch58n",
+      "textEn": "Name an animal someone has compared you to.",
+      "textBg": "Назови животно, което са ти казвали, че си.",
+      "textFr": "Cite un animal auquel quelqu'un t'a déjà comparé.",
+      "textEs": "Nombra un animal con el que alguien te haya comparado."
+    },
+    {
+      "id": "cmofvphe9000dmx12epri1qkf",
+      "textEn": "What's the most you've ever spent on a coffee cup?",
+      "textBg": "Колко най-много си плащал за кафе?",
+      "textFr": "C'est quoi le plus que tu aies jamais dépensé pour un café ?",
+      "textEs": "¿Cuánto es lo más que has gastado en un solo café?"
+    },
+    {
+      "id": "cmofvsfgl000fmx12p33kzryz",
+      "textEn": "How much is the most expensive thing you're wearing right now?",
+      "textBg": "Колко струва най-скъпото нещо, което носиш в момента?",
+      "textFr": "Combien vaut la chose la plus chère que tu portes en ce moment ?",
+      "textEs": "¿Cuánto vale la cosa más cara que llevas puesta ahora mismo?"
+    },
+    {
+      "id": "cmofvxgdo000hmx12xyp1e0f8",
+      "textEn": "What's the most you'd pay for {{name}}'s t-shirt?",
+      "textBg": "Колко най-много би платил за тениската на {{name}}?",
+      "textFr": "Combien paierais-tu au maximum pour le t-shirt de {{name}} ?",
+      "textEs": "¿Cuánto pagarías como máximo por la camiseta de {{name}}?"
+    },
+    {
+      "id": "cmogu8578000jmx12qc75f2qz",
+      "textEn": "If you're Robin, who's Batman?",
+      "textBg": "Ако ти си Робин, кой е Батман?",
+      "textFr": "Si tu es Robin, qui est Batman ?",
+      "textEs": "Si tú eres Robin, ¿quién es Batman?"
+    },
+    {
+      "id": "cmogu8j4t000lmx12ig275hn3",
+      "textEn": "If you're Batman, who's the Joker?",
+      "textBg": "Ако ти си Батман, кой е Жокера?",
+      "textFr": "Si tu es Batman, qui est le Joker ?",
+      "textEs": "Si tú eres Batman, ¿quién es el Joker?"
+    },
+    {
+      "id": "cmogublm0000nmx124cy4krb6",
+      "textEn": "Who would you never let behind the wheel of your car?",
+      "textBg": "На кого никога не би дал да кара колата ти?",
+      "textFr": "À qui ne donnerais-tu jamais les clés de ta voiture ?",
+      "textEs": "¿A quién nunca le dejarías conducir tu coche?"
+    },
+    {
+      "id": "cmogud0xo000pmx126xi50t6g",
+      "textEn": "Who starts the night with 'just one drink' and ends up in a completely different city by morning?",
+      "textBg": "С кого купона започва в София, но свършва в Банско?",
+      "textFr": "Qui commence la soirée avec 'juste un verre' et se réveille dans une autre ville le lendemain matin ?",
+      "textEs": "¿Quién empieza la noche con 'solo una copa' y acaba en otra ciudad por la mañana?"
+    },
+    {
+      "id": "cmoguhnr4000rmx1250uppzqw",
+      "textEn": "Who would get a jaywalking ticket?",
+      "textBg": "Кой би получил глоба за неправилно пресичане?",
+      "textFr": "Qui se ferait verbaliser pour traverser en dehors des clous ?",
+      "textEs": "¿Quién se llevaría una multa por cruzar con el semáforo en rojo?"
+    },
+    {
+      "id": "cmookkpdk000hn012v72nu7to",
+      "textEn": "How much money would it take for you to shave off one eyebrow?",
+      "textBg": "За колко би обръснал едната си вежда?",
+      "textFr": "Combien faudrait-il te payer pour que tu te rases un sourcil ?",
+      "textEs": "¿Cuánto dinero necesitarías para afeitarte una ceja?"
+    },
+    {
+      "id": "cmookmmyv000jn012rysncuyp",
+      "textEn": "How many seconds can you go without blinking?",
+      "textBg": "Колко секунди можеш без да мигнеш?",
+      "textFr": "Combien de secondes peux-tu tenir sans cligner des yeux ?",
+      "textEs": "¿Cuántos segundos puedes aguantar sin parpadear?"
+    },
+    {
+      "id": "cmookpsya000ln012vc68hexl",
+      "textEn": "If you were on a reality show, who would you vote off first?",
+      "textBg": "Ако сте в реалити - кой номинираш за изгонване?",
+      "textFr": "Si vous étiez dans une émission de télé-réalité, qui voterais-tu pour éliminer en premier ?",
+      "textEs": "Si estuvierais en un reality show, ¿a quién votarías para eliminar primero?"
+    },
+    {
+      "id": "cmookqn35000nn012wl7dgao9",
+      "textEn": "Who wouldn't you be surprised to see on a courtroom TV show?",
+      "textBg": "Кой не би се учудил да видиш в Съдебен спор?",
+      "textFr": "Qui ne t'étonnerait pas de voir dans une émission de tribunal à la télé ?",
+      "textEs": "¿A quién no te sorprendería ver en un programa de televisión de tribunal?"
+    },
+    {
+      "id": "cmookrx9h000pn01257c514yg",
+      "textEn": "Who doesn't call their parents often enough?",
+      "textBg": "Кой не се обажда на родителите си достатъчно често?",
+      "textFr": "Qui n'appelle pas ses parents assez souvent ?",
+      "textEs": "¿Quién no llama a sus padres con suficiente frecuencia?"
+    },
+    {
+      "id": "cmookw94n000rn012qrma8969",
+      "textEn": "Who would you least want to be stranded on a desert island with?",
+      "textBg": "С кой не би искал да останеш на самотен остров?",
+      "textFr": "Avec qui aimerais-tu le moins être coincé sur une île déserte ?",
+      "textEs": "¿Con quién menos querrías quedarte atrapado en una isla desierta?"
+    },
+    {
+      "id": "cmot53wrq00hdn012a1345zw2",
+      "textEn": "Who desperately needs a vocal cord intervention?",
+      "textBg": "Кой има нужда от операция на гласните струни?",
+      "textFr": "Qui a désespérément besoin d'une intervention sur ses cordes vocales ?",
+      "textEs": "¿Quién necesita desesperadamente una intervención en las cuerdas vocales?"
+    },
+    {
+      "id": "cmowpjri400hfn012igiiuuxk",
+      "textEn": "If everyone in the game were in a rock band, what would the band be called?",
+      "textBg": "Ако всички в играта бяхте рок група, как ще се казва групата?",
+      "textFr": "Si tout le monde dans le jeu formait un groupe de rock, comment s'appellerait-il ?",
+      "textEs": "Si todos los del juego formaran un grupo de rock, ¿cómo se llamaría?"
+    },
+    {
+      "id": "cmowtk69p00hhn012pq4gwrwo",
+      "textEn": "If you could change your name, what would you choose?",
+      "textBg": "Ако можеш да си смениш името, какво име би избрал/а?",
+      "textFr": "Si tu pouvais changer de prénom, lequel choisirais-tu ?",
+      "textEs": "Si pudieras cambiarte el nombre, ¿cuál elegirías?"
+    },
+    {
+      "id": "cmowty22000hln012evoug8jo",
+      "textEn": "If you could only eat one thing for the rest of your life, what would it be?",
+      "textBg": "Ако можеш да ядеш само едно нещо до края на живота си, какво ще е то?",
+      "textFr": "Si tu ne pouvais manger qu'une seule chose pour le reste de ta vie, ce serait quoi ?",
+      "textEs": "Si solo pudieras comer una cosa el resto de tu vida, ¿qué sería?"
+    },
+    {
+      "id": "cmowtyxhm00hnn012a4n7ly33",
+      "textEn": "What's the last thing you ate?",
+      "textBg": "Какво яде последно?",
+      "textFr": "C'est quoi la dernière chose que tu as mangée ?",
+      "textEs": "¿Qué fue lo último que comiste?"
+    },
+    {
+      "id": "cmowtzr8400hpn012bj9puke3",
+      "textEn": "What's your go-to hangover cure?",
+      "textBg": "Какво би ял за борба с махмурлука?",
+      "textFr": "Quel est ton remède anti-gueule de bois préféré ?",
+      "textEs": "¿Cuál es tu remedio favorito para la resaca?"
+    },
+    {
+      "id": "cmowu0z8c00hrn012lv0z2279",
+      "textEn": "What would you refuse to eat even after three days of fasting?",
+      "textBg": "Какво не би ял дори след три дневен фаст?",
+      "textFr": "Qu'est-ce que tu refuserais de manger même après trois jours de jeûne ?",
+      "textEs": "¿Qué te negarías a comer incluso después de tres días de ayuno?"
+    },
+    {
+      "id": "cmowu40rs00htn012aby9pdpt",
+      "textEn": "If everyone in the game were in a movie together, what would it be called?",
+      "textBg": "Ако всички в играта участвахте във филм, как щеше да се казва филмът?",
+      "textFr": "Si tout le monde dans le jeu jouait dans un film ensemble, comment s'appellerait-il ?",
+      "textEs": "Si todos los del juego actuaran en una película juntos, ¿cómo se llamaría?"
+    },
+    {
+      "id": "cmowu56du00hvn012f4s23alr",
+      "textEn": "If everyone in the game were superheroes, what would your team be called?",
+      "textBg": "Ако всички в играта бяхте супергерои, как щеше да ви се казва организацията?",
+      "textFr": "Si tout le monde dans le jeu était un super-héros, comment s'appellerait votre équipe ?",
+      "textEs": "Si todos los del juego fueran superhéroes, ¿cómo se llamaría vuestro equipo?"
+    },
+    {
+      "id": "cmowu6oa900hxn012mkehpery",
+      "textEn": "If everyone in the game formed a political party, what would it be called?",
+      "textBg": "Ако всички в играта сформирате политическа партия, как щеше да се казва тя?",
+      "textFr": "Si tout le monde dans le jeu formait un parti politique, comment s'appellerait-il ?",
+      "textEs": "Si todos los del juego formaran un partido político, ¿cómo se llamaría?"
+    },
+    {
+      "id": "cmowu9aea00hzn0127wpzterx",
+      "textEn": "Which historical figure would you most want to grab coffee with?",
+      "textBg": "Историческа личност, с която би искал да пиеш кафе.",
+      "textFr": "Quel personnage historique aimerais-tu le plus aller prendre un café ?",
+      "textEs": "¿Con qué personaje histórico te gustaría más tomar un café?"
+    },
+    {
+      "id": "cmowujkkc00i1n012buuwn1oc",
+      "textEn": "Which historical figure would you least want to be alone with?",
+      "textBg": "Историческа личност, с която не би искал да останеш насаме.",
+      "textFr": "Quel personnage historique aimerais-tu le moins te retrouver seul avec lui ?",
+      "textEs": "¿Con qué personaje histórico menos querrías quedarte a solas?"
+    },
+    {
+      "id": "cmowul2ry00i3n012hbt46t82",
+      "textEn": "If you could travel back in time, what year would you go to?",
+      "textBg": "Ако можеш да се върнеш назад във времето, коя година би избрал?",
+      "textFr": "Si tu pouvais voyager dans le temps, en quelle année irais-tu ?",
+      "textEs": "Si pudieras viajar en el tiempo, ¿a qué año irías?"
+    },
+    {
+      "id": "cmowvtpes00i5n012zg17lfi3",
+      "textEn": "If you could erase one year from human history, which would it be?",
+      "textBg": "Ако можеш да изтриеш една година от човешката история, коя ще е тя?",
+      "textFr": "Si tu pouvais effacer une année de l'histoire humaine, laquelle serait-ce ?",
+      "textEs": "Si pudieras borrar un año de la historia de la humanidad, ¿cuál sería?"
+    },
+    {
+      "id": "cmozc6phc00i7n012m2zzc1i2",
+      "textEn": "Who would win at arm wrestling?",
+      "textBg": "Кой ще победи на канадска борба?",
+      "textFr": "Qui gagnerait un bras de fer ?",
+      "textEs": "¿Quién ganaría un pulso?"
+    },
+    {
+      "id": "cmozc9rq700i9n0120l9nlbad",
+      "textEn": "At a slap-fighting championship, who's taking the title?",
+      "textBg": "При шампионат по биене на шамари, кой е най-вероятният победител?",
+      "textFr": "Dans un championnat de gifles, qui remporterait le titre ?",
+      "textEs": "En un campeonato de bofetadas, ¿quién se llevaría el título?"
+    },
+    {
+      "id": "cmozvy9kz00ibn012nknm9pf1",
+      "textEn": "If you got a flat tire, who would you call for help?",
+      "textBg": "Ако спукаш гума, кой ще повикаш на помощ?",
+      "textFr": "Si tu as un pneu crevé, qui appelles-tu à l'aide ?",
+      "textEs": "Si tuvieras un pinchazo, ¿a quién llamarías para que te ayudara?"
+    },
+    {
+      "id": "cmozwbw5k00idn012nol5q4eo",
+      "textEn": "If chocolate were illegal, who is breaking the law?",
+      "textBg": "Ако шоколадът беше незаконен, кой щеше да наруши закона?",
+      "textFr": "Si le chocolat était illégal, qui continuerait quand même à en manger ?",
+      "textEs": "Si el chocolate fuera ilegal, ¿quién seguiría comiéndolo?"
+    },
+    {
+      "id": "cmozwgiz300ihn0127fbv320s",
+      "textEn": "What's your favorite ice cream flavor?",
+      "textBg": "Кой ти е любимия вкус сладолед?",
+      "textFr": "C'est quoi ton parfum de glace préféré ?",
+      "textEs": "¿Cuál es tu sabor de helado favorito?"
+    },
+    {
+      "id": "cmozwio1x00ijn01279e5v47b",
+      "textEn": "What's the worst ice cream flavor you've ever tried?",
+      "textBg": "Кой е най-лошият вкус сладолед, който си опитвал?",
+      "textFr": "C'est quoi le pire parfum de glace que tu aies jamais goûté ?",
+      "textEs": "¿Cuál es el peor sabor de helado que hayas probado?"
+    },
+    {
+      "id": "cmozwjhae00iln012i6r6wt0o",
+      "textEn": "What ice cream flavor would you invent if you could?",
+      "textBg": "Какъв вкус сладолед би създал, ако имаше тази възможност?",
+      "textFr": "Quel parfum de glace inventerais-tu si tu en avais la possibilité ?",
+      "textEs": "¿Qué sabor de helado inventarías si pudieras?"
+    },
+    {
+      "id": "cmp22wgco00inn012ov8kqws0",
+      "textEn": "Who among you would use three genie wishes in the most dangerous way possible?",
+      "textBg": "Кой от вас, ако хване златната рибка, би използвал трите желания по най-опасния начин?",
+      "textFr": "Parmi vous, qui utiliserait trois vœux d'un génie de la façon la plus dangereuse possible ?",
+      "textEs": "¿Quién entre vosotros usaría tres deseos de un genio de la forma más peligrosa posible?"
+    },
+    {
+      "id": "cmp22za6k00ipn012xao9nfzv",
+      "textEn": "Who would you trust to make you the best burger?",
+      "textBg": "На кой би разчитал да ти направи най-вкусния бургер?",
+      "textFr": "À qui ferais-tu confiance pour te faire le meilleur burger ?",
+      "textEs": "¿En quién confiarías para que te hiciera la mejor hamburguesa?"
+    },
+    {
+      "id": "cmp2334el00irn012z2pn8ftn",
+      "textEn": "Who would somehow manage to burn instant noodles?",
+      "textBg": "Кой ще загори дори мигновенни нудли?",
+      "textFr": "Qui réussirait quand même à brûler des nouilles instantanées ?",
+      "textEs": "¿Quién conseguiría de alguna manera quemar unos fideos instantáneos?"
+    },
+    {
+      "id": "cmp234f2800itn012q8u2suwo",
+      "textEn": "Who would win a gummy bear eating contest?",
+      "textBg": "Кой ще победи при надяждане с желирани бонбони?",
+      "textFr": "Qui gagnerait un concours de mangeurs d'oursons en gélatine ?",
+      "textEs": "¿Quién ganaría un concurso de comer ositos de goma?"
+    },
+    {
+      "id": "cmp2366vi00ivn012og4p47o3",
+      "textEn": "Who would you sit as far away from as possible at the movies?",
+      "textBg": "До кой би седнал най-далеч в киното?",
+      "textFr": "De qui t'assoirais-tu le plus loin possible au cinéma ?",
+      "textEs": "¿De quién te sentarías lo más lejos posible en el cine?"
+    },
+    {
+      "id": "cmp237ejn00ixn0124bpssl6n",
+      "textEn": "Who would win a staring contest?",
+      "textBg": "Кой ще мигне последен в състезание по немигане?",
+      "textFr": "Qui gagnerait un concours de regards fixes ?",
+      "textEs": "¿Quién ganaría un concurso de miradas fijas?"
+    },
+    {
+      "id": "cmp23ar2a00izn0123je6qxjm",
+      "textEn": "Rate {{name}}'s cooking from 1 to 10.",
+      "textBg": "От 1 до 10 как оценяваш готвенето на {{name}}?",
+      "textFr": "Note la cuisine de {{name}} de 1 à 10.",
+      "textEs": "Puntúa la cocina de {{name}} del 1 al 10."
+    },
+    {
+      "id": "cmp23k9xk00j1n012qo85sup6",
+      "textEn": "Who would you call as your lifeline on Who Wants to Be a Millionaire?",
+      "textBg": "На кой ще звъннеш за помощ от приятел за въпрос за 1млн от Стани Богат?",
+      "textFr": "Qui appellerais-tu comme joker dans Qui veut gagner des millions ?",
+      "textEs": "¿A quién llamarías como comodín en ¿Quién quiere ser millonario?"
+    },
+    {
+      "id": "cmp23kytz00j3n0125vv0d1w1",
+      "textEn": "Who would you count on to score the game-winner in the final second?",
+      "textBg": "На кой би разчитал за дуспа в последната минута на мача?",
+      "textFr": "Sur qui compterais-tu pour marquer le but gagnant à la dernière seconde ?",
+      "textEs": "¿Con quién contarías para meter el gol decisivo en el último segundo?"
+    },
+    {
+      "id": "cmp23mdpg00j5n0123sxu33b9",
+      "textEn": "Who's having the worst luck in the group?",
+      "textBg": "Кой е най-големият карък?",
+      "textFr": "Qui est le plus stressé et angoissé du groupe ?",
+      "textEs": "¿Quién es el más angustiado del grupo?"
+    },
+    {
+      "id": "cmp23pzrn00j7n0121hygf2ni",
+      "textEn": "Who has the best shot at surviving on a deserted island?",
+      "textBg": "Кой има най-добри шансове да оцелее на самотен остров?",
+      "textFr": "Qui a les meilleures chances de survivre sur une île déserte ?",
+      "textEs": "¿Quién tiene más posibilidades de sobrevivir en una isla desierta?"
+    },
+    {
+      "id": "cmp23s61q00j9n012yel1z14j",
+      "textEn": "If you were all cats, who'd be the orange one?",
+      "textBg": "Ако всички сме котки, кой щеше да е оранжева котка?",
+      "textFr": "Si vous étiez tous des chats, qui serait le chat roux ?",
+      "textEs": "Si fuerais todos gatos, ¿quién sería el gato naranja?"
+    },
+    {
+      "id": "cmp23u17t00jbn012yhvtezx8",
+      "textEn": "If you were all dogs, who'd be the Labrador?",
+      "textBg": "Ако всички сме кучета, кой щеше да е Лабрадор?",
+      "textFr": "Si vous étiez tous des chiens, qui serait le Labrador ?",
+      "textEs": "Si fuerais todos perros, ¿quién sería el Labrador?"
+    },
+    {
+      "id": "cmp23ycg600jdn012xxejfmix",
+      "textEn": "On a scale of 1 to 10, how badly do you need deodorant right now?",
+      "textBg": "От 1 до 10, колко нужда имаш в момента от дезодорант?",
+      "textFr": "Sur une échelle de 1 à 10, à quel point as-tu besoin de déodorant là maintenant ?",
+      "textEs": "Del 1 al 10, ¿cuánto necesitas desodorante ahora mismo?"
+    },
+    {
+      "id": "cmp241bmk00jfn012qinrg702",
+      "textEn": "Who would you copy off during an important exam?",
+      "textBg": "От кой би преписал на важен тест?",
+      "textFr": "Sur qui copierais-tu lors d'un examen important ?",
+      "textEs": "¿De quién copiarías en un examen importante?"
+    },
+    {
+      "id": "cmp243vtw00jhn012eazqzlc6",
+      "textEn": "Rate {{name}}'s driving skills from 1 to 10.",
+      "textBg": "От 1 до 10, как оценяваш шофьорските умения на {{name}}?",
+      "textFr": "Note les compétences de conduite de {{name}} de 1 à 10.",
+      "textEs": "Puntúa las habilidades al volante de {{name}} del 1 al 10."
+    },
+    {
+      "id": "cmp2451jz00jjn012p0ankddz",
+      "textEn": "Rate your own look today from 1 to 10.",
+      "textBg": "От 1 до 10, как оценяваш външния си вид днес?",
+      "textFr": "Note ton propre look aujourd'hui de 1 à 10.",
+      "textEs": "Puntúa tu propio aspecto de hoy del 1 al 10."
+    },
+    {
+      "id": "cmp24gkfa00jrn012g65nhsmd",
+      "textEn": "You've decided not to get drunk tonight — who do you need to avoid to stick to that?",
+      "textBg": "Решил си днес да не се напиваш, кой трябва да избягваш, за да успееш?",
+      "textFr": "Tu as décidé de ne pas te soûler ce soir — qui dois-tu éviter pour tenir ?",
+      "textEs": "Has decidido no emborracharte esta noche — ¿a quién debes evitar para cumplirlo?"
+    },
+    {
+      "id": "cmp26bpig00jtn012skcug6g7",
+      "textEn": "If you could fly anywhere tomorrow, where would you go?",
+      "textBg": "Ако можеше утре да заминеш за където и да е, къде щеше да отидеш?",
+      "textFr": "Si tu pouvais partir n'importe où demain, où irais-tu ?",
+      "textEs": "Si pudieras coger un avión a cualquier lugar mañana, ¿adónde irías?"
+    },
+    {
+      "id": "cmp26erah00jvn0128y27r0yc",
+      "textEn": "How many accents can you do?",
+      "textBg": "Колко акцента можеш да имитираш?",
+      "textFr": "Combien d'accents peux-tu imiter ?",
+      "textEs": "¿Cuántos acentos sabes imitar?"
+    },
+    {
+      "id": "cmp2bnmfh00jxn0128gc5q30b",
+      "textEn": "Rate from 1 to 10 how willing you'd be to accept another pandemic just to work from home.",
+      "textBg": "От 1 до 10, колко си склонен да приемеш нова пандемия, за да работиш от вкъщи?",
+      "textFr": "Note de 1 à 10 à quel point tu serais prêt à accepter une nouvelle pandémie juste pour travailler de chez toi.",
+      "textEs": "Puntúa del 1 al 10 hasta qué punto aceptarías otra pandemia solo para trabajar desde casa."
+    },
+    {
+      "id": "cmp2by53200k1n012jqiizr9f",
+      "textEn": "If you all worked at the same company and you were the boss, who would you fire?",
+      "textBg": "Ако всички работите в една фирма и ти си шефа - кой би уволнил?",
+      "textFr": "Si vous travailliez tous dans la même boîte et que tu étais le patron, qui virerais-tu ?",
+      "textEs": "Si todos trabajarais en la misma empresa y tú fueras el jefe, ¿a quién despedirías?"
+    },
+    {
+      "id": "cmp2ghwg700k3n012p61h3fwl",
+      "textEn": "Rate your odds from 1 to 10 of surviving a bear attack.",
+      "textBg": "От 1 до 10, как оценяваш шансовете си да оцелееш при нападение от мечка?",
+      "textFr": "Note tes chances de 1 à 10 de survivre à une attaque d'ours.",
+      "textEs": "Puntúa tus probabilidades del 1 al 10 de sobrevivir a un ataque de oso."
+    },
+    {
+      "id": "cmp2grj8x00k5n012dyk2fo48",
+      "textEn": "Who sleeps so deeply you could never wake them up?",
+      "textBg": "Кой е с най-силен РЕМ сън от всички?",
+      "textFr": "Qui dort si profondément qu'on ne pourrait jamais le réveiller ?",
+      "textEs": "¿Quién duerme tan profundo que nunca podrías despertarle?"
+    },
+    {
+      "id": "cmp2h0q4600k9n0120l9a4qox",
+      "textEn": "Who would get buzzed off a talent show the fastest?",
+      "textBg": "Кой най-бързо ще получи три пъти не в шоу за таланти?",
+      "textFr": "Qui se ferait éliminer le plus vite dans un télé-crochet ?",
+      "textEs": "¿Quién sería eliminado más rápido en un talent show?"
+    },
+    {
+      "id": "cmp2h88hc00kbn012ebzn8s8j",
+      "textEn": "You're all camping and grilling — who does absolutely nothing to help?",
+      "textBg": "Отивате на палатки и барбекю - кой не прави нищо?",
+      "textFr": "Vous partez tous camper et faire un barbecue — qui ne fait absolument rien pour aider ?",
+      "textEs": "Salís todos de acampada y a hacer barbacoa — ¿quién no hace absolutamente nada para ayudar?"
+    },
+    {
+      "id": "cmp2h8mog00kdn012d2zyyf9o",
+      "textEn": "Barbecue time — who's running the grill?",
+      "textBg": "Време за барбекю - кой е на скарата?",
+      "textFr": "C'est l'heure du barbecue — qui est aux commandes du gril ?",
+      "textEs": "Hora de la barbacoa — ¿quién está al mando de la parrilla?"
+    },
+    {
+      "id": "cmp2i3r6200kfn012nz76udul",
+      "textEn": "Who's the best beatboxer in the group?",
+      "textBg": "Кой е най-добрият бийтбоксър сред вас?",
+      "textFr": "Qui est le meilleur beatboxer du groupe ?",
+      "textEs": "¿Quién es el mejor beatboxer del grupo?"
+    },
+    {
+      "id": "cmp2i54eb00khn0125dqi7dkd",
+      "textEn": "How many different body sounds can you make at once?",
+      "textBg": "Колко различни звука може да издаваш едновременно, използвайки само тялото си?",
+      "textFr": "Combien de sons différents peux-tu faire avec ton corps en même temps ?",
+      "textEs": "¿Cuántos sonidos corporales diferentes puedes hacer a la vez?"
+    },
+    {
+      "id": "cmp3tr62w00kjn012mw1mdv06",
+      "textEn": "If you were a superhero, what would your name be?",
+      "textBg": "Ако ти беше супергерой, какво щеше да е името ти?",
+      "textFr": "Si tu étais un super-héros, quel serait ton nom ?",
+      "textEs": "Si fueras un superhéroe, ¿cuál sería tu nombre?"
+    },
+    {
+      "id": "cmp3trnf000kln012ssv2hy2w",
+      "textEn": "If you were a supervillain, what would your name be?",
+      "textBg": "Ако ти беше суперзлодей, какво щеше да е името ти?",
+      "textFr": "Si tu étais un super-vilain, quel serait ton nom ?",
+      "textEs": "Si fueras un supervillano, ¿cuál sería tu nombre?"
+    },
+    {
+      "id": "cmp3vg72p00kpn012hs02u5oo",
+      "textEn": "How many times can you spin in a circle without falling over?",
+      "textBg": "Колко пъти можеш да се завъртиш в кръг без да паднеш?",
+      "textFr": "Combien de fois peux-tu tourner en rond sans tomber ?",
+      "textEs": "¿Cuántas veces puedes girar sobre ti mismo sin caerte?"
+    },
+    {
+      "id": "cmp3vgyy600krn012tzz4368e",
+      "textEn": "You're all in a video game — who's the NPC?",
+      "textBg": "Вие сте в игра - кой от вас е NPC?",
+      "textFr": "Vous êtes tous dans un jeu vidéo — qui est le PNJ ?",
+      "textEs": "Todos estáis en un videojuego — ¿quién es el NPC?"
+    },
+    {
+      "id": "cmp3vii1000ktn012ygs1qnr0",
+      "textEn": "Rate your panic from 1 to 10 if you were in an unfamiliar city with no internet.",
+      "textBg": "Оцени нивото си на паника от 1 до 10, ако си в непознат град и нямаш интернет.",
+      "textFr": "Note ta panique de 1 à 10 si tu te retrouvais dans une ville inconnue sans internet.",
+      "textEs": "Puntúa tu nivel de pánico del 1 al 10 si estuvieras en una ciudad desconocida sin internet."
+    },
+    {
+      "id": "cmp4ipugu0036rq12fk6zz4fc",
+      "textEn": "If you were all in a medieval kingdom, who's the court jester?",
+      "textBg": "Ако сте в средновековно кралство - кой е местният шут?",
+      "textFr": "Si vous étiez tous dans un royaume médiéval, qui serait le bouffon de la cour ?",
+      "textEs": "Si todos estuvierais en un reino medieval, ¿quién sería el bufón de la corte?"
+    },
+    {
+      "id": "cmp78d6n30038rq12d6x7cbqu",
+      "textEn": "If you were all being interviewed together, who should not be allowed to speak?",
+      "textBg": "Ако интервюират всички ви заедно, кой е по-добре да не взима думата?",
+      "textFr": "Si vous étiez tous interviewés ensemble, qui ne devrait pas avoir le droit de parler ?",
+      "textEs": "Si os entrevistaran a todos juntos, ¿quién no debería tener permitido hablar?"
+    },
+    {
+      "id": "cmp7amqst003arq12khk9e3n5",
+      "textEn": "Who would base all their life decisions on Mercury being in retrograde?",
+      "textBg": "Кой би вземал решенията си според позицията на ретрограден Меркурий?",
+      "textFr": "Qui baserait toutes ses décisions de vie sur Mercure rétrograde ?",
+      "textEs": "¿Quién tomaría todas sus decisiones de vida en base a que Mercurio está retrógrado?"
+    },
+    {
+      "id": "cmp7at9kv003crq12pnvz2vdr",
+      "textEn": "You're at a house party and it's completely smoky in there — who's responsible?",
+      "textBg": "На домашно парти сте и навсякъде е задимено - кой е виновен?",
+      "textFr": "Vous êtes à une soirée chez des amis et il y a de la fumée partout — qui est responsable ?",
+      "textEs": "Estáis en una fiesta en casa y hay humo por todas partes — ¿quién tiene la culpa?"
+    },
+    {
+      "id": "cmp7axj0k003erq1225slabn5",
+      "textEn": "If you were all days of the week, who's Monday?",
+      "textBg": "Ако всички сте дни от седмицата - кой е понеделник?",
+      "textFr": "Si vous étiez tous des jours de la semaine, qui serait le lundi ?",
+      "textEs": "Si fuerais todos días de la semana, ¿quién sería el lunes?"
+    },
+    {
+      "id": "cmp7b6db4003grq12jr1dl8gw",
+      "textEn": "If there were an Olympics for bad photos, who's winning gold?",
+      "textBg": "Ако има олимпиада за лоши снимки, кой печели златото?",
+      "textFr": "S'il y avait des JO pour les mauvaises photos, qui remporterait l'or ?",
+      "textEs": "Si hubiera unas olimpiadas de malas fotos, ¿quién se llevaría el oro?"
+    },
+    {
+      "id": "cmp7bm55u003irq12bd5oiuwq",
+      "textEn": "You're in lockdown and desperately need a haircut — who do you let near your head?",
+      "textBg": "В пандемия сте и имаш спешна нужда от подстригване - на кой ще се довериш?",
+      "textFr": "Tu es en confinement et tu as désespérément besoin d'une coupe — à qui fais-tu confiance pour ça ?",
+      "textEs": "Estáis confinados y necesitas urgentemente un corte de pelo — ¿a quién le dejas que se acerque a tu cabeza?"
+    },
+    {
+      "id": "cmp7bnflz003krq126r2rfrld",
+      "textEn": "You're at a house party — who's the first one asleep?",
+      "textBg": "На домашно парти сте - кой е първият заспал?",
+      "textFr": "Vous êtes à une soirée — qui est le premier à s'endormir ?",
+      "textEs": "Estáis en una fiesta en casa — ¿quién es el primero en quedarse dormido?"
+    },
+    {
+      "id": "cmp7jgr1l003mrq12m4o7r8v9",
+      "textEn": "If you could have any superpower, which one would you choose?",
+      "textBg": "Ако можеше да имаш някоя суперсила, коя щеше да избереш?",
+      "textFr": "Si tu pouvais avoir n'importe quel super-pouvoir, lequel choisirais-tu ?",
+      "textEs": "Si pudieras tener cualquier superpoder, ¿cuál elegirías?"
+    },
+    {
+      "id": "cmp7jhnki003orq12vtpj1jt9",
+      "textEn": "What's the most useless superpower you can think of?",
+      "textBg": "Коя суперсила е най-безсмислена?",
+      "textFr": "Quel est le super-pouvoir le plus inutile que tu puisses imaginer ?",
+      "textEs": "¿Cuál es el superpoder más inútil que se te ocurra?"
+    },
+    {
+      "id": "cmp7jjw4t003qrq12pv02nwd7",
+      "textEn": "You're going on a road trip — what's the one thing you must bring?",
+      "textBg": "Отиваш на пътешествие с кола, какво задължително ще вземеш със себе си?",
+      "textFr": "Tu pars en road trip — c'est quoi la chose indispensable que tu dois emmener ?",
+      "textEs": "Vas de road trip — ¿cuál es esa cosa imprescindible que tienes que llevar?"
+    },
+    {
+      "id": "cmp7jkqvu003srq12rihzzow9",
+      "textEn": "You're heading to the pool — what's the one thing you can't go without?",
+      "textBg": "Отиваш на басейн, какво задължително ще вземеш със себе си?",
+      "textFr": "Tu vas à la piscine — c'est quoi la chose dont tu ne peux pas te passer ?",
+      "textEs": "Vas a la piscina — ¿cuál es esa cosa de la que no puedes prescindir?"
+    },
+    {
+      "id": "cmp7jtexz003wrq12xf2bhz3q",
+      "textEn": "What's your favorite fictional place from a movie or book?",
+      "textBg": "Любимо фантастично място от филм или книга?",
+      "textFr": "C'est quoi ton endroit fictif préféré dans un film ou un livre ?",
+      "textEs": "¿Cuál es tu lugar ficticio favorito de una película o un libro?"
+    },
+    {
+      "id": "cmp7k60tk0044rq12tgivmyaq",
+      "textEn": "Describe {{name}} in one word.",
+      "textBg": "Опиши {{name}} с една дума.",
+      "textFr": "Décris {{name}} en un mot.",
+      "textEs": "Describe a {{name}} en una palabra."
+    },
+    {
+      "id": "cmp7k6w1p0046rq12a3axd21o",
+      "textEn": "What would you get {{name}} as a birthday gift?",
+      "textBg": "Какво би подарил на {{name}} за рождения му ден?",
+      "textFr": "Qu'est-ce que tu offrirais à {{name}} pour son anniversaire ?",
+      "textEs": "¿Qué le regalarías a {{name}} por su cumpleaños?"
+    },
+    {
+      "id": "cmp7ka1sk0048rq12tn1mawxy",
+      "textEn": "What's {{name}}'s go-to drink?",
+      "textBg": "Какво {{name}} обича да пие?",
+      "textFr": "C'est quoi la boisson préférée de {{name}} ?",
+      "textEs": "¿Cuál es la bebida favorita de {{name}}?"
+    },
+    {
+      "id": "cmp7kcuem004arq12glk6oubd",
+      "textEn": "Name a food everyone loves but you can't stand.",
+      "textBg": "Назови храна, която хората типично много харесват, но ти не.",
+      "textFr": "Cite une nourriture que tout le monde adore mais que tu ne supportes pas.",
+      "textEs": "Nombra una comida que le encanta a todo el mundo pero que tú no soportas."
+    },
+    {
+      "id": "cmp7kg527004crq12bso88xeq",
+      "textEn": "Look around you — what color stands out to you the most right now?",
+      "textBg": "Огледай се наоколо и напиши цветът, който ти прави най-силно впечатление в момента?",
+      "textFr": "Regarde autour de toi — quelle couleur attire le plus ton attention en ce moment ?",
+      "textEs": "Mira a tu alrededor — ¿qué color te llama más la atención ahora mismo?"
+    },
+    {
+      "id": "cmp7khol6004grq12tg9cx0d0",
+      "textEn": "What color would you never be caught wearing?",
+      "textBg": "С кой цвят никога няма да те видим да си облечен?",
+      "textFr": "De quelle couleur ne te verra-t-on jamais habillé ?",
+      "textEs": "¿De qué color nunca te verían vestido?"
+    },
+    {
+      "id": "cmp7kishf004irq124nmo0lsy",
+      "textEn": "Look around you and name one object that catches your eye.",
+      "textBg": "Огледай се наоколо и напиши предметът, който ти направи впечатление.",
+      "textFr": "Regarde autour de toi et cite un objet qui a attiré ton regard.",
+      "textEs": "Mira a tu alrededor y nombra un objeto que haya llamado tu atención."
+    },
+    {
+      "id": "cmp7kxg37004krq129e03b852",
+      "textEn": "If you had to pick a puzzle-solving teammate, who would you choose?",
+      "textBg": "Ако трябва да си избереш съотборник за редене на пъзел, кой избираш?",
+      "textFr": "Si tu devais choisir un coéquipier pour faire un puzzle, qui choisirais-tu ?",
+      "textEs": "Si tuvieras que elegir un compañero para hacer un puzle, ¿a quién elegirías?"
+    },
+    {
+      "id": "cmp80aj13004qrq12rq7fx5iv",
+      "textEn": "The police knock on the door — who's the worst person to open it?",
+      "textBg": "Полиция чука на вратата - кой е най-неподходящ да отвори вратата?",
+      "textFr": "La police frappe à la porte — qui est la pire personne pour aller ouvrir ?",
+      "textEs": "La policía llama a la puerta — ¿quién es la peor persona para ir a abrir?"
+    },
+    {
+      "id": "cmp80bt6g004srq12ujavl2vj",
+      "textEn": "You're all at the beach — who is definitely leaving sunburned?",
+      "textBg": "На плажа сте - кой със сигурност ще си тръгне червен?",
+      "textFr": "Vous êtes tous à la plage — qui repart forcément avec des coups de soleil ?",
+      "textEs": "Estáis todos en la playa — ¿quién se va a ir seguro con quemaduras solares?"
+    },
+    {
+      "id": "cmp80clwz004urq121v0e98do",
+      "textEn": "You're at the beach — who ends up completely covered in sand no matter what?",
+      "textBg": "На плажа сте - кой е целия в пясък без значение колко пъти ще влезе във водата?",
+      "textFr": "Vous êtes à la plage — qui se retrouve complètement couvert de sable quoi qu'il arrive ?",
+      "textEs": "Estáis en la playa — ¿quién acaba completamente lleno de arena pase lo que pase?"
+    },
+    {
+      "id": "cmp80dfv3004wrq122oesxizb",
+      "textEn": "You're at the beach — who slathers themselves in sunscreen head to toe?",
+      "textBg": "На плажа сте - кой се къпе от глава до пети в слънцезащитно олио?",
+      "textFr": "Vous êtes à la plage — qui s'enduit de crème solaire de la tête aux pieds ?",
+      "textEs": "Estáis en la playa — ¿quién se pone crema solar de la cabeza a los pies?"
+    },
+    {
+      "id": "cmp80jof8005crq12gl6zh45m",
+      "textEn": "Who would pull out their phone to record during an earthquake?",
+      "textBg": "Кой първо ще извади телефона да снима при земетресение?",
+      "textFr": "Qui sortirait son téléphone pour filmer pendant un tremblement de terre ?",
+      "textEs": "¿Quién sacaría el teléfono para grabar durante un terremoto?"
+    },
+    {
+      "id": "cmp80rbbe005erq129nscvswj",
+      "textEn": "You're on a road trip — who would you never trust with the GPS?",
+      "textBg": "Тръгнали сте на път - кой никога няма да отговаря за навигацията?",
+      "textFr": "Vous êtes en road trip — à qui ne confierais-tu jamais le GPS ?",
+      "textEs": "Vais de road trip — ¿a quién nunca le confiarías el GPS?"
+    },
+    {
+      "id": "cmp80sddi005grq12v6750wvt",
+      "textEn": "You're on a road trip — who loses aux cord privileges?",
+      "textBg": "Тръгнали сте на път - на кой не се дава достъп до избора на музика?",
+      "textFr": "Vous êtes en road trip — qui perd le droit de brancher son téléphone à la sono ?",
+      "textEs": "Vais de road trip — ¿quién pierde el privilegio de elegir la música?"
+    },
+    {
+      "id": "cmp83rwv0005irq12guxluzgd",
+      "textEn": "If you went back 500 years in time, rate from 1 to 10 how much you'd try to alter history.",
+      "textBg": "Ако се върнеш назад във времето с 500 години, оцени от 1 до 10 колко голяма промяна би направил?",
+      "textFr": "Si tu revenais 500 ans en arrière, note de 1 à 10 à quel point tu essaierais de changer l'histoire.",
+      "textEs": "Si volvieras 500 años atrás en el tiempo, puntúa del 1 al 10 cuánto intentarías cambiar la historia."
+    },
+    {
+      "id": "cmp9dikej005krq12gxz4p5no",
+      "textEn": "Rate from 1 to 10 how likely you are to fall asleep during a movie.",
+      "textBg": "Оцени от 1 до 10 вероятността да заспиш по време на филм.",
+      "textFr": "Note de 1 à 10 la probabilité que tu t'endormes devant un film.",
+      "textEs": "Puntúa del 1 al 10 la probabilidad de que te quedes dormido viendo una película."
+    },
+    {
+      "id": "cmp9eo4ao005mrq124mg3b8h8",
+      "textEn": "You get a call that someone in the group has been arrested — who is it?",
+      "textBg": "Получаваш обаждане, че един от всички е задържан в полицията - кой е?",
+      "textFr": "Tu reçois un appel disant que quelqu'un du groupe a été arrêté — c'est qui ?",
+      "textEs": "Recibes una llamada diciendo que alguien del grupo ha sido detenido — ¿quién es?"
+    },
+    {
+      "id": "cmp9euheg005orq12w9wkzxb7",
+      "textEn": "You're camping — who would you not want to share a tent with?",
+      "textBg": "На къмпинг сте - с кой не искаш да спиш в една палатка?",
+      "textFr": "Vous êtes en camping — avec qui ne voudrais-tu pas partager une tente ?",
+      "textEs": "Estáis de acampada — ¿con quién no querrías compartir tienda?"
+    },
+    {
+      "id": "cmp9mhu0b005srq1205cqvs7i",
+      "textEn": "In a silent game, who breaks first?",
+      "textBg": "При игра на мълчанка - кой ще загуби?",
+      "textFr": "Dans un jeu du silence, qui craque en premier ?",
+      "textEs": "En un juego del silencio, ¿quién es el primero en hablar?"
+    },
+    {
+      "id": "cmpaboe7q005urq12vizjrv5w",
+      "textEn": "Who's most likely to get in trouble over their social media posts?",
+      "textBg": "Кой е най-вероятно да си има неприятности заради свои постове в социалните мрежи?",
+      "textFr": "Qui est le plus susceptible d'avoir des problèmes à cause de ses posts sur les réseaux sociaux ?",
+      "textEs": "¿Quién tiene más probabilidades de meterse en problemas por sus publicaciones en redes sociales?"
+    },
+    {
+      "id": "cmpac19ov005wrq12rfyco49o",
+      "textEn": "Who checks themselves out in shop windows and mirrors the most?",
+      "textBg": "Кой се оглежда най-много по витрини и огледала?",
+      "textFr": "Qui se regarde le plus dans les vitrines et les miroirs ?",
+      "textEs": "¿Quién se mira más en los escaparates y espejos?"
+    },
+    {
+      "id": "cmpac3w1n005yrq12r9x5vucy",
+      "textEn": "Who wouldn't send back their food even if the order was completely wrong?",
+      "textBg": "Кой не би върнал поръчката дори да е тотално объркана от сервитьора?",
+      "textFr": "Qui ne renverrait pas son plat même si la commande était complètement ratée ?",
+      "textEs": "¿Quién no devolvería su pedido aunque estuviera completamente equivocado?"
+    },
+    {
+      "id": "cmpac7te60060rq12u9nkw1os",
+      "textEn": "What's the most people you've ever shared a bed with at the same time?",
+      "textBg": "С колко човека най-много си спал/а в едно легло наведнъж?",
+      "textFr": "C'est combien le maximum de personnes avec qui tu aies partagé un lit en même temps ?",
+      "textEs": "¿Cuántas personas es el máximo con el que hayas compartido cama a la vez?"
+    },
+    {
+      "id": "cmpacaknx0064rq12ke4w80t3",
+      "textEn": "How old were you for your first kiss?",
+      "textBg": "На колко години ти беше първата целувка?",
+      "textFr": "Tu avais quel âge pour ton premier baiser ?",
+      "textEs": "¿Cuántos años tenías en tu primer beso?"
+    },
+    {
+      "id": "cmpacifis0068rq120ibdmgfq",
+      "textEn": "How many cats is too many before you become the crazy cat person?",
+      "textBg": "Колко котки са нужни, за да станеш лудата жена с котките?",
+      "textFr": "Combien de chats faut-il avoir avant de devenir la folle aux chats ?",
+      "textEs": "¿Cuántos gatos hacen falta antes de convertirte en la loca de los gatos?"
+    },
+    {
+      "id": "cmpackjka006arq12zjpdx4zp",
+      "textEn": "How many days can you go without alcohol?",
+      "textBg": "Колко дни можеш без алкохол?",
+      "textFr": "Combien de jours peux-tu tenir sans alcool ?",
+      "textEs": "¿Cuántos días puedes aguantar sin alcohol?"
+    },
+    {
+      "id": "cmpacktqy006crq127fbhgccv",
+      "textEn": "How many days can you go without sugar?",
+      "textBg": "Колко дни можеш без захар?",
+      "textFr": "Combien de jours peux-tu tenir sans sucre ?",
+      "textEs": "¿Cuántos días puedes aguantar sin azúcar?"
+    },
+    {
+      "id": "cmpacne47006erq12ll61feoe",
+      "textEn": "How many 5-year-olds could you take on at once?",
+      "textBg": "Колко 5 годишни можеш да победиш наведнъж?",
+      "textFr": "Combien d'enfants de 5 ans pourrais-tu affronter en même temps ?",
+      "textEs": "¿A cuántos niños de 5 años podrías enfrentarte a la vez?"
+    },
+    {
+      "id": "cmpacr71k006irq128o423olq",
+      "textEn": "What's the biggest tip you've ever left?",
+      "textBg": "Колко е най-големият бакшиш, който си оставял?",
+      "textFr": "C'est quoi le plus gros pourboire que tu aies jamais laissé ?",
+      "textEs": "¿Cuál es la propina más grande que hayas dejado?"
+    },
+    {
+      "id": "cmpacs3dy006krq12aun9klnr",
+      "textEn": "Rate your tipping generosity from 1 to 10.",
+      "textBg": "От 1 до 10, колко щедри са бакшишите, които даваш?",
+      "textFr": "Note ta générosité en matière de pourboires de 1 à 10.",
+      "textEs": "Puntúa tu generosidad con las propinas del 1 al 10."
+    },
+    {
+      "id": "cmpactjyw006mrq12tz6mt8zd",
+      "textEn": "Who would pocket the tip before the server gets to it?",
+      "textBg": "Кой би прибрал бакшиша за себе си, преди сервитьора да дойде?",
+      "textFr": "Qui empocherait le pourboire avant que le serveur arrive ?",
+      "textEs": "¿Quién se quedaría la propina antes de que llegara el camarero?"
+    },
+    {
+      "id": "cmpacvfq7006orq12ow650lee",
+      "textEn": "Who could spend an entire day just scrolling through short videos?",
+      "textBg": "Кой би изкарал цял ден в гледане на клипчета?",
+      "textFr": "Qui pourrait passer une journée entière à défiler des vidéos courtes ?",
+      "textEs": "¿Quién podría pasar un día entero mirando vídeos cortos?"
+    },
+    {
+      "id": "cmpacwqpk006qrq12xeqf114h",
+      "textEn": "Write down a player's favorite number that you actually know.",
+      "textBg": "Напиши любимото число на един от играчите, което знаеш.",
+      "textFr": "Écris le chiffre préféré d'un joueur que tu connais.",
+      "textEs": "Escribe el número favorito de un jugador que conozcas."
+    },
+    {
+      "id": "cmpad0m9i006urq12hdpkr7kr",
+      "textEn": "Rate your odds from 1 to 10 of changing a flat tire on your own.",
+      "textBg": "Оцени шансовете си от 1 до 10 сам да смениш гума на кола?",
+      "textFr": "Note tes chances de 1 à 10 de changer un pneu crevé tout seul.",
+      "textEs": "Puntúa tus probabilidades del 1 al 10 de cambiar una rueda pinchada tú solo."
+    },
+    {
+      "id": "cmpad2wh8006wrq122h110dsn",
+      "textEn": "How many times have you broken the law and gotten away with it?",
+      "textBg": "Колко пъти си нарушавал закона безнаказано?",
+      "textFr": "Combien de fois as-tu enfreint la loi sans te faire attraper ?",
+      "textEs": "¿Cuántas veces has infringido la ley y te has salido con la tuya?"
+    },
+    {
+      "id": "cmpad70nh0070rq12t1zoyovv",
+      "textEn": "What's the most hours you've slept at work in one go?",
+      "textBg": "Колко най-много часа сън наведнъж си спал по време на работа?",
+      "textFr": "C'est combien le maximum d'heures que tu aies dormi au travail d'affilée ?",
+      "textEs": "¿Cuántas horas es el máximo que has dormido en el trabajo de una vez?"
+    },
+    {
+      "id": "cmpad8b460072rq12hulh4hpk",
+      "textEn": "What's the most people you've all slept in the same room with?",
+      "textBg": "С колко човека най-много сте спали заедно в едно помещение?",
+      "textFr": "C'est combien le maximum de personnes avec qui vous avez tous dormi dans la même pièce ?",
+      "textEs": "¿Cuántas personas es el máximo con el que hayáis dormido todos en la misma habitación?"
+    },
+    {
+      "id": "cmpaday620074rq12w8wl9ght",
+      "textEn": "How many times do you call back to back when someone doesn't pick up?",
+      "textBg": "Колко пъти последователно звъниш, когато не ти вдигат?",
+      "textFr": "Combien de fois rappelles-tu d'affilée quand quelqu'un ne décroche pas ?",
+      "textEs": "¿Cuántas veces seguidas llamas cuando alguien no te coge el teléfono?"
+    },
+    {
+      "id": "cmpadbzbc0076rq12kbzgtcxs",
+      "textEn": "How many missed calls before you start to panic?",
+      "textBg": "Колко пропуснати повиквания са достатъчни за паника?",
+      "textFr": "Combien d'appels manqués avant de commencer à paniquer ?",
+      "textEs": "¿Cuántas llamadas perdidas hacen falta para que empieces a entrar en pánico?"
+    },
+    {
+      "id": "cmpaddm460078rq12yu7wvkvk",
+      "textEn": "Rate from 1 to 10 how well you think you can moo like a cow.",
+      "textBg": "Оцени от 1 до 10 колко добре, според теб, имитираш крава.",
+      "textFr": "Note de 1 à 10 à quel point tu crois savoir bien faire le cri de la vache.",
+      "textEs": "Puntúa del 1 al 10 lo bien que crees que puedes hacer el mugido de una vaca."
+    },
+    {
+      "id": "cmpadexv8007arq12e4ppxpka",
+      "textEn": "Rate from 1 to 10 how well you think you can do a monkey impression.",
+      "textBg": "Оцени от 1 до 10 колко добре, според теб, имитираш маймуна.",
+      "textFr": "Note de 1 à 10 à quel point tu crois savoir bien imiter un singe.",
+      "textEs": "Puntúa del 1 al 10 lo bien que crees que puedes hacer de mono."
+    },
+    {
+      "id": "cmpadgc3b007crq12uwp3cxmi",
+      "textEn": "How many babies on a flight is officially too many?",
+      "textBg": "Колко бебета на полет са твърде много бебета?",
+      "textFr": "Combien de bébés dans un avion c'est officiellement trop ?",
+      "textEs": "¿Cuántos bebés en un vuelo son oficialmente demasiados?"
+    },
+    {
+      "id": "cmpadho0d007erq121jcqn992",
+      "textEn": "What's the longest queue you've ever waited in?",
+      "textBg": "От колко човека е най-голямата опашка, на която си чакал/а?",
+      "textFr": "C'est quoi la plus longue file d'attente dans laquelle tu aies jamais patienté ?",
+      "textEs": "¿Cuál es la cola más larga en la que hayas esperado?"
+    },
+    {
+      "id": "cmpadkihf007grq126srgfrqx",
+      "textEn": "How many letters is the longest word starting with 'S' you can think of?",
+      "textBg": "С колко букви е най-голямата дума започваща с буквата С, за която се сещаш?",
+      "textFr": "Combien de lettres fait le plus long mot commençant par 'S' auquel tu penses ?",
+      "textEs": "¿Cuántas letras tiene la palabra más larga que empiece por 'S' que se te ocurra?"
+    },
+    {
+      "id": "cmpadllf0007irq12fmt3ihr9",
+      "textEn": "How many letters is the longest word starting with 'C' you can think of?",
+      "textBg": "С колко букви е най-голямата дума започваща с буквата К, за която се сещаш?",
+      "textFr": "Combien de lettres fait le plus long mot commençant par 'C' auquel tu penses ?",
+      "textEs": "¿Cuántas letras tiene la palabra más larga que empiece por 'C' que se te ocurra?"
+    },
+    {
+      "id": "cmpadmdrj007krq12hxthwsdr",
+      "textEn": "How many letters is the longest word starting with 'P' you can think of?",
+      "textBg": "С колко букви е най-голямата дума започваща с буквата П, за която се сещаш?",
+      "textFr": "Combien de lettres fait le plus long mot commençant par 'P' auquel tu penses ?",
+      "textEs": "¿Cuántas letras tiene la palabra más larga que empiece por 'P' que se te ocurra?"
+    },
+    {
+      "id": "cmpado40e007mrq12i0sky2sy",
+      "textEn": "How many days without showering is officially too many?",
+      "textBg": "Колко дни без къпане вече е притеснително много?",
+      "textFr": "Combien de jours sans se doucher c'est officiellement trop ?",
+      "textEs": "¿Cuántos días sin ducharse son oficialmente demasiados?"
+    },
+    {
+      "id": "cmpadovuq007orq129sas56k7",
+      "textEn": "How many days without changing your bed sheets is too long?",
+      "textBg": "Колко дни без да се сменят чаршафите е твърде дълго?",
+      "textFr": "Combien de jours sans changer ses draps c'est trop long ?",
+      "textEs": "¿Cuántos días sin cambiar las sábanas son demasiados?"
+    },
+    {
+      "id": "cmpadsq1w007qrq12cjsiq3rg",
+      "textEn": "Rate {{name}}'s music taste from 1 to 10.",
+      "textBg": "Оцени от 1 до 10 музикалния вкус на {{name}}.",
+      "textFr": "Note le goût musical de {{name}} de 1 à 10.",
+      "textEs": "Puntúa el gusto musical de {{name}} del 1 al 10."
+    },
+    {
+      "id": "cmpadwu49007srq12o4foim37",
+      "textEn": "How many photos does it usually take before you get one you actually like?",
+      "textBg": "Обичайно колко снимки са нужни преди първата, на която се харесваш?",
+      "textFr": "En général, combien de photos faut-il prendre avant d'en avoir une qui te plaît vraiment ?",
+      "textEs": "¿Cuántas fotos necesitas normalmente antes de conseguir una que te guste de verdad?"
+    },
+    {
+      "id": "cmpadynen007urq12zknqydsj",
+      "textEn": "How many pillows does it take for you to be perfectly comfortable?",
+      "textBg": "Колко възглавници са нужни за перфектното удобство?",
+      "textFr": "Combien d'oreillers te faut-il pour être parfaitement à l'aise ?",
+      "textEs": "¿Cuántas almohadas necesitas para estar perfectamente cómodo?"
+    },
+    {
+      "id": "cmparcazf007wrq12m61hts0o",
+      "textEn": "What's the biggest bill you've ever paid?",
+      "textBg": "Каква е най-голямата сметка, която си плащал?",
+      "textFr": "C'est quoi la plus grosse note que tu aies jamais payée ?",
+      "textEs": "¿Cuál es la cuenta más grande que hayas pagado?"
+    },
+    {
+      "id": "cmpardpuv007yrq12htruoaaq",
+      "textEn": "How many cheeseburgers could you eat in one sitting?",
+      "textBg": "Колко чийзбургера можеш да изядеш на едно хранене?",
+      "textFr": "Combien de cheeseburgers pourrais-tu manger en un seul repas ?",
+      "textEs": "¿Cuántas hamburguesas con queso podrías comerte de una sentada?"
+    },
+    {
+      "id": "cmparmlps0080rq12xt5cfguo",
+      "textEn": "How many times have you had lice?",
+      "textBg": "Колко пъти си имал въшки?",
+      "textFr": "Combien de fois as-tu eu des poux ?",
+      "textEs": "¿Cuántas veces has tenido piojos?"
+    },
+    {
+      "id": "cmpbcr9gi008zrq12obswi7g3",
+      "textEn": "Who's most likely to cry to get what they want?",
+      "textBg": "Кой е склонен да се разреве, за да постигне целите си?",
+      "textFr": "Qui est le plus susceptible de pleurer pour obtenir ce qu'il veut ?",
+      "textEs": "¿Quién tiene más probabilidades de ponerse a llorar para conseguir lo que quiere?"
+    },
+    {
+      "id": "cmpd2dhnd00earq12yqieogki",
+      "textEn": "Name a trend you're glad is finally dead.",
+      "textBg": "Напуши тренд, който се радваш, че вече го няма.",
+      "textFr": "Cite une tendance dont tu es content qu'elle soit enfin morte.",
+      "textEs": "Nombra una tendencia que te alegra que ya haya muerto."
+    },
+    {
+      "id": "cmpd2e0gs00ecrq120op9ueq7",
+      "textEn": "Name an old trend you'd love to see make a comeback.",
+      "textBg": "Напиши стар тренд, който би искал да се завърне.",
+      "textFr": "Cite une ancienne tendance que tu aimerais voir faire son retour.",
+      "textEs": "Nombra una tendencia antigua que te encantaría ver volver."
+    },
+    {
+      "id": "cmpeaeujz00myrq12i3ekeyh6",
+      "textEn": "Who would vote for themselves as the funniest person?",
+      "textBg": "Кой би гласувал за себе си за най-забавен?",
+      "textFr": "Qui voterait pour lui-même comme la personne la plus drôle ?",
+      "textEs": "¿Quién votaría por sí mismo como la persona más divertida?"
+    },
+    {
+      "id": "cmpeaeyn400n0rq12kabi219y",
+      "textEn": "Who would vote for themselves as the most attractive?",
+      "textBg": "Кой би гласувал за себе си за най-красив?",
+      "textFr": "Qui voterait pour lui-même comme la personne la plus attractive ?",
+      "textEs": "¿Quién votaría por sí mismo como la persona más atractiva?"
+    },
+    {
+      "id": "cmpeaf2aj00n2rq12p6bicp5i",
+      "textEn": "Who would vote for themselves as the smartest?",
+      "textBg": "Кой би гласувал за себе си за най-умен?",
+      "textFr": "Qui voterait pour lui-même comme la personne la plus intelligente ?",
+      "textEs": "¿Quién votaría por sí mismo como la persona más inteligente?"
+    },
+    {
+      "id": "cmpeafenn00n4rq129zl7re5y",
+      "textEn": "Who's the influencer of the group?",
+      "textBg": "Кой е инфлуенсърът в групата?",
+      "textFr": "Qui est l'influenceur du groupe ?",
+      "textEs": "¿Quién es el influencer del grupo?"
+    },
+    {
+      "id": "cmpeahqfe00n8rq12scok23yu",
+      "textEn": "How many seconds is a normal hug supposed to last?",
+      "textBg": "Колко секунди е нормално да продължи една прегръдка?",
+      "textFr": "Combien de secondes doit durer un câlin normal ?",
+      "textEs": "¿Cuántos segundos debe durar un abrazo normal?"
+    },
+    {
+      "id": "cmpeaizq700narq121ipa5lni",
+      "textEn": "How fast can you tie your shoes?",
+      "textBg": "За колко секунди можеш да си вържеш обувките?",
+      "textFr": "En combien de secondes peux-tu lacer tes chaussures ?",
+      "textEs": "¿En cuántos segundos puedes atarte los zapatos?"
+    },
+    {
+      "id": "cmpeajie400ncrq12un6r2ixn",
+      "textEn": "Rate {{name}}'s cringe level from 1 to 10.",
+      "textBg": "Оцени от 1 до 10 колко криндж е {{name}}.",
+      "textFr": "Note le niveau de cringe de {{name}} de 1 à 10.",
+      "textEs": "Puntúa el nivel de cringe de {{name}} del 1 al 10."
+    },
+    {
+      "id": "cmpeakbwd00nerq12t7qhyjre",
+      "textEn": "At what age do you think you were at your most attractive?",
+      "textBg": "На колко години, смяташ че си бил най-привлекателен?",
+      "textFr": "À quel âge penses-tu avoir été le plus séduisant ?",
+      "textEs": "¿A qué edad crees que estuviste más atractivo?"
+    },
+    {
+      "id": "cmpeakqfc00ngrq12xgidfhlb",
+      "textEn": "At what age do you think you were the cutest?",
+      "textBg": "На колко години, смяташ че си бил най-сладък?",
+      "textFr": "À quel âge penses-tu avoir été le plus mignon ?",
+      "textEs": "¿A qué edad crees que eras más mono?"
+    },
+    {
+      "id": "cmpeal4bd00nirq12m4f8hsfj",
+      "textEn": "Who's the physically strongest person in the group?",
+      "textBg": "Кой е най-силният в групата?",
+      "textFr": "Qui est physiquement le plus fort du groupe ?",
+      "textEs": "¿Quién es la persona físicamente más fuerte del grupo?"
+    },
+    {
+      "id": "cmpealwzr00nkrq12bev9f27g",
+      "textEn": "Describe {{name}}'s personality in one word.",
+      "textBg": "Опиши характера на {{name}} с една дума.",
+      "textFr": "Décris la personnalité de {{name}} en un mot.",
+      "textEs": "Describe la personalidad de {{name}} en una palabra."
+    },
+    {
+      "id": "cmpeamm5h00nmrq12cglg36jk",
+      "textEn": "Name a celebrity you have a crush on.",
+      "textBg": "Назови известна личност, по която си падаш.",
+      "textFr": "Cite une célébrité sur qui tu as le béguin.",
+      "textEs": "Nombra una celebridad por la que tengas debilidad."
+    },
+    {
+      "id": "cmpeaotse00nqrq12yojhvyg3",
+      "textEn": "If you could swap any body part with {{name}}, which one would you pick?",
+      "textBg": "Ако можеше да смениш някоя част от тялото на {{name}} със своята - коя ще е тя?",
+      "textFr": "Si tu pouvais échanger une partie du corps avec {{name}}, laquelle choisirais-tu ?",
+      "textEs": "Si pudieras intercambiar una parte del cuerpo con {{name}}, ¿cuál elegirías?"
+    },
+    {
+      "id": "cmpeapsq300nurq12s14q7jff",
+      "textEn": "Name a source of an unpleasant smell.",
+      "textBg": "Назови източник на неприятна миризма.",
+      "textFr": "Cite une source d'odeur désagréable.",
+      "textEs": "Nombra una fuente de olor desagradable."
+    },
+    {
+      "id": "cmpeaq78a00nwrq124a76e4cz",
+      "textEn": "You're on a plane — who's flying it?",
+      "textBg": "В самолет сте - кой е пилотът?",
+      "textFr": "Vous êtes dans un avion — qui est le pilote ?",
+      "textEs": "Estáis en un avión — ¿quién lo pilota?"
+    },
+    {
+      "id": "cmpeaqta100nyrq1255sqpsdz",
+      "textEn": "You're on a plane — who's already drunk before takeoff?",
+      "textBg": "В самолет сте - кой се е напил още преди излитане?",
+      "textFr": "Vous êtes dans un avion — qui est déjà bourré avant le décollage ?",
+      "textEs": "Estáis en un avión — ¿quién ya está borracho antes del despegue?"
+    },
+    {
+      "id": "cmpearon500o0rq12d8tzzja3",
+      "textEn": "Which cartoon character are you?",
+      "textBg": "Кой анимационен герой си?",
+      "textFr": "Quel personnage de dessin animé es-tu ?",
+      "textEs": "¿Qué personaje de dibujos animados eres?"
+    },
+    {
+      "id": "cmpeataun00o4rq12nm3nhd55",
+      "textEn": "At what age does someone officially count as 'old'?",
+      "textBg": "След каква възраст, смяташ че човек официално се води 'стар'?",
+      "textFr": "À partir de quel âge est-ce qu'on compte officiellement comme 'vieux' ?",
+      "textEs": "¿A partir de qué edad se cuenta oficialmente como 'viejo'?"
+    },
+    {
+      "id": "cmpeatn4s00o6rq12j5zjistz",
+      "textEn": "Who's the loudest person in the group?",
+      "textBg": "Кой е най-шумният?",
+      "textFr": "Qui est la personne la plus bruyante du groupe ?",
+      "textEs": "¿Quién es la persona más ruidosa del grupo?"
+    },
+    {
+      "id": "cmpeauc8g00o8rq12hvw8ocvb",
+      "textEn": "Who wouldn't stop eating just because they found a hair in their food?",
+      "textBg": "Кой не би спрял да яде, защото е намерил косъм в храната си?",
+      "textFr": "Qui ne s'arrêterait pas de manger juste parce qu'il a trouvé un cheveu dans son plat ?",
+      "textEs": "¿Quién no pararía de comer solo porque encontró un pelo en su comida?"
+    },
+    {
+      "id": "cmpeauwrw00oarq12knqnrv8s",
+      "textEn": "Who would show up to a wedding in a tracksuit?",
+      "textBg": "Кой би отишъл на сватба с официалния си анцунг?",
+      "textFr": "Qui se pointerait à un mariage en jogging ?",
+      "textEs": "¿Quién aparecería en una boda con su chándal?"
+    },
+    {
+      "id": "cmpeavdjh00ocrq12bimxdw74",
+      "textEn": "Who needs a drink the most right now?",
+      "textBg": "Кой има най-голяма нужда от питие в момента?",
+      "textFr": "Qui a le plus besoin d'un verre en ce moment ?",
+      "textEs": "¿Quién necesita más una copa ahora mismo?"
+    },
+    {
+      "id": "cmpeavt6o00oerq12grdsbkjf",
+      "textEn": "Who should probably not drink tonight?",
+      "textBg": "За кой е най-добре да не пие днес?",
+      "textFr": "Qui ne devrait probablement pas boire ce soir ?",
+      "textEs": "¿Quién probablemente no debería beber esta noche?"
+    },
+    {
+      "id": "cmpeawphi00ogrq12iv9wqe32",
+      "textEn": "Who has the hardest time maintaining eye contact during a conversation?",
+      "textBg": "На кой му е най-трудно да поддържа контакт с очи по време на разговор?",
+      "textFr": "Qui a le plus de mal à maintenir le contact visuel pendant une conversation ?",
+      "textEs": "¿A quién le cuesta más mantener el contacto visual durante una conversación?"
+    },
+    {
+      "id": "cmpeax9qk00oirq12dxu43ag6",
+      "textEn": "Name a gift that would actually offend {{name}}.",
+      "textBg": "Подарък, който ако подариш на {{name}}, ще ти се обиди.",
+      "textFr": "Cite un cadeau qui vexerait vraiment {{name}}.",
+      "textEs": "Nombra un regalo que realmente ofendería a {{name}}."
+    },
+    {
+      "id": "cmpeay4yg00okrq1222vmcl8r",
+      "textEn": "Name a historical event that changed the world.",
+      "textBg": "Назови историческо събитие, което е променило света.",
+      "textFr": "Cite un événement historique qui a changé le monde.",
+      "textEs": "Nombra un evento histórico que cambió el mundo."
+    },
+    {
+      "id": "cmpeazfqs00omrq12ezxbwh7u",
+      "textEn": "Name a historical event you wish you could have witnessed.",
+      "textBg": "Назови историческо събитие, на което би ти се искало да беше свидетел.",
+      "textFr": "Cite un événement historique que tu aurais aimé voir de tes propres yeux.",
+      "textEs": "Nombra un evento histórico que te hubiera gustado presenciar."
+    },
+    {
+      "id": "cmpeb8ldq00oorq12ewwn0uex",
+      "textEn": "Name a sport that should be abolished.",
+      "textBg": "Спорт, който заслужава да се закрие.",
+      "textFr": "Cite un sport qui mériterait d'être supprimé.",
+      "textEs": "Nombra un deporte que debería abolirse."
+    },
+    {
+      "id": "cmpebbk6t00oqrq127lrw0bbq",
+      "textEn": "Name a sport you'd love to learn.",
+      "textBg": "Спорт, който би искал да се научиш да играеш.",
+      "textFr": "Cite un sport que tu aimerais apprendre.",
+      "textEs": "Nombra un deporte que te encantaría aprender."
+    },
+    {
+      "id": "cmpebc14z00osrq12x76om5ak",
+      "textEn": "Name something you'd never buy secondhand.",
+      "textBg": "Нещо, което не би искал да си закупиш втора употреба.",
+      "textFr": "Cite quelque chose que tu n'achèterais jamais d'occasion.",
+      "textEs": "Nombra algo que nunca comprarías de segunda mano."
+    },
+    {
+      "id": "cmpebcxry00ourq12z1q6cz6r",
+      "textEn": "Give an example of a really terrible Wi-Fi password.",
+      "textBg": "Дай пример за много лоша парола за Wi-Fi.",
+      "textFr": "Donne un exemple d'un très mauvais mot de passe Wi-Fi.",
+      "textEs": "Pon un ejemplo de una contraseña de Wi-Fi muy mala."
+    },
+    {
+      "id": "cmpebdrjp00owrq12cey0jnd0",
+      "textEn": "Name something you'd never get tattooed.",
+      "textBg": "Нещо, което не би си татуирал.",
+      "textFr": "Cite quelque chose que tu ne te ferais jamais tatouer.",
+      "textEs": "Nombra algo que nunca te tatúarías."
+    },
+    {
+      "id": "cmpebereb00oyrq12wvnvvv41",
+      "textEn": "Name one positive quality you have.",
+      "textBg": "Назови една твоя добра черта.",
+      "textFr": "Cite une qualité positive que tu as.",
+      "textEs": "Nombra una cualidad positiva que tengas."
+    },
+    {
+      "id": "cmpebfpjk00p0rq122b9p64uv",
+      "textEn": "Name one of your own red flags.",
+      "textBg": "Назови един свой червен флаг.",
+      "textFr": "Cite un de tes propres red flags.",
+      "textEs": "Nombra una de tus propias red flags."
+    },
+    {
+      "id": "cmpebhq8l00p4rq127g8apitf",
+      "textEn": "You're a ghost and must choose a place to haunt — where would it be?",
+      "textBg": "Ти си дух и трябва да си избереш място, което да обладаеш - кое ще е то?",
+      "textFr": "Tu es un fantôme et dois choisir un endroit à hanter — lequel ce serait ?",
+      "textEs": "Eres un fantasma y debes elegir un lugar para rondar — ¿cuál sería?"
+    },
+    {
+      "id": "cmpec9lwa00p6rq12vovk3sjc",
+      "textEn": "Name something a player here has tattooed or wants to get tattooed.",
+      "textBg": "Нещо, което някой от играчите има татуирано или иска да си татуира.",
+      "textFr": "Cite quelque chose qu'un joueur ici a tatoué ou veut se faire tatouer.",
+      "textEs": "Nombra algo que un jugador aquí tenga tatuado o quiera tatuarse."
+    },
+    {
+      "id": "cmpecekxt00p8rq12mc5ph703",
+      "textEn": "Write down an old email address or username you're embarrassed by now.",
+      "textBg": "Напиши свой стар имейл или никнейм, от който сега те е срам.",
+      "textFr": "Écris une ancienne adresse e-mail ou un pseudo dont tu as honte maintenant.",
+      "textEs": "Escribe una dirección de correo electrónico o nombre de usuario antiguo del que te avergüences ahora."
+    },
+    {
+      "id": "cmpf91c6n00qwrq12zrmlcr6f",
+      "textEn": "Who's most likely to run for president?",
+      "textBg": "Кой е най-вероятно да се кандидатира за президент?",
+      "textFr": "Qui est le plus susceptible de se présenter à une élection ?",
+      "textEs": "¿Quién tiene más probabilidades de presentarse a presidente?"
+    },
+    {
+      "id": "cmpg13zfd00yarq120t37pt6n",
+      "textEn": "Describe your weekend plans in one word.",
+      "textBg": "Опиши с една дума планът си за уикенда.",
+      "textFr": "Décris tes projets de week-end en un mot.",
+      "textEs": "Describe tus planes para el fin de semana en una palabra."
+    },
+    {
+      "id": "cmpg2eijt00ycrq12e53th4b5",
+      "textEn": "Who's most likely to get kicked off a plane?",
+      "textBg": "Кой е най-вероятно да бъде свален от самолет?",
+      "textFr": "Qui est le plus susceptible de se faire expulser d'un avion ?",
+      "textEs": "¿Quién tiene más probabilidades de que lo echen de un avión?"
+    },
+    {
+      "id": "cmpg2ojf400ylrq126en8opln",
+      "textEn": "Who's most likely to cancel at the last minute?",
+      "textBg": "Кой е най-вероятно да провали плановете в последната минута?",
+      "textFr": "Qui est le plus susceptible d'annuler à la dernière minute ?",
+      "textEs": "¿Quién tiene más probabilidades de cancelar en el último momento?"
+    },
+    {
+      "id": "cmpg2pdwv00ynrq127ir7cz3r",
+      "textEn": "Who's the best at their job?",
+      "textBg": "Кой е най-добър в това, което работи?",
+      "textFr": "Qui est le meilleur dans son travail ?",
+      "textEs": "¿Quién es el mejor en su trabajo?"
+    },
+    {
+      "id": "cmpg30r2s00yvrq12ncmxt4ih",
+      "textEn": "Who's most likely to be hugging the toilet after a big night out?",
+      "textBg": "Кой е най-вероятно да виси над тоалетната след тежка вечер?",
+      "textFr": "Qui est le plus susceptible d'embrasser les toilettes après une grosse soirée ?",
+      "textEs": "¿Quién tiene más probabilidades de estar abrazando el váter después de una gran noche de fiesta?"
+    },
+    {
+      "id": "cmpg36lg400yxrq12halqxxdp",
+      "textEn": "Who's the ultimate 'I know a guy' person?",
+      "textBg": "Кой е връзкарят?",
+      "textFr": "Qui est l'expert du 'j'ai un contact pour ça' ?",
+      "textEs": "¿Quién es el rey del 'yo conozco a alguien'?"
+    },
+    {
+      "id": "cmpg3akep00yzrq125qbp9t72",
+      "textEn": "Who has the best shot at winning an Oscar?",
+      "textBg": "Кой е с най-добри шансове да спечели Оскар?",
+      "textFr": "Qui a le plus de chances de remporter un Oscar ?",
+      "textEs": "¿Quién tiene más posibilidades de ganar un Oscar?"
+    },
+    {
+      "id": "cmpgh3uag010xrq127yld3657",
+      "textEn": "If you were a Teenage Mutant Ninja Turtle, what would your name be?",
+      "textBg": "Ако беше костенурка-нинджа, как щеше да се казваш?",
+      "textFr": "Si tu étais une Tortue Ninja, quel serait ton nom ?",
+      "textEs": "Si fueras una Tortuga Ninja, ¿cuál sería tu nombre?"
+    },
+    {
+      "id": "cmpiub2kh013krq12m52asfxw",
+      "textEn": "Who's most likely to appear on The Bachelor?",
+      "textBg": "Кой е най-вероятно да участва в Ергенът?",
+      "textFr": "Qui est le plus susceptible de participer à The Bachelor ?",
+      "textEs": "¿Quién tiene más probabilidades de aparecer en El Soltero?"
+    },
+    {
+      "id": "cmpiue7t2013mrq12hwrq5p8q",
+      "textEn": "Who's most likely to be miserable in retirement?",
+      "textBg": "Кой е най-вероятно да е нещастен, когато се пенсионира?",
+      "textFr": "Qui sera le plus malheureux à la retraite ?",
+      "textEs": "¿Quién será el más infeliz en la jubilación?"
+    },
+    {
+      "id": "cmpiuknlv013orq12d09buhgb",
+      "textEn": "Who's most likely to set a Guinness World Record?",
+      "textBg": "Кой е най-вероятно да постави рекорд на Гинес?",
+      "textFr": "Qui est le plus susceptible de battre un record Guinness ?",
+      "textEs": "¿Quién tiene más probabilidades de batir un récord Guinness?"
+    },
+    {
+      "id": "cmpiuqrql013qrq124n7a3owr",
+      "textEn": "Who gives the worst relationship advice?",
+      "textBg": "Кой дава най-лошите съвети за връзка?",
+      "textFr": "Qui donne les pires conseils amoureux ?",
+      "textEs": "¿Quién da los peores consejos de relaciones?"
+    },
+    {
+      "id": "cmpiur5la013srq12g9eneisw",
+      "textEn": "Who gives the worst business or money advice?",
+      "textBg": "Кой дава най-лошите съвети за бизнес/пари?",
+      "textFr": "Qui donne les pires conseils en affaires ou en argent ?",
+      "textEs": "¿Quién da los peores consejos de negocios o de dinero?"
+    },
+    {
+      "id": "cmpiurwj3013wrq12sg074vx8",
+      "textEn": "If there's a cockroach in the room, who's killing it?",
+      "textBg": "Ако има хлебарка в стаята, кой ще я убие?",
+      "textFr": "S'il y a un cafard dans la pièce, qui le tue ?",
+      "textEs": "Si hay una cucaracha en la habitación, ¿quién la mata?"
+    },
+    {
+      "id": "cmpiusoim013yrq126expjsw8",
+      "textEn": "If there's a sick stray kitten on the street, who's taking it home?",
+      "textBg": "Ако има болно коте на улицата, кой ще го вземе вкъщи?",
+      "textFr": "S'il y a un chaton malade dans la rue, qui le ramène chez lui ?",
+      "textEs": "Si hay un gatito enfermo en la calle, ¿quién se lo lleva a casa?"
+    },
+    {
+      "id": "cmpiutrwd0140rq12fn3s2vhg",
+      "textEn": "Who would sprint away screaming if they spotted a snake on a hike?",
+      "textBg": "Кой ще избяга с 100км/ч, ако види змия по време на поход в гората?",
+      "textFr": "Qui partirait en courant en hurlant s'il voyait un serpent en randonnée ?",
+      "textEs": "¿Quién saldría corriendo y gritando si viera una serpiente en una excursión?"
+    },
+    {
+      "id": "cmpiuukvu0142rq12pajey82u",
+      "textEn": "Who spends the most money each month?",
+      "textBg": "Кой харчи най-много пари на месец?",
+      "textFr": "Qui dépense le plus d'argent par mois ?",
+      "textEs": "¿Quién gasta más dinero cada mes?"
+    },
+    {
+      "id": "cmpiuv6ta0144rq12tgan66mg",
+      "textEn": "Who's most likely to skip washing their hands after the bathroom?",
+      "textBg": "Кой е най-вероятно да не си измие ръцете след тоалетна?",
+      "textFr": "Qui est le plus susceptible de ne pas se laver les mains après les toilettes ?",
+      "textEs": "¿Quién tiene más probabilidades de no lavarse las manos después de ir al baño?"
+    },
+    {
+      "id": "cmpiux4ae0146rq12xex6oog3",
+      "textEn": "Who laughs the hardest at their own jokes?",
+      "textBg": "Кой се смее сам на своите шеги?",
+      "textFr": "Qui rit le plus fort à ses propres blagues ?",
+      "textEs": "¿Quién se ríe más de sus propios chistes?"
+    },
+    {
+      "id": "cmpiv3hax0148rq12wv27yfa0",
+      "textEn": "Who's most likely to go on a solo trip to 'find themselves'?",
+      "textBg": "Кой е най-вероятно да хване пътя, за да намери себе си?",
+      "textFr": "Qui est le plus susceptible de partir en voyage solo pour 'se retrouver' ?",
+      "textEs": "¿Quién tiene más probabilidades de irse de viaje en solitario para 'encontrarse a sí mismo'?"
+    },
+    {
+      "id": "cmpivwngj014erq127pf5vfvu",
+      "textEn": "Who's the first to leave the group chat?",
+      "textBg": "Кой първи ще напусне груповия чат?",
+      "textFr": "Qui quitte le groupe en premier ?",
+      "textEs": "¿Quién es el primero en abandonar el grupo de chat?"
+    },
+    {
+      "id": "cmpivx2lu014grq121kz1amgo",
+      "textEn": "Who spams the group chat the most?",
+      "textBg": "Кой спами най-много в груповия чат?",
+      "textFr": "Qui spamme le plus le groupe ?",
+      "textEs": "¿Quién llena más el grupo de chat con mensajes?"
+    },
+    {
+      "id": "cmpiwfp9s014irq12p355hq51",
+      "textEn": "You've just been told a juicy secret — who do you tell first?",
+      "textBg": "Поверена ти е пикантна тайна - на кой ще я споделиш първо?",
+      "textFr": "On vient de te confier un secret croustillant — à qui le dis-tu en premier ?",
+      "textEs": "Acaban de contarte un secreto jugoso — ¿a quién se lo cuentas primero?"
+    },
+    {
+      "id": "cmqatoqge004cne125vevmlhr",
+      "textEn": "Which celebrity would you most want to go on vacation with?",
+      "textBg": "С коя известна личност би искал да отидеш на почивка?",
+      "textFr": "Avec quelle célébrité aimerais-tu le plus partir en vacances ?",
+      "textEs": "¿Con qué celebridad te gustaría más ir de vacaciones?"
+    },
+    {
+      "id": "cmqatpyj4004ene120aioth9n",
+      "textEn": "Name a celebrity who doesn't deserve the fame.",
+      "textBg": "Известна личност, която не заслужава да е известна?",
+      "textFr": "Cite une célébrité qui ne mérite pas sa notoriété.",
+      "textEs": "Nombra una celebridad que no merece ser famosa."
+    },
+    {
+      "id": "cmqatraqn004gne12gwvg2b7i",
+      "textEn": "How old were you when you first joined social media?",
+      "textBg": "На колко години започна да влизаш в социални медии?",
+      "textFr": "Tu avais quel âge quand tu as rejoint les réseaux sociaux pour la première fois ?",
+      "textEs": "¿Cuántos años tenías cuando te uniste por primera vez a las redes sociales?"
+    },
+    {
+      "id": "cmqatsgts004ine12xzfifllb",
+      "textEn": "If you could swap lives with any celebrity, who would it be?",
+      "textBg": "Ако можеш да си смениш живота с някоя известна личност, коя би избрал?",
+      "textFr": "Si tu pouvais échanger ta vie avec une célébrité, ce serait qui ?",
+      "textEs": "Si pudieras cambiar tu vida por la de cualquier celebridad, ¿quién sería?"
+    },
+    {
+      "id": "cmqau7lkb004kne1289b8xds9",
+      "textEn": "What's your dream job?",
+      "textBg": "Мечтаната ти работа?",
+      "textFr": "C'est quoi ton job de rêve ?",
+      "textEs": "¿Cuál es tu trabajo soñado?"
+    },
+    {
+      "id": "cmqau81xm004mne12xqahrpzv",
+      "textEn": "What's a job you'd never want to have?",
+      "textBg": "Какво никога не би искал да работиш?",
+      "textFr": "C'est quoi un job que tu ne voudrais jamais faire ?",
+      "textEs": "¿Cuál es un trabajo que nunca querrías tener?"
+    },
+    {
+      "id": "cmqaua3y1004one12rjlp85a8",
+      "textEn": "Name a moment in your life you wish you could erase.",
+      "textBg": "Момент в живота ти, който би искал да изтриеш?",
+      "textFr": "Cite un moment de ta vie que tu aimerais effacer.",
+      "textEs": "Nombra un momento de tu vida que te gustaría borrar."
+    },
+    {
+      "id": "cmqauaoqp004qne12ov8whh1d",
+      "textEn": "Name a moment in your life you'd want to relive.",
+      "textBg": "Момент в живота ти, който би искал да преживееш отново?",
+      "textFr": "Cite un moment de ta vie que tu voudrais revivre.",
+      "textEs": "Nombra un momento de tu vida que te gustaría revivir."
+    },
+    {
+      "id": "cmqauba3m004sne12f7ofine7",
+      "textEn": "Name a life moment you can't wait to experience.",
+      "textBg": "Момент в живота, който нямаш търпение да ти се случи?",
+      "textFr": "Cite un moment de vie que tu as hâte de vivre.",
+      "textEs": "Nombra un momento de vida que no puedes esperar a experimentar."
+    },
+    {
+      "id": "cmqaubr03004une125s1c0upn",
+      "textEn": "Name a life moment you hope never happens to you.",
+      "textBg": "Момент в живота, който не искаш никога да ти се случи?",
+      "textFr": "Cite un moment de vie que tu espères ne jamais vivre.",
+      "textEs": "Nombra un momento de vida que esperas que nunca te pase."
+    },
+    {
+      "id": "cmqauo1j4004wne12x8ob6r3n",
+      "textEn": "Who do you have a funny story about?",
+      "textBg": "Сещаш се за забавна история с кой?",
+      "textFr": "Avec qui as-tu une histoire drôle ?",
+      "textEs": "¿Con quién tienes una historia divertida?"
+    },
+    {
+      "id": "cmqaupwv3004yne122sje97nf",
+      "textEn": "Who do you have a scary or awkward story involving?",
+      "textBg": "С кой се сещаш да си имал страшна история?",
+      "textFr": "Avec qui as-tu une histoire effrayante ou gênante ?",
+      "textEs": "¿Con quién tienes una historia aterradora o incómoda?"
+    },
+    {
+      "id": "cmqaurtz50050ne12pm65dgmy",
+      "textEn": "Who in this room are you keeping untold stories about?",
+      "textBg": "С кой от тук имаш истории, които никога няма да разкажеш?",
+      "textFr": "Avec qui dans cette pièce as-tu des histoires que tu ne raconteras jamais ?",
+      "textEs": "¿Con quién en esta sala tienes historias que nunca contarás?"
+    },
+    {
+      "id": "cmqgceyp10058ne12zamjkogh",
+      "textEn": "Who has the most suspicious browser history?",
+      "textBg": "Кой има най-странната браузър история?",
+      "textFr": "Qui a l'historique de navigation le plus suspect ?",
+      "textEs": "¿Quién tiene el historial de navegación más sospechoso?"
+    },
+    {
+      "id": "cmqjx8vwb005zne12z3anoynm",
+      "textEn": "What color will your Bugatti be?",
+      "textBg": "Какъв цвят ще бъде твоето Бугати?",
+      "textFr": "De quelle couleur sera ta Bugatti ?",
+      "textEs": "¿De qué color será tu Bugatti?"
+    },
+    {
+      "id": "cmqll1f4m0061ne12mxwn7tpu",
+      "textEn": "Who's the best dancer among all of you?",
+      "textBg": "Кой е най-добрият танцьор?",
+      "textFr": "Qui est le meilleur danseur parmi vous ?",
+      "textEs": "¿Quién es el mejor bailarín entre todos vosotros?"
+    },
+    {
+      "id": "cmqll5fy10063ne126hyhwp86",
+      "textEn": "Who gets the most heated during a board game?",
+      "textBg": "Кой се сърди на не се сърди човече?",
+      "textFr": "Qui s'énerve le plus lors d'un jeu de société ?",
+      "textEs": "¿Quién se pone más intenso jugando a un juego de mesa?"
+    },
+    {
+      "id": "cmr0yngaz006ane125yk4yuwr",
+      "textEn": "What's the best gift you've ever received?",
+      "textBg": "Какъв е най-хубавият подарък, който си получавал?",
+      "textFr": "C'est quoi le meilleur cadeau que tu aies jamais reçu ?",
+      "textEs": "¿Cuál es el mejor regalo que hayas recibido?"
+    },
+    {
+      "id": "cmrx16flc003ymu12p6toyt7v",
+      "textEn": "Who has the loudest scream?",
+      "textBg": "Кой крещи най-силно?",
+      "textFr": "Qui a le cri le plus fort ?",
+      "textEs": "¿Quién tiene el grito más fuerte?"
+    },
+    {
+      "id": "cmrx16n600040mu12vswr1va1",
+      "textEn": "Who's the best cook among all of you?",
+      "textBg": "Кой готви най-вкусно?",
+      "textFr": "Qui est le meilleur cuisinier parmi vous ?",
+      "textEs": "¿Quién cocina mejor entre todos vosotros?"
+    },
+    {
+      "id": "cmrx17gs80042mu12fbymib94",
+      "textEn": "Who sends the best memes?",
+      "textBg": "Кой праща най-смешните мемета?",
+      "textFr": "Qui envoie les meilleurs mèmes ?",
+      "textEs": "¿Quién manda los mejores memes?"
+    }
+  ]
+}
