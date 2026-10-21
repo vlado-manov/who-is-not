@@ -18,6 +18,7 @@ const PREMIUM_IMG = {
 const FEATURE_KEYS = [
   { icon: "✏️", key: "store_premium_custom_packs" },
   { icon: "🚫", key: "store_premium_no_ads" },
+  { icon: "📸", key: "store_premium_cam_questions" },
   { icon: "❤️", key: "store_premium_support_game" },
 ];
 

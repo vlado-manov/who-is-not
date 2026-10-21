@@ -43,17 +43,21 @@ export const HOST_CLOSE_SESSION_MESSAGE_TYPE = "host_close_session";
 /** Client voluntarily left the game (broadcast before disconnect). */
 export const PLAYER_LEFT_GAME_MESSAGE_TYPE = "player_left_game";
 
-/** Deathmatch: player submits their secret number (broadcast to room; all devices store it). */
-export const DEATHMATCH_SECRET_MESSAGE_TYPE = "deathmatch_secret";
+/**
+ * Deathmatch (stopwatch duel): the referee broadcasts the whole match state
+ * after every step. The referee is the host when the host is a finalist,
+ * otherwise one of the finalists (see `resolveRefereeId`).
+ */
+export const DEATHMATCH_STATE_MESSAGE_TYPE = "deathmatch_state";
 
-/** Deathmatch: player submits a guess for the other player's number. */
-export const DEATHMATCH_GUESS_MESSAGE_TYPE = "deathmatch_guess";
+/** Deathmatch: a finalist reports the time they stopped at for a round. */
+export const DEATHMATCH_STOP_MESSAGE_TYPE = "deathmatch_stop";
 
-/** Deathmatch: host broadcasts the final result (winnerIds). */
+/** Deathmatch: a finalist asks the referee to broadcast the state again. */
+export const DEATHMATCH_SYNC_REQUEST_MESSAGE_TYPE = "deathmatch_sync_request";
+
+/** Deathmatch: host broadcasts the final result (winnerIds). Only ever sent by the host. */
 export const DEATHMATCH_DONE_MESSAGE_TYPE = "deathmatch_done";
-
-/** Deathmatch: host broadcasts a tie — both guessed correctly. Includes newRange for the rematch. */
-export const DEATHMATCH_TIE_MESSAGE_TYPE = "deathmatch_tie";
 
 export function mpPhaseRound1Start(): string {
   return "round1_start";

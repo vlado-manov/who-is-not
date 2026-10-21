@@ -1,0 +1,5 @@
+{
+  "NSCameraUsageDescription": "WhoIsNot usa la cámara para los selfies y las fotos de ronda en Modo cámara. Las fotos se quedan en tu dispositivo.",
+  "NSPhotoLibraryAddUsageDescription": "WhoIsNot guarda tus fotos del Modo cámara en tu galería cuando se lo pides.",
+  "NSMicrophoneUsageDescription": "WhoIsNot usa el micrófono para grabar el sonido de tus vídeos de ronda en Modo cámara."
+}

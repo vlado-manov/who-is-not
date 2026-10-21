@@ -39,10 +39,21 @@ import {
 import { useGameStore } from "../store/useGameStore";
 import { StackNavigationProp } from "@react-navigation/stack";
 import HeroPickerLoadingOverlay from "./HeroPicker/HeroPickerLoadingOverlay";
+import GameKeyboard, {
+  getGameKeyboardHeight,
+} from "../components/game/GameKeyboard";
+
+/** Same limit as the name field in the footer. */
+const HERO_NAME_MAX = 8;
 import AudioManager from "../utils/audioManager";
 import { game_images } from "../../assets/images";
 import { backgrounds } from "../../assets/backgrounds";
 import { useIconPressAnim } from "../hooks/useIconPressAnim";
+import {
+  SCREEN_TOP_BAR_GUTTER,
+  SCREEN_TOP_BAR_TOP_GAP,
+  ScreenTopButton,
+} from "../components/common/ScreenTopBar";
 import { createHeroPickerStyles } from "./styles/heroPicker.styles";
 import { QuoteBubble, QuoteBubbleHandle } from "./HeroPicker/QuoteBubble";
 import { HeroPickerHeader } from "./HeroPicker/HeroPickerHeader";
@@ -116,6 +127,12 @@ import { ActivityIndicator, Alert, ImageBackground } from "react-native";
 import { Image } from "expo-image";
 import AppImage from "../components/AppImage";
 import WarmBubblesOverlay from "../components/WarmBubblesOverlay";
+import { useDemoUnlocks } from "../store/useDemoUnlocks";
+import { baseHeroId, resolvePlayerHero } from "../game/resolvePlayerHero";
+import { isUnlockedFor, unlockOf } from "../game/unlocks";
+import { purchaseItem } from "../services/purchases";
+import OutfitToggle from "./HeroPicker/OutfitToggle";
+import UnlockSheet from "./HeroPicker/UnlockSheet";
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
@@ -127,6 +144,12 @@ type HeroRoute = RouteProp<CreateGameStackParamList, "HeroPicker">;
 function randomOf<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
+/** Random-hero roulette: hops per spin and how it brakes at the end. */
+const ROULETTE_MIN_HOPS = 12;
+const ROULETTE_FAST_MS = 45;
+const ROULETTE_BRAKE_HOPS = 4;
+const ROULETTE_BRAKE_STEP_MS = 40;
+
 export default function HeroPickerScreen() {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isTablet = windowWidth >= 768 && windowWidth > windowHeight;
@@ -137,7 +160,6 @@ export default function HeroPickerScreen() {
   usePreventBack(index >= 1);
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const settingsAnim = useIconPressAnim();
   const leftArrowAnim = useIconPressAnim();
   const rightArrowAnim = useIconPressAnim();
   const [lockedHero, setLockedHero] = useState<ICharacter | null>(null);
@@ -208,6 +230,19 @@ export default function HeroPickerScreen() {
   const [unlockedIds, setUnlockedIds] = useState<Set<string>>(
     () => new Set(heroes.filter((h) => h.unlocked).map((h) => h.id)),
   );
+  /** Bought in this session in demo mode (never saved, never sent). */
+  const demoUnlockedIds = useDemoUnlocks((s) => s.ids);
+  /** The look on screen per hero: a skin id, or undefined for the classic look. */
+  const [skinByHero, setSkinByHero] = useState<Record<string, string | undefined>>({});
+  /** The look the player locked in with their hero (sent with the claim). */
+  const chosenSkinIdRef = useRef<string | undefined>(undefined);
+  const [unlockSheetOpen, setUnlockSheetOpen] = useState(false);
+  /** A hero as it looks with the skin the player locked in. */
+  const lookOf = (h: ICharacter): ICharacter =>
+    resolvePlayerHero(useHeroesStore.getState().heroes, {
+      characterId: h.id,
+      skinId: chosenSkinIdRef.current,
+    }) ?? h;
   // Keep a ref to the userId so the rebuild effect can compare
   const prevUserIdRef = useRef<string | null>(null);
   const taken = useGameStore((s) => s.takenCharacters);
@@ -305,6 +340,8 @@ export default function HeroPickerScreen() {
       heroes.filter((h) => h.unlocked).forEach((h) => next.add(h.id));
       // Merge explicit character IDs from auth store (e.g. returned on login).
       userUnlockedCharacterIds.forEach((id) => next.add(id));
+      // Bought in this session in demo mode.
+      demoUnlockedIds.forEach((id) => next.add(id));
       return next;
     });
 
@@ -312,7 +349,7 @@ export default function HeroPickerScreen() {
     if (userChanged) {
       orderedHeroIdsRef.current = null;
     }
-  }, [heroes, userUnlockedCharacterIds, userId]);
+  }, [heroes, userUnlockedCharacterIds, userId, demoUnlockedIds]);
 
   const viewingHeroIdRef = useRef<string | null>(null);
   useEffect(() => {
@@ -370,6 +407,8 @@ export default function HeroPickerScreen() {
   const assetsReady = useHeroAssets(availableHeroes);
   const passDeviceAssetsReady = usePassDeviceAssetsReady();
   const [isNaming, setIsNaming] = useState(false);
+  /** Hidden with the keyboard's own key; tapping the name field shows it again. */
+  const [nameKeyboardVisible, setNameKeyboardVisible] = useState(true);
   const [isNameInputFocused, setIsNameInputFocused] = useState(false);
   const [heroSnipedNotice, setHeroSnipedNotice] = useState(false);
   const prevTakenInitForSnipeRef = useRef(false);
@@ -379,18 +418,22 @@ export default function HeroPickerScreen() {
     availableHeroesRef.current = availableHeroes;
   }, [availableHeroes]);
   /** Само при име: вдига целия футър (поле + бутон) над клавиатурата. Без KeyboardAvoidingView — иначе flex-зоната на героя се свива. */
+  // Each time a name is asked for, the keyboard starts out shown.
   useEffect(() => {
+    if (isNaming) setNameKeyboardVisible(true);
+  }, [isNaming]);
+
+  useEffect(() => {
+    // The footer rises above the game keyboard while it is shown for the name.
     const lift =
-      isNaming && isNameInputFocused && keyboardHeight > 0
-        ? -(keyboardHeight - insets.bottom) + 12
-        : 0;
+      isNaming && nameKeyboardVisible ? -getGameKeyboardHeight("text") + 12 : 0;
     Animated.timing(footerTranslateY, {
       toValue: lift,
       duration: 260,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [isNaming, isNameInputFocused, keyboardHeight, insets.bottom]);
+  }, [isNaming, nameKeyboardVisible]);
 
   // Carousel animation: two-phase like HeroPickerScreen3 — fade out + slide out, then swap hero, then fade in + slide in
   const opacity = useRef(new Animated.Value(1)).current;
@@ -511,6 +554,78 @@ export default function HeroPickerScreen() {
     if (len <= 1) return;
     const next = (idxRef.current + 1) % len;
     animateTo(next, 1);
+  };
+  /**
+   * "Pick for me": a roulette. The carousel races through the heroes one after
+   * another, slows down and stops on a random hero the player can actually
+   * take — the list already leaves out heroes other players have picked, and
+   * locked heroes are never the one it lands on. The player still confirms
+   * with the usual button.
+   */
+  const onRandomHero = () => {
+    if (selected || isAnimating || onlineHeroClaimLoadingRef.current) return;
+    const list = availableHeroesRef.current;
+    const len = list.length;
+    const start = idxRef.current;
+    const candidates = list
+      .map((h, i) => ({ h, i }))
+      .filter(({ h, i }) => h.unlocked && i !== start);
+    if (candidates.length === 0) return;
+    const target = candidates[Math.floor(Math.random() * candidates.length)].i;
+
+    // Always forwards, with enough hops to feel like a spin.
+    let hops = (target - start + len) % len;
+    while (hops < ROULETTE_MIN_HOPS) hops += len;
+
+    setIsAnimating(true);
+    const hop = (done: number) => {
+      const left = hops - done;
+      if (left === 0) {
+        // Online, a hero can be taken while the roulette spins and the list
+        // shifts: never leave the player on one they cannot take.
+        const now = availableHeroesRef.current;
+        if (!now[idxRef.current]?.unlocked) {
+          const fallback = now.findIndex((h) => h.unlocked);
+          if (fallback >= 0) setIdx(fallback);
+        }
+        setIsAnimating(false);
+        return;
+      }
+      // Fast at first, braking over the last few hops.
+      const slowdown = Math.max(0, ROULETTE_BRAKE_HOPS - left + 1);
+      const half = ROULETTE_FAST_MS + slowdown * ROULETTE_BRAKE_STEP_MS;
+      AudioManager.heroPickerSwipe();
+      Animated.parallel([
+        Animated.timing(opacity, {
+          toValue: 0.25,
+          duration: half,
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateX, {
+          toValue: -CAROUSEL_DIST,
+          duration: half,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setIdx((start + done + 1) % len);
+        translateX.setValue(CAROUSEL_DIST);
+        Animated.parallel([
+          Animated.timing(opacity, {
+            toValue: 1,
+            duration: half,
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateX, {
+            toValue: 0,
+            duration: half,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ]).start(() => hop(done + 1));
+      });
+    };
+    hop(0);
   };
   const SWIPE_THRESHOLD = 60;
   const idxRef = useRef(idx);
@@ -902,9 +1017,10 @@ export default function HeroPickerScreen() {
       quoteModeRef.current = "prompt";
       focusNameInput();
       AudioManager.playButtonClick();
+      const look = lookOf(h);
       const namePrompt =
-        (h.quotes_nameSelected?.length
-          ? randomOf(h.quotes_nameSelected)
+        (look.quotes_nameSelected?.length
+          ? randomOf(look.quotes_nameSelected)
           : null) || t("hero_picker_name_prompt_default");
       runCoordinatedSequenceRef.current(namePrompt);
     };
@@ -927,8 +1043,9 @@ export default function HeroPickerScreen() {
           console.warn("track CHARACTER_SELECTED failed", e);
         });
       }
-      const selectedQuotes = hero.quotes_selected?.length
-        ? hero.quotes_selected
+      const look = lookOf(hero);
+      const selectedQuotes = look.quotes_selected?.length
+        ? look.quotes_selected
         : [t("hero_picker_quote_fallback")];
       const q = randomOf(selectedQuotes) || t("hero_picker_quote_fallback");
       setQuoteMode("final");
@@ -946,6 +1063,7 @@ export default function HeroPickerScreen() {
         playerId?: string;
         characterId?: string;
         nickname?: string | null;
+        skinId?: string | null;
       };
       const st = useGameStore.getState();
       if (st.mode !== "ONLINE") return;
@@ -972,8 +1090,10 @@ export default function HeroPickerScreen() {
         }
         st.applyRemoteHeroPick({
           playerId: d.playerId,
-          characterId: d.characterId,
+          // A skin's id sent as the hero's (older/modified client): the whole hero.
+          characterId: baseHeroId(useHeroesStore.getState().heroes, d.characterId),
           name: displayName,
+          skinId: d.skinId ?? null,
         });
 
         if (d.playerId !== st.onlinePlayerId) return;
@@ -1027,6 +1147,8 @@ export default function HeroPickerScreen() {
 
   const handleSelect = () => {
     if (!hero || !hero.unlocked || selected || isAnimating) return;
+    // The look on screen goes with the hero (only reachable when it is unlocked).
+    chosenSkinIdRef.current = skinByHero[hero.id];
     if (mode === "ONLINE") {
       if (!onlineWsToken || onlineHeroClaimLoading) return;
       AudioManager.playPickingHero();
@@ -1037,6 +1159,7 @@ export default function HeroPickerScreen() {
       sendMultiplayerRelay({
         type: HERO_CLAIM_MESSAGE_TYPE,
         characterId: hero.id,
+        skinId: chosenSkinIdRef.current ?? null,
       });
       return;
     }
@@ -1049,9 +1172,10 @@ export default function HeroPickerScreen() {
     focusNameInput();
     AudioManager.playButtonClick();
 
+    const look = lookOf(hero);
     const namePrompt =
-      (hero.quotes_nameSelected?.length
-        ? randomOf(hero.quotes_nameSelected)
+      (look.quotes_nameSelected?.length
+        ? randomOf(look.quotes_nameSelected)
         : null) || t("hero_picker_name_prompt_default");
     runCoordinatedSequence(namePrompt);
   };
@@ -1075,6 +1199,7 @@ export default function HeroPickerScreen() {
         type: HERO_CLAIM_MESSAGE_TYPE,
         characterId: lockedHero.id,
         nickname: trimmed,
+        skinId: chosenSkinIdRef.current ?? null,
       });
       return;
     }
@@ -1090,7 +1215,7 @@ export default function HeroPickerScreen() {
       connected: true,
     });
 
-    assignCharacter(id, lockedHero!.id);
+    assignCharacter(id, lockedHero!.id, chosenSkinIdRef.current);
     if (gameId) {
       void trackCharacterSelected({
         gameId,
@@ -1104,8 +1229,9 @@ export default function HeroPickerScreen() {
     }
 
     setIsNameInputFocused(false);
-    const selectedQuotes = lockedHero!.quotes_selected?.length
-      ? lockedHero!.quotes_selected
+    const lockedLook = lookOf(lockedHero!);
+    const selectedQuotes = lockedLook.quotes_selected?.length
+      ? lockedLook.quotes_selected
       : [t("hero_picker_quote_fallback")];
     const q = randomOf(selectedQuotes) || t("hero_picker_quote_fallback");
 
@@ -1178,11 +1304,58 @@ export default function HeroPickerScreen() {
     return <HeroPickerLoadingOverlay />;
   }
 
+  // The hero as shown: its classic look or the skin picked with the outfit button.
+  const heroSkins = displayHero.skins ?? [];
+  const shownSkinId = lockedHero ? chosenSkinIdRef.current : skinByHero[displayHero.id];
+  const shownSkin = heroSkins.find((skin) => skin.id === shownSkinId);
+  const shownHero: ICharacter = shownSkin
+    ? {
+        ...(resolvePlayerHero(heroes, {
+          characterId: displayHero.id,
+          skinId: shownSkin.id,
+        }) ?? displayHero),
+        unlocked: isUnlockedFor(shownSkin, unlockedIds, displayHero),
+        // The skin's own lock (badge, footer), not its hero's.
+        unlock: unlockOf(shownSkin),
+      }
+    : displayHero;
+  const outfitIndex = shownSkin ? heroSkins.indexOf(shownSkin) + 1 : 0;
+  const cycleOutfit = () => {
+    const next = (outfitIndex + 1) % (heroSkins.length + 1);
+    setSkinByHero((prev) => ({
+      ...prev,
+      [displayHero.id]: next === 0 ? undefined : heroSkins[next - 1].id,
+    }));
+  };
+
+  /** Locked: what to unlock is the skin on screen, or the hero itself. */
+  const unlockItem: ICharacter = shownSkin ?? displayHero;
+  const buyUnlock = async (): Promise<boolean> => {
+    const info = unlockOf(unlockItem);
+    const outcome = await purchaseItem(
+      {
+        kind: shownSkin ? "SKIN" : "HERO",
+        characterIds: [unlockItem.id],
+        productId: info.productId,
+        storeProductId: info.storeProductId,
+      },
+      userId,
+    );
+    if (!outcome.success) {
+      Alert.alert(t("required_alert_title"), outcome.error ?? t("lock_purchase_failed"));
+      return false;
+    }
+    setUnlockSheetOpen(false);
+    // The padlock breaks open, then the celebration.
+    lockAnimMapRef.current[displayHero.id]?.();
+    return true;
+  };
+
   const handleFooterConfirm = () => {
-    const h = lockedHero ?? hero;
-    if (!h?.unlocked) {
-      // 🔒 locked hero → само анимация
-      lockAnimMapRef.current[displayHero.id]?.();
+    if (!shownHero.unlocked) {
+      // Locked: say how to unlock it (buy, earn it by playing, or either).
+      AudioManager.playButtonClick();
+      setUnlockSheetOpen(true);
       return;
     }
 
@@ -1260,6 +1433,15 @@ export default function HeroPickerScreen() {
             </>
           ) : (
             <View style={styles.contentLayer} pointerEvents="box-none">
+              <UnlockSheet
+                visible={unlockSheetOpen}
+                item={unlockItem}
+                lockedHero={
+                  shownSkin && !displayHero.unlocked ? displayHero : null
+                }
+                onClose={() => setUnlockSheetOpen(false)}
+                onBuy={buyUnlock}
+              />
               {showConfetti && (
                 <View
                   pointerEvents="none"
@@ -1297,20 +1479,34 @@ export default function HeroPickerScreen() {
               />
               {!selected && !isNaming && !onlineHeroClaimLoading && (
                 <>
-                  {/* Settings — top left */}
+                  {/* Random free hero — top-left, mirroring the settings button */}
                   <View
                     style={{
                       position: "absolute",
-                      top: insets.top + 8,
-                      left: 16,
+                      top: insets.top + SCREEN_TOP_BAR_TOP_GAP,
+                      left: SCREEN_TOP_BAR_GUTTER,
                       zIndex: 30,
                     }}
                   >
-                    <Pressable
-                      onPressIn={settingsAnim.pressIn}
-                      onPressOut={settingsAnim.pressOut}
+                    <ScreenTopButton
+                      icon="dice-outline"
+                      label={t("hero_picker_random")}
+                      onPress={onRandomHero}
+                    />
+                  </View>
+                  {/* Settings — same button and top-right spot as everywhere else */}
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: insets.top + SCREEN_TOP_BAR_TOP_GAP,
+                      right: SCREEN_TOP_BAR_GUTTER,
+                      zIndex: 30,
+                    }}
+                  >
+                    <ScreenTopButton
+                      icon="settings-outline"
+                      label={t("settings_title")}
                       onPress={() => {
-                        AudioManager.playButtonClick();
                         openUserSettings({
                           fromHeroPicker: true,
                           onHeroSetupExit: () => {
@@ -1327,8 +1523,7 @@ export default function HeroPickerScreen() {
                                   {
                                     name: "Onboarding",
                                     params: {
-                                      screen: "Welcome",
-                                      params: { skipCurtain: true },
+                                      screen: "MenuPlay",
                                     },
                                   },
                                 ],
@@ -1337,13 +1532,7 @@ export default function HeroPickerScreen() {
                           },
                         });
                       }}
-                    >
-                      <AnimatedImage
-                        source={game_images.settingsIcon}
-                        style={[{ width: 56, height: 56 }, settingsAnim.style]}
-                        contentFit="contain"
-                      />
-                    </Pressable>
+                    />
                   </View>
                 </>
               )}
@@ -1400,7 +1589,7 @@ export default function HeroPickerScreen() {
                   </View>
                   <HeroStage
                     key={displayHero.id}
-                    hero={displayHero}
+                    hero={shownHero}
                     heroScale={heroScale}
                     opacity={opacity}
                     translateX={translateX}
@@ -1424,16 +1613,24 @@ export default function HeroPickerScreen() {
                     onPlayLockAnim={(fn) => {
                       lockAnimMapRef.current[displayHero.id] = fn;
                     }}
+                    // Only the celebration: the unlock itself comes from the
+                    // purchase (or the server), never from this animation.
                     onUnlockVisualComplete={() => {
-                      setUnlockedIds((prev) => {
-                        const next = new Set(prev);
-                        next.add(displayHero.id);
-                        return next;
-                      });
                       setShowConfetti(true);
                       setTimeout(() => setShowConfetti(false), 1800);
                     }}
                   />
+                  {/* Outfits: only for a hero with skins, before it is picked. */}
+                  {heroSkins.length > 0 && !lockedHero && !selected && !isNaming ? (
+                    <View style={outfitStyles.toggle}>
+                      <OutfitToggle
+                        index={outfitIndex}
+                        total={heroSkins.length + 1}
+                        locked={!shownHero.unlocked}
+                        onPress={cycleOutfit}
+                      />
+                    </View>
+                  ) : null}
                 </View>
 
                 <View
@@ -1487,7 +1684,7 @@ export default function HeroPickerScreen() {
                     </Animated.View>
                   ) : null}
                   <HeroPickerFooter
-                    hero={displayHero}
+                    hero={shownHero}
                     isNaming={isNaming}
                     playerName={playerName}
                     disabled={
@@ -1505,6 +1702,7 @@ export default function HeroPickerScreen() {
                     keyboardLiftStyle={{
                       transform: [{ translateY: footerTranslateY }],
                     }}
+                    onInputPress={() => setNameKeyboardVisible(true)}
                     onInputFocus={() => setIsNameInputFocused(true)}
                     onInputBlur={() => setIsNameInputFocused(false)}
                   />
@@ -1556,6 +1754,18 @@ export default function HeroPickerScreen() {
               ) : null}
             </View>
           )}
+          {isNaming && !selected && nameKeyboardVisible && (
+            <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 40 }}>
+              <GameKeyboard
+                value={playerName}
+                onChangeText={setPlayerName}
+                maxLength={HERO_NAME_MAX}
+                capitalize="words"
+                bottomInset={insets.bottom}
+                onClose={() => setNameKeyboardVisible(false)}
+              />
+            </View>
+          )}
           <OnlineWaitPlayersOverlay
             visible={
               mode === "ONLINE" &&
@@ -1597,5 +1807,15 @@ const staticStyles = StyleSheet.create({
   skipTextBtnPressed: {
     opacity: 0.74,
     transform: [{ scale: 0.98 }],
+  },
+});
+
+/** The outfit button beside the hero, at the right edge of the stage. */
+const outfitStyles = StyleSheet.create({
+  toggle: {
+    position: "absolute",
+    right: 14,
+    top: "58%",
+    zIndex: 30,
   },
 });

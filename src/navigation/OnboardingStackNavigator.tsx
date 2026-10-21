@@ -19,7 +19,10 @@ export default function OnboardingStackNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{ headerShown: false }}
-      initialRouteName="Welcome"
+      // The Welcome screen is hidden for now: the app opens on the play menu,
+      // which also has the language choice and the Store. The route stays
+      // registered so it can be brought back.
+      initialRouteName="MenuPlay"
     >
       <Stack.Screen
         name="Welcome"

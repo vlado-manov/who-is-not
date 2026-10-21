@@ -4,6 +4,8 @@ import { Image } from "expo-image";
 import type { ImageSourcePropType } from "react-native";
 
 const preloadedHeroUris = new Set<string>();
+/** Longest the hero picker waits for the hero pictures before it opens. */
+const HERO_ASSETS_WAIT_MS = 6000;
 
 function getUri(source: ImageSourcePropType | undefined) {
   if (!source || typeof source === "number") return null;
@@ -29,13 +31,21 @@ export function useHeroAssets(availableHeroes: ICharacter[]) {
           }
 
           if (uris.length > 0) {
-            await Promise.all(
-              uris.map((uri) =>
-                Image.prefetch(uri)
-                  .then(() => preloadedHeroUris.add(uri))
-                  .catch(() => false)
-              )
-            );
+            // The pictures are waited for, but not forever: one that never
+            // arrives must not leave the loading screen up for good. It simply
+            // shows when it has loaded.
+            await Promise.race([
+              Promise.all(
+                uris.map((uri) =>
+                  Image.prefetch(uri)
+                    .then(() => preloadedHeroUris.add(uri))
+                    .catch(() => false)
+                )
+              ),
+              new Promise<void>((resolve) =>
+                setTimeout(() => resolve(), HERO_ASSETS_WAIT_MS),
+              ),
+            ]);
           }
         }
       } finally {

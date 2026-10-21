@@ -1,5 +1,20 @@
 import { ImageSourcePropType } from "react-native";
 
+/** How a premium hero or a skin is unlocked (decided by the server). */
+export type UnlockMode = "FREE" | "BUY" | "ACTION" | "BUY_OR_ACTION";
+
+export interface IUnlockInfo {
+  mode: UnlockMode;
+  /** Backend product id (purchases), and the Apple/Google id once it exists. */
+  productId: string | null;
+  storeProductId: string | null;
+  /** In cents. */
+  price: number | null;
+  discountPrice: number | null;
+  /** For ACTION / BUY_OR_ACTION: e.g. games played to the end, 3 of 10. */
+  action: { type: "GAMES_COMPLETED"; target: number; progress: number } | null;
+}
+
 export interface ICharacter {
   id: string;
   name: string;
@@ -53,4 +68,10 @@ export interface ICharacter {
   /** Lose images by variant (COOKED, NEARLY_THERE, NORMAL). Used for reveal screen. */
   loseImagesByVariant?: Record<string, ImageSourcePropType[]>;
   playedWith?: number;
+  /** How it unlocks (missing on old cached data: treat as FREE / BUY by `premium`). */
+  unlock?: IUnlockInfo;
+  /** Alternative looks of this hero. Picking one still takes the whole hero. */
+  skins?: ICharacter[];
+  /** Set on a skin: the hero it belongs to. */
+  parentCharacterId?: string;
 }

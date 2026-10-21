@@ -1,4 +1,5 @@
 // src/components/VoteScreen.tsx
+import { resolvePlayerHero } from "../../game/resolvePlayerHero";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
@@ -22,6 +23,7 @@ import CustomText from "../../components/common/CustomText";
 import CustomButton from "../../components/common/CustomButton";
 import { useHeroesStore } from "../../store/useHeroesStore";
 import { usePreventBack } from "../../hooks/usePreventBack";
+import { useGameplayMusic } from "../../hooks/useScreenMusic";
 import { useMultiplayerPhaseGate } from "../../hooks/useMultiplayerPhaseGate";
 import { useTranslation } from "react-i18next";
 import { GameMode } from "../../api/analytics";
@@ -39,6 +41,7 @@ const VoteScreen = () => {
   const { voterIndex } = useRoute<R>().params;
   const navigation = useNavigation<Nav>();
   usePreventBack();
+  useGameplayMusic();
   const insets = useSafeAreaInsets();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isTablet = windowWidth >= 768 && windowWidth > windowHeight;
@@ -267,7 +270,7 @@ const VoteScreen = () => {
               {playerRows.map((row, rowIndex) => (
                 <View key={`row-${rowIndex}`} style={styles.row}>
                   {row.map((player) => {
-                    const character = heroes.find((h) => h.id === player.characterId);
+                    const character = resolvePlayerHero(heroes, player);
                     const isSelected = selectedVoteId === player.id;
                     const isDimmed = !!selectedVoteId && !isSelected;
 

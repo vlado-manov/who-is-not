@@ -1,262 +1,169 @@
-import React, { useEffect, useRef } from "react";
-import {
-  View,
-  Pressable,
-  Animated,
-  StyleSheet,
-  Platform,
-  useWindowDimensions,
-} from "react-native";
+import React, { useState } from "react";
+import { ImageSourcePropType, Pressable, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Image as ExpoImage } from "expo-image";
-import AudioManager from "../../utils/audioManager";
-import { TOP_EDGE_ICON_OFFSET } from "../../utils/responsive";
-import { game_images } from "../../../assets/images";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const AnimatedExpoImage = Animated.createAnimatedComponent(ExpoImage);
+import AppImage from "../AppImage";
+import AudioManager from "../../utils/audioManager";
 
 export type ScreenTopBarVariant = "default" | "soloBackFromCenter";
 
 type Props = {
-  horizontalPadding: number;
-  topIconSize: number;
-  /** When false (Welcome / MenuPlay), only edge icons — no center back. */
+  /** Kept for callers; the bar uses fixed 16pt gutters. */
+  horizontalPadding?: number;
+  /** Kept for callers; the buttons have a fixed size. */
+  topIconSize?: number;
+  /** When false (Welcome / MenuPlay), only the right-hand buttons are shown. */
   showBack?: boolean;
   onSettings: () => void;
   onProfile: () => void;
   onBack?: () => void;
-  /** Use expo-image Animated (MenuPlay); default Image (Welcome). */
+  /** Shows a Store tile on the left (main menu). */
+  onStore?: () => void;
+  storeAccessibilityLabel?: string;
+  /**
+   * Main menu layout: the profile button shows this picture in a circle
+   * (instead of the person icon) and settings move to the left group.
+   */
+  profileImage?: ImageSourcePropType | null;
+  settingsOnLeft?: boolean;
+  /** Kept for callers; no longer used. */
   useExpoImage?: boolean;
   backAccessibilityLabel?: string;
-  /**
-   * `soloBackFromCenter`: only back — animates from screen center to the left (settings slot),
-   * icon rotates from “up” to pointing left. Hides settings + profile.
-   */
+  /** `soloBackFromCenter`: only the back button (no profile / settings). */
   variant?: ScreenTopBarVariant;
 };
 
-function useIconPressAnim() {
-  const anim = useRef(new Animated.Value(0)).current;
-  const pressIn = () =>
-    Animated.timing(anim, {
-      toValue: 1,
-      duration: 80,
-      useNativeDriver: true,
-    }).start();
-  const pressOut = () =>
-    Animated.timing(anim, {
-      toValue: 0,
-      duration: 120,
-      useNativeDriver: true,
-    }).start();
-  const style = {
-    transform: [
-      {
-        translateY: anim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, 4],
-        }),
-      },
-      {
-        scale: anim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [1, 0.94],
-        }),
-      },
-    ],
-  };
-  return { style, pressIn, pressOut };
+const BUTTON = 44;
+const ICON = 22;
+/** The profile picture on the main menu, a little larger than a button. */
+const AVATAR = 60;
+/** Side gutter and gap under the status bar, shared by every top button. */
+export const SCREEN_TOP_BAR_GUTTER = 16;
+export const SCREEN_TOP_BAR_TOP_GAP = 6;
+const GUTTER = SCREEN_TOP_BAR_GUTTER;
+const TOP_GAP = SCREEN_TOP_BAR_TOP_GAP;
+
+type IconName = keyof typeof Ionicons.glyphMap;
+
+/** One top-bar button: a rounded dark tile with a white icon. */
+export function ScreenTopButton({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+}) {
+  const [pressed, setPressed] = useState(false);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={8}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      onPress={() => {
+        AudioManager.playButtonClick();
+        onPress();
+      }}
+    >
+      {/* Styled on a plain View: the tile must not depend on Pressable's style. */}
+      <View style={[styles.button, pressed && styles.pressed]}>
+        <Ionicons name={icon} size={ICON} color="#FFFFFF" />
+      </View>
+    </Pressable>
+  );
 }
 
 /**
- * Top row: settings (left) · optional back (center) · profile (right).
- * Horizontal inset is `horizontalPadding - 8` so icons sit slightly closer to screen edges.
+ * Top row over the game backgrounds, laid out the way most apps do it:
+ * back on the left, profile and settings on the right — each in its own
+ * rounded tile with clear space between them — just under the status bar.
  */
-/** Approx. half-width of the back pill for centering math. */
-const SOLO_BACK_HALF_W = 40;
-
 export default function ScreenTopBar({
-  horizontalPadding,
-  topIconSize,
   showBack = false,
   onSettings,
   onProfile,
   onBack,
-  useExpoImage = false,
+  onStore,
+  storeAccessibilityLabel = "Store",
+  profileImage,
+  settingsOnLeft = false,
   backAccessibilityLabel = "Back",
   variant = "default",
 }: Props) {
-  const { width: windowWidth } = useWindowDimensions();
-  const settingsAnim = useIconPressAnim();
-  const profileAnim = useIconPressAnim();
-  const sidePad = Math.max(0, horizontalPadding - 8);
-
-  const soloProgress = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (variant !== "soloBackFromCenter") return;
-    soloProgress.setValue(0);
-    Animated.timing(soloProgress, {
-      toValue: 1,
-      duration: 480,
-      useNativeDriver: true,
-    }).start();
-  }, [variant, soloProgress]);
-
-  const soloTranslateX = soloProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [
-      Math.max(0, windowWidth / 2 - sidePad - SOLO_BACK_HALF_W),
-      0,
-    ],
-  });
-  /** Same `arrow-up-circle` as center back: 0° = up, −90° = left (one quarter turn). */
-  const soloRotate = soloProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "-90deg"],
-  });
-
-  const settingsIconStyle = [
-    { width: topIconSize, height: topIconSize },
-    settingsAnim.style,
-  ];
-
-  const profileIconStyle = [
-    { width: topIconSize, height: topIconSize },
-    profileAnim.style,
-  ];
-
-  if (variant === "soloBackFromCenter" && showBack && onBack) {
-    return (
-      <View
-        style={[
-          styles.bar,
-          {
-            paddingLeft: sidePad,
-            paddingRight: sidePad,
-            top: TOP_EDGE_ICON_OFFSET,
-            justifyContent: "flex-start",
-          },
-        ]}
-        pointerEvents="box-none"
-      >
-        <Animated.View
-          style={{
-            transform: [{ translateX: soloTranslateX }, { rotate: soloRotate }],
-          }}
-        >
-          <Pressable
-            onPress={() => {
-              AudioManager.playButtonClick();
-              onBack();
-            }}
-            hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}
-            style={({ pressed }) => [
-              styles.backBtn,
-              { opacity: pressed ? 0.85 : 1 },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={backAccessibilityLabel}
-          >
-            <Ionicons
-              name="arrow-up-circle"
-              size={48}
-              color="rgba(255,248,240,0.95)"
-              style={styles.backIconShadow}
-            />
-          </Pressable>
-        </Animated.View>
-      </View>
-    );
-  }
+  const insets = useSafeAreaInsets();
+  const backOnly = variant === "soloBackFromCenter";
 
   return (
     <View
-      style={[
-        styles.bar,
-        {
-          paddingLeft: sidePad,
-          paddingRight: sidePad,
-          top: TOP_EDGE_ICON_OFFSET,
-        },
-      ]}
       pointerEvents="box-none"
+      style={[styles.bar, { top: insets.top + TOP_GAP }]}
     >
-      <View style={styles.side}>
-        <Pressable
-          onPressIn={settingsAnim.pressIn}
-          onPressOut={settingsAnim.pressOut}
-          onPress={() => {
-            AudioManager.playButtonClick();
-            onSettings();
-          }}
-          hitSlop={{ top: 10, bottom: 10, left: 8, right: 12 }}
-        >
-          {useExpoImage ? (
-            <AnimatedExpoImage
-              source={game_images.settingsIcon}
-              style={settingsIconStyle}
-              contentFit="contain"
-            />
+      <View style={styles.group}>
+        {showBack && onBack && (
+          <ScreenTopButton
+            icon="chevron-back"
+            label={backAccessibilityLabel}
+            onPress={onBack}
+          />
+        )}
+        {settingsOnLeft && !backOnly && (
+          <ScreenTopButton
+            icon="settings-outline"
+            label="Settings"
+            onPress={onSettings}
+          />
+        )}
+        {onStore && (
+          <ScreenTopButton
+            icon="bag-handle-outline"
+            label={storeAccessibilityLabel}
+            onPress={onStore}
+          />
+        )}
+      </View>
+      {!backOnly && (
+        <View style={styles.group}>
+          {profileImage ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Profile"
+              hitSlop={8}
+              onPress={() => {
+                AudioManager.playButtonClick();
+                onProfile();
+              }}
+            >
+              <View style={styles.avatar}>
+                <AppImage
+                  source={profileImage}
+                  contentFit="cover"
+                  // Hero portraits are tall: keep the face, not the chest.
+                  contentPosition="top"
+                  style={styles.avatarImage}
+                />
+              </View>
+            </Pressable>
           ) : (
-            <Animated.Image
-              source={game_images.settingsIcon}
-              style={settingsIconStyle}
-              resizeMode="contain"
+            <ScreenTopButton
+              icon="person-outline"
+              label="Profile"
+              onPress={onProfile}
             />
           )}
-        </Pressable>
-      </View>
-
-      {showBack && onBack ? (
-        <View style={styles.centerOverlay} pointerEvents="box-none">
-          <Pressable
-            onPress={() => {
-              AudioManager.playButtonClick();
-              onBack();
-            }}
-            hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}
-            style={({ pressed }) => [
-              styles.backBtn,
-              { opacity: pressed ? 0.85 : 1 },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={backAccessibilityLabel}
-          >
-            <Ionicons
-              name="arrow-up-circle"
-              size={48}
-              color="rgba(255,248,240,0.95)"
-              style={styles.backIconShadow}
+          {!settingsOnLeft && (
+            <ScreenTopButton
+              icon="settings-outline"
+              label="Settings"
+              onPress={onSettings}
             />
-          </Pressable>
+          )}
         </View>
-      ) : null}
-
-      <View style={[styles.side, styles.sideRight]}>
-        <Pressable
-          onPressIn={profileAnim.pressIn}
-          onPressOut={profileAnim.pressOut}
-          onPress={() => {
-            AudioManager.playButtonClick();
-            onProfile();
-          }}
-          hitSlop={{ top: 10, bottom: 10, left: 12, right: 8 }}
-        >
-          {useExpoImage ? (
-            <AnimatedExpoImage
-              source={game_images.userIcon}
-              style={profileIconStyle}
-              contentFit="contain"
-            />
-          ) : (
-            <Animated.Image
-              source={game_images.userIcon}
-              style={profileIconStyle}
-              resizeMode="contain"
-            />
-          )}
-        </Pressable>
-      </View>
+      )}
     </View>
   );
 }
@@ -267,47 +174,38 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 30,
+    paddingHorizontal: GUTTER,
     flexDirection: "row",
+    // Top-aligned: the large profile picture hangs below the row of buttons.
     alignItems: "flex-start",
     justifyContent: "space-between",
   },
-  side: {
-    flex: 1,
-    alignItems: "flex-start",
-    minWidth: 0,
-  },
-  sideRight: {
-    alignItems: "flex-end",
-  },
-  centerOverlay: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
+  group: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: 12,
   },
-  backBtn: {
-    marginTop: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: "rgba(12, 10, 8, 0.48)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255, 255, 255, 0.16)",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.35,
-        shadowRadius: 3,
-      },
-      android: { elevation: 4 },
-    }),
+  button: {
+    width: BUTTON,
+    height: BUTTON,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.45)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.22)",
   },
-  backIconShadow: {
-    textShadowColor: "rgba(0,0,0,0.4)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-    marginTop: 8,
+  // Just the picture: no frame, no rounding, no backing tile.
+  avatar: {
+    width: AVATAR,
+    height: AVATAR,
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+  pressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.94 }],
   },
 });

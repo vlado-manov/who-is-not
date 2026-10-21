@@ -4,7 +4,6 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Modal,
   StyleSheet,
   ScrollView,
   Image,
@@ -16,6 +15,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import CustomText from "../common/CustomText";
+import CamSheet from "../cam/CamSheet";
+import { TT } from "../../constants/tiktokTheme";
 import { useAuthStore } from "../../store/useUserStore";
 import { useGameStore } from "../../store/useGameStore";
 import AudioManager from "../../utils/audioManager";
@@ -48,7 +49,7 @@ function Avatar({ url, size = 34 }: { url: string | null; size?: number }) {
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: "rgba(16,185,129,0.1)",
+        backgroundColor: TT.surface2,
         overflow: "hidden",
         borderWidth: 1.5,
         borderColor: "rgba(16,185,129,0.25)",
@@ -60,7 +61,7 @@ function Avatar({ url, size = 34 }: { url: string | null; size?: number }) {
       {url ? (
         <Image source={{ uri: url }} style={{ width: size, height: size }} />
       ) : (
-        <Ionicons name="person" size={size * 0.52} color="#10b981" />
+        <Ionicons name="person" size={size * 0.52} color={TT.text} />
       )}
     </View>
   );
@@ -90,7 +91,7 @@ function FriendRow({
         hitSlop={8}
         style={[
           S.actionBtn,
-          { backgroundColor: "rgba(16,185,129,0.1)", borderColor: "rgba(16,185,129,0.35)" },
+          { backgroundColor: TT.surface2, borderColor: TT.line },
         ]}
         onPress={() => onInvite(item.friendshipId)}
         disabled={inviting}
@@ -98,7 +99,7 @@ function FriendRow({
         <Ionicons
           name={inviting ? "checkmark" : "game-controller-outline"}
           size={18}
-          color={inviting ? "#9ca3af" : "#059669"}
+          color={inviting ? TT.text2 : TT.text}
         />
       </TouchableOpacity>
       {/* Remove */}
@@ -119,7 +120,7 @@ function FriendRow({
           )
         }
       >
-        <Ionicons name="person-remove-outline" size={20} color="#9ca3af" />
+        <Ionicons name="person-remove-outline" size={20} color={TT.text2} />
       </TouchableOpacity>
     </View>
   );
@@ -143,16 +144,16 @@ function RequestRow({
       </CustomText>
       <View style={{ flexDirection: "row", gap: 6 }}>
         <TouchableOpacity
-          style={[S.actionBtn, { backgroundColor: "rgba(16,185,129,0.12)", borderColor: "#10b981" }]}
+          style={[S.actionBtn, { backgroundColor: "rgba(16,185,129,0.12)", borderColor: TT.text }]}
           onPress={() => onAccept(item.friendshipId)}
         >
-          <Ionicons name="checkmark" size={18} color="#059669" />
+          <Ionicons name="checkmark" size={18} color={TT.text} />
         </TouchableOpacity>
         <TouchableOpacity
           style={[S.actionBtn, { backgroundColor: "rgba(220,38,38,0.08)", borderColor: "#fca5a5" }]}
           onPress={() => onReject(item.friendshipId)}
         >
-          <Ionicons name="close" size={18} color="#dc2626" />
+          <Ionicons name="close" size={18} color={TT.primary} />
         </TouchableOpacity>
       </View>
     </View>
@@ -180,15 +181,15 @@ function SearchRow({
         style={[
           S.actionBtn,
           sent
-            ? { backgroundColor: "rgba(0,0,0,0.04)", borderColor: "#e5e7eb" }
-            : { backgroundColor: "rgba(16,185,129,0.1)", borderColor: "#10b981" },
+            ? { backgroundColor: TT.surface2, borderColor: "#e5e7eb" }
+            : { backgroundColor: TT.surface2, borderColor: TT.text },
         ]}
         onPress={() => onAdd(item.userId)}
       >
         {sent ? (
-          <Ionicons name="checkmark" size={18} color="#9ca3af" />
+          <Ionicons name="checkmark" size={18} color={TT.text2} />
         ) : (
-          <Ionicons name="person-add-outline" size={18} color="#059669" />
+          <Ionicons name="person-add-outline" size={18} color={TT.text} />
         )}
       </TouchableOpacity>
     </View>
@@ -210,7 +211,7 @@ function RowDivider({ indent = false }: { indent?: boolean }) {
     <View
       style={{
         height: 1,
-        backgroundColor: "rgba(0,0,0,0.05)",
+        backgroundColor: TT.line,
         marginHorizontal: indent ? 52 : 0,
       }}
     />
@@ -274,40 +275,25 @@ function AddFriendModal({
   );
 
   return (
-    <Modal
+    <CamSheet
       visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
+      onClose={onClose}
+      title={t("friends_add_title")}
+      closeLabel={t("close")}
     >
-      <View style={M.backdrop}>
-        <View style={M.card}>
-          {/* Header */}
-          <View style={M.header}>
-            <View style={M.iconWrap}>
-              <Ionicons name="person-add-outline" size={18} color="#059669" />
-            </View>
-            <CustomText style={M.title}>{t("friends_add_title")}</CustomText>
-            <TouchableOpacity hitSlop={10} onPress={onClose}>
-              <Ionicons name="close" size={20} color="#9ca3af" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={M.divider} />
-
           {/* Search */}
           <View style={M.searchRow}>
-            <Ionicons name="search" size={15} color="#9ca3af" style={{ marginRight: 8 }} />
+            <Ionicons name="search" size={15} color={TT.text2} style={{ marginRight: 8 }} />
             <TextInput
               style={M.searchInput}
               placeholder={t("friends_search_placeholder")}
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={TT.text2}
               value={query}
               onChangeText={handleSearch}
               autoFocus
               returnKeyType="search"
             />
-            {loading && <ActivityIndicator size="small" color="#10b981" />}
+            {loading && <ActivityIndicator size="small" color={TT.text} />}
           </View>
 
           <ScrollView
@@ -324,9 +310,7 @@ function AddFriendModal({
               </React.Fragment>
             ))}
           </ScrollView>
-        </View>
-      </View>
-    </Modal>
+    </CamSheet>
   );
 }
 
@@ -518,7 +502,7 @@ const ProfileFriendsCard = () => {
           style={C.header}
         >
           <View style={C.iconWrap}>
-            <Ionicons name="people-outline" size={18} color="#10b981" />
+            <Ionicons name="people-outline" size={18} color={TT.text} />
           </View>
           <CustomText style={C.headerTitle}>{t("friends_title")}</CustomText>
           {/* Friend count badge */}
@@ -543,7 +527,7 @@ const ProfileFriendsCard = () => {
               setAddVisible(true);
             }}
           >
-            <Ionicons name="person-add-outline" size={15} color="#059669" />
+            <Ionicons name="person-add-outline" size={15} color={TT.text} />
           </TouchableOpacity>
           {/* Collapse arrow */}
           <Animated.View
@@ -552,7 +536,7 @@ const ProfileFriendsCard = () => {
             <Ionicons
               name={expanded ? "chevron-up" : "chevron-down"}
               size={18}
-              color="#9ca3af"
+              color={TT.text2}
             />
           </Animated.View>
         </Pressable>
@@ -607,7 +591,7 @@ const ProfileFriendsCard = () => {
                 <CustomText style={C.showMoreText}>
                   {t("friends_show_more", { count: hiddenCount })}
                 </CustomText>
-                <Ionicons name="chevron-down" size={13} color="#9ca3af" />
+                <Ionicons name="chevron-down" size={13} color={TT.text2} />
               </TouchableOpacity>
             )}
           </>
@@ -620,7 +604,7 @@ const ProfileFriendsCard = () => {
         {loading && (
           <ActivityIndicator
             size="small"
-            color="#10b981"
+            color={TT.text}
             style={{ marginVertical: 16 }}
           />
         )}
@@ -642,12 +626,11 @@ const ProfileFriendsCard = () => {
 
 const C = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
+    backgroundColor: TT.surface,
+    borderRadius: TT.cardRadius,
     overflow: "hidden",
     ...CARD_SHADOW,
     marginHorizontal: 16,
-    marginTop: 12,
   },
   header: {
     flexDirection: "row",
@@ -660,58 +643,58 @@ const C = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 10,
-    backgroundColor: "rgba(16,185,129,0.1)",
+    backgroundColor: TT.surface2,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
-  headerTitle: { flex: 1, color: "#1f2937", fontSize: 14, fontWeight: "800" },
+  headerTitle: { flex: 1, color: TT.text, fontSize: 14, fontWeight: "800" },
   badge: {
     minWidth: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#fbbf24",
+    backgroundColor: TT.primary,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 6,
   },
-  badgeNum: { color: "#78350f", fontSize: 13, fontWeight: "900" },
+  badgeNum: { color: TT.text, fontSize: 13, fontWeight: "900" },
   pendingBadge: {
     minWidth: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: "rgba(239,68,68,0.12)",
+    backgroundColor: TT.primarySoft,
     borderWidth: 1,
-    borderColor: "rgba(239,68,68,0.4)",
+    borderColor: TT.primary,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 5,
   },
-  pendingNum: { color: "#dc2626", fontSize: 11, fontWeight: "900" },
+  pendingNum: { color: TT.primary, fontSize: 11, fontWeight: "900" },
   addBtn: {
     width: 30,
     height: 30,
     borderRadius: 8,
-    backgroundColor: "rgba(16,185,129,0.1)",
+    backgroundColor: TT.surface2,
     borderWidth: 1,
-    borderColor: "rgba(16,185,129,0.35)",
+    borderColor: TT.line,
     alignItems: "center",
     justifyContent: "center",
   },
   listWrap: { overflow: "hidden" },
   topDivider: {
     height: 1,
-    backgroundColor: "rgba(0,0,0,0.06)",
+    backgroundColor: TT.line,
     marginHorizontal: 16,
   },
   sectionDivider: {
     height: 1,
-    backgroundColor: "rgba(0,0,0,0.06)",
+    backgroundColor: TT.line,
     marginHorizontal: 0,
     marginTop: 4,
   },
   emptyText: {
-    color: "#9ca3af",
+    color: TT.text2,
     fontSize: 13,
     textAlign: "center",
     paddingVertical: 16,
@@ -724,9 +707,9 @@ const C = StyleSheet.create({
     gap: 4,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.05)",
+    borderTopColor: TT.line,
   },
-  showMoreText: { color: "#9ca3af", fontSize: 12 },
+  showMoreText: { color: TT.text2, fontSize: 12 },
 });
 
 const S = StyleSheet.create({
@@ -736,11 +719,11 @@ const S = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     gap: 10,
-    backgroundColor: "#fff",
+    backgroundColor: TT.surface,
   },
   rowName: {
     flex: 1,
-    color: "#1f2937",
+    color: TT.text,
     fontSize: 13,
     fontWeight: "500",
     lineHeight: 18,
@@ -760,7 +743,7 @@ const S = StyleSheet.create({
   },
   sectionLabelText: {
     fontSize: 10,
-    color: "#9ca3af",
+    color: TT.text2,
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: 0.7,
@@ -769,58 +752,22 @@ const S = StyleSheet.create({
 
 // ── Modal styles ──────────────────────────────────────────────────────────────
 const M = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  card: {
-    width: "100%",
-    maxWidth: 420,
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    overflow: "hidden",
-    ...CARD_SHADOW,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  iconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: "rgba(16,185,129,0.1)",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  title: { flex: 1, color: "#1f2937", fontSize: 14, fontWeight: "800" },
-  divider: { height: 1, backgroundColor: "rgba(0,0,0,0.06)", marginHorizontal: 16 },
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.04)",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.08)",
-    marginHorizontal: 16,
-    marginVertical: 12,
+    backgroundColor: TT.surface2,
+    borderRadius: TT.radius,
     paddingHorizontal: 12,
     paddingVertical: 9,
   },
   searchInput: {
     flex: 1,
-    color: "#1f2937",
+    fontFamily: "TikTokSans-Medium",
+    color: TT.text,
     fontSize: 14,
   },
   emptyText: {
-    color: "#9ca3af",
+    color: TT.text2,
     fontSize: 13,
     textAlign: "center",
     paddingVertical: 16,

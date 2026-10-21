@@ -47,6 +47,34 @@ Safe-area containers use `backgroundColor: "transparent"` so the full-bleed imag
 
 ---
 
+## Cam Mode Colors
+
+Defined in `src/screens/Cam/cam.constants.ts`.
+
+| Use                         | Value                                   |
+|-----------------------------|-----------------------------------------|
+| Dark overlay over the camera | `rgba(0,0,0,0.75)`                     |
+| Player overlay / name ribbon | player colour at `0.75` alpha / solid  |
+| Player colours              | `#FA3A00` `#374EE2` `#02BA1D` `#C44CD7` `#49D0B5` `#FA8900` (existing `primary.*` tokens) |
+| Caption box over the camera | `#000000` background, `#FFFFFF` text    |
+| Dim over an eliminated player | `rgba(0,0,0,0.7)`                     |
+| Bottom bar under the roster grid | `#000000`                          |
+| Roster photo frame          | player colour, 4 px                     |
+
+Cam Mode is styled after TikTok, not the game (`CAM_UI` / `CAM_FONT` in `cam.constants.ts`): TikTok Sans (`assets/fonts/TikTokSans`, OFL), red primary buttons, grey translucent secondary controls, a translucent text field and captions where each line sits in its own black rounded box.
+
+| Use                         | Value                                   |
+|-----------------------------|-----------------------------------------|
+| Primary button, caret, shutter core | `#FE2C55`                       |
+| Secondary button / tile fill, border | `rgba(120,120,128,0.36)`, `rgba(255,255,255,0.28)` |
+| Light button (on colour tints) | `#FFFFFF`, label `#161823`           |
+| Text field fill / placeholder | `rgba(255,255,255,0.16)` / `rgba(255,255,255,0.55)` |
+| Heart-loss glow             | `rgba(255,60,20,0.55)` (same as LivesReveal) |
+
+iOS adds a blur under the overlay; Android draws the tint only.
+
+---
+
 ## WarmBubbles Color Families
 
 Bubbles are drawn from warm reds, oranges, and creams. Rough palette families:
@@ -75,3 +103,7 @@ Badge chip on buttons: `backgroundColor: "#FFD966"` (golden yellow), text `#000`
 | Question plate glow  | `#ffd800` (yellow)            |
 | Avatar selection     | Per-character `#hex` color    |
 | Default button glow  | `rgba(253,193,194,0.8)` (pink)|
+
+## DeathMatch stopwatch duel
+
+The duel screens keep the DeathMatch backdrop and add their own dark cards (`DM_UI` in `src/screens/Game/DeathMatch/dm.constants.ts`): card `rgba(28,26,40,0.92)`, dial face `#1B1D2A`, text `#F5F0E6`, gold accent `#FFD36A`, target orange `#FA8900`, closer / further `#02BA1D` / `#FF4D4D`. Screen side padding is 24 instead of the usual 48–64 so the cards and the dial have room.

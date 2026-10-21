@@ -1,0 +1,5 @@
+{
+  "NSCameraUsageDescription": "WhoIsNot uses the camera for player selfies and round photos in Cam Mode. Photos stay on your device.",
+  "NSPhotoLibraryAddUsageDescription": "WhoIsNot saves your Cam Mode round photos to your gallery when you ask it to.",
+  "NSMicrophoneUsageDescription": "WhoIsNot uses the microphone to record sound in your Cam Mode round videos."
+}

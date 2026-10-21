@@ -25,6 +25,7 @@ import { backgrounds } from "../../assets/backgrounds";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import CustomText from "./common/CustomText";
 import CustomButton from "./common/CustomButton";
+import HoldToConfirmButton from "./game/HoldToConfirmButton";
 import { GameStackParamList } from "../navigation/types";
 import { useGameStore } from "../store/useGameStore";
 import { game_images } from "../../assets/images";
@@ -381,27 +382,36 @@ const VoteNowScreen = () => {
               },
             ]}
           >
-            <CustomButton
-              title={t("its_me")}
-              backgroundImage={backgrounds.bg026}
-              glow
-              glowColor="rgba(41,255,25,0.8)"
-              shadowColor="#005f07"
-              horizontalPadding={Math.min(48, pad + 20)}
-              fullWidth
-              onPress={onStartVoting}
-            />
+            {mode === "ONLINE" ? (
+              // Everyone has their own phone online: a plain tap is enough.
+              <CustomButton
+                title={t("its_me")}
+                backgroundImage={backgrounds.bg026}
+                glow
+                glowColor="rgba(41,255,25,0.8)"
+                shadowColor="#005f07"
+                horizontalPadding={Math.min(48, pad + 20)}
+                fullWidth
+                onPress={onStartVoting}
+              />
+            ) : (
+              <HoldToConfirmButton
+                title={t("its_me")}
+                horizontalPadding={Math.min(48, pad + 20)}
+                onConfirm={onStartVoting}
+              />
+            )}
             {mode !== "ONLINE" ? (
               <View style={styles.warnHintRow}>
                 <View style={styles.warnIconGlow}>
-                  <MaterialCommunityIcons name="alert" size={20} color="#fbbf24" />
+                  <MaterialCommunityIcons name="gesture-tap-hold" size={20} color="#fbbf24" />
                 </View>
                 <CustomText
                   variant="footnote"
                   textColor="rgba(255,255,255,0.88)"
-                  style={{ fontFamily: "Onest-SemiBold" }}
+                  style={{ fontFamily: "Onest-SemiBold", flexShrink: 1 }}
                 >
-                  {t("vote_now_only_tap")}
+                  {t("hold_its_me_vote_hint")}
                 </CustomText>
               </View>
             ) : null}

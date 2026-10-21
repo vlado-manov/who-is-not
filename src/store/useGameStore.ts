@@ -7,6 +7,7 @@ import {
 import { ROUND_STATE_MESSAGE_TYPE } from "../constants/onlineLobby";
 import type { IQuestion } from "../types/question";
 import { GameMode } from "../api/analytics";
+import { pickRoundQuestions } from "../game/pickRoundQuestions";
 
 export type Phase =
   | "lobby"
@@ -22,6 +23,11 @@ export type Player = {
   id: string;
   name: string;
   characterId?: string;
+  /**
+   * The skin the player picked for their hero, if any. `characterId` is always
+   * the BASE hero: a hero in any skin is taken as a whole.
+   */
+  skinId?: string;
   connected: boolean;
   isHost?: boolean;
 };
@@ -41,6 +47,12 @@ export type GameSettings = {
   selectedPacks: string[];
   /** Животи на играч (3 или 5). */
   livesPerPlayer: 3 | 5;
+  /**
+   * Cam Mode only (premium, each off by default): also play number questions /
+   * written-answer questions, which players write down and show to the camera.
+   */
+  camNumberQuestions?: boolean;
+  camInputQuestions?: boolean;
 };
 
 const defaultGameSettings = (): GameSettings => ({
@@ -86,7 +98,6 @@ const ROUND_SCHEDULE: QuestionType[] = [
   "input",  // 15
 ];
 
-const NAME_PLACEHOLDER_RE = /\{\{name\}\}|\{name\}/;
 const BONUS_ROUND_POSITIONS = new Set([4, 11]);
 
 function getCyclePositionForRound(roundIndex: number): number {
@@ -103,29 +114,13 @@ function isBonusRoundIndex(roundIndex: number): boolean {
   return BONUS_ROUND_POSITIONS.has(getCyclePositionForRound(roundIndex));
 }
 
-function normalizeGroupId(groupId: string): string {
-  return groupId.trim().toLowerCase();
-}
-
-function getNormalizedRelatedGroups(q: IQuestion): string[] {
-  return Array.from(
-    new Set(
-      (q.relatedGroupIds ?? [])
-        .map(normalizeGroupId)
-        .filter((groupId) => groupId.length > 0),
-    ),
-  ).sort();
-}
-
-function haveSameRelatedGroups(a: IQuestion, b: IQuestion): boolean {
-  const aGroups = getNormalizedRelatedGroups(a);
-  const bGroups = getNormalizedRelatedGroups(b);
-  if (aGroups.length !== bGroups.length) return false;
-  return aGroups.every((groupId, index) => groupId === bGroups[index]);
-}
-
 type GameState = {
   gameId?: string;
+  /**
+   * One run of the game: new for every start and every rematch (which keeps
+   * `gameId`). Each run counts once as a game played to the end.
+   */
+  gameRunId?: string;
   currentRoundId?: string;
   mode: GameMode;
   roomCode?: string;
@@ -179,7 +174,7 @@ type GameState = {
    */
   originalPlayers?: Player[];
 
-  /** Set by DeathMatchScreen when the guessing game concludes. WinnerScreen reads this instead of computing from lives. */
+  /** Set by DeathMatchScreen when the stopwatch duel concludes. WinnerScreen reads this instead of computing from lives. */
   deathMatchWinnerIds?: string[];
 
   set: (p: Partial<GameState>) => void;
@@ -204,12 +199,13 @@ type GameState = {
   reset: () => void;
   beginLocalGame: (count: number) => void;
   addPlayer: (p: Player) => void;
-  assignCharacter: (playerId: string, characterId: string) => void;
+  assignCharacter: (playerId: string, characterId: string, skinId?: string) => void;
   /** Merge a server-confirmed hero pick (ONLINE). Updates players + takenCharacters. */
   applyRemoteHeroPick: (args: {
     playerId: string;
     characterId: string;
     name: string;
+    skinId?: string | null;
   }) => void;
   isCharacterTaken: (characterId: string) => boolean;
   getPlayersCount: () => number;
@@ -271,6 +267,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const gameId = `game_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     set({
       gameId,
+      gameRunId: gameId,
       mode: "ONLINE",
       currentRoundId: undefined,
       roomCode: p.joinCode,
@@ -324,7 +321,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   startGameSession: (mode) => {
     const gameId = `game_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    set({ gameId, mode, currentRoundId: undefined });
+    set({ gameId, gameRunId: gameId, mode, currentRoundId: undefined });
     return gameId;
   },
 
@@ -334,6 +331,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     disconnectMultiplayerRelay();
     set({
       gameId: undefined,
+      gameRunId: undefined,
       currentRoundId: undefined,
       mode: "LOCAL",
       roomCode: undefined,
@@ -408,11 +406,11 @@ export const useGameStore = create<GameState>((set, get) => ({
       return { players: [...s.players, p] };
     }),
 
-  assignCharacter: (playerId, characterId) =>
+  assignCharacter: (playerId, characterId, skinId) =>
     set((s) => {
       if (s.takenCharacters.includes(characterId)) return s;
       const players = s.players.map((pl) =>
-        pl.id === playerId ? { ...pl, characterId } : pl,
+        pl.id === playerId ? { ...pl, characterId, skinId } : pl,
       );
       return {
         players,
@@ -420,7 +418,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       };
     }),
 
-  applyRemoteHeroPick: ({ playerId, characterId, name }) =>
+  applyRemoteHeroPick: ({ playerId, characterId, name, skinId }) =>
     set((s) => {
       if (s.mode !== "ONLINE") return s;
       const existingIdx = s.players.findIndex((p) => p.id === playerId);
@@ -432,6 +430,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         id: playerId,
         name,
         characterId,
+        skinId: skinId ?? undefined,
         connected: true,
       };
       const players =
@@ -472,112 +471,32 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!players.length) return;
 
     const questions = get().gameQuestions;
-    const active = questions.filter((q) => q.isActive);
-    if (!active.length) return;
+    if (!questions.some((q) => q.isActive)) return;
 
-    const used = get().usedQuestionIds || [];
-    const completedRounds = get().round ?? 0;
-    const currentRoundIndex = completedRounds + 1;
-    const scheduleType = getScheduleTypeForRound(currentRoundIndex);
-    const isBonusRound = isBonusRoundIndex(currentRoundIndex);
-
-    const pickSourceForType = (type: QuestionType) => {
-      const byTypeAll = active.filter((q) => q.type === type);
-      const byTypeUnused = byTypeAll.filter((q) => !used.includes(q.id));
-
-      // Prefer unused questions; fall back to all of type when exhausted
-      if (byTypeUnused.length >= 2) return byTypeUnused;
-      return byTypeAll;
-    };
-
-    const getOddPoolForBase = (base: IQuestion, type: QuestionType) => {
-      const fullExactPool = active.filter(
-        (q) =>
-          q.type === type && q.id !== base.id && haveSameRelatedGroups(base, q),
-      );
-      const samePackExactPool = fullExactPool.filter(
-        (q) => q.packSlug === base.packSlug,
-      );
-      const fullPool =
-        samePackExactPool.length >= 1 ? samePackExactPool : fullExactPool;
-      const preferred = fullPool.filter((q) => !used.includes(q.id));
-      if (preferred.length >= 1) return preferred;
-      if (fullPool.length >= 1) return fullPool;
-      return [base];
-    };
-
-    const possibleTypes: QuestionType[] = ["pick", "number", "input"];
-    let candidates = possibleTypes
-      .map((t) => ({ type: t, list: pickSourceForType(t) }))
-      .filter((x) => x.list.length >= 2);
-
-    const forSchedule = candidates.filter((c) => c.type === scheduleType);
-    if (forSchedule.length >= 1) candidates = forSchedule;
-
-    if (!candidates.length) {
+    const currentRoundIndex = (get().round ?? 0) + 1;
+    const pick = pickRoundQuestions({
+      questions,
+      eligiblePlayers: players,
+      usedQuestionIds: get().usedQuestionIds || [],
+      allowedTypes: ["pick", "number", "input"],
+      preferredType: getScheduleTypeForRound(currentRoundIndex),
+    });
+    if (!pick) {
       console.warn("No question type with at least 2 active questions");
       return;
     }
 
-    const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-    const pairableList = chosen.list.filter((q) => {
-      if (NAME_PLACEHOLDER_RE.test(q.text)) return true;
-      return getOddPoolForBase(q, chosen.type).some((odd) => odd.id !== q.id);
-    });
-    const list = pairableList.length >= 1 ? pairableList : chosen.list;
-
-    const firstIdx = Math.floor(Math.random() * list.length);
-    const base = list[firstIdx];
-
-    const oddPool = getOddPoolForBase(base, chosen.type);
-    const oddPoolFiltered = oddPool.filter((q) => q.id !== base.id);
-    const pool = oddPoolFiltered.length >= 1 ? oddPoolFiltered : oddPool;
-    let odd = pool[Math.floor(Math.random() * pool.length)];
-
-    const oddPlayer = players[Math.floor(Math.random() * players.length)];
-
-    let questionNameTarget: string | undefined;
-    let impostorNameSubstitute: string | undefined;
-
-    const baseHasNamePlaceholder = NAME_PLACEHOLDER_RE.test(base.text);
-
-    if (baseHasNamePlaceholder) {
-      // All non-impostors see the same player name in the base question
-      const baseTarget = players[Math.floor(Math.random() * players.length)];
-      questionNameTarget = baseTarget.name;
-
-      // Impostor gets the same question, but with a different player name.
-      odd = base;
-      const otherNameTargets = players.filter((p) => p.id !== baseTarget.id);
-      const impostorTarget =
-        otherNameTargets.length > 0
-          ? otherNameTargets[
-              Math.floor(Math.random() * otherNameTargets.length)
-            ]
-          : baseTarget;
-      impostorNameSubstitute = impostorTarget.name;
-    } else if (NAME_PLACEHOLDER_RE.test(odd.text)) {
-      const impostorTarget =
-        players[Math.floor(Math.random() * players.length)];
-      impostorNameSubstitute = impostorTarget.name;
-    }
-
-    const usedIds =
-      odd.id === base.id
-        ? [...get().usedQuestionIds, base.id]
-        : [...get().usedQuestionIds, base.id, odd.id];
-
     set({
-      questionType: chosen.type,
-      isBonusRound,
-      currentBaseQuestionId: base.id,
-      currentOddQuestionId: odd.id,
-      oddOneId: oddPlayer.id,
-      questionNameTarget: questionNameTarget ?? null,
-      impostorNameSubstitute: impostorNameSubstitute ?? null,
+      questionType: pick.questionType,
+      isBonusRound: isBonusRoundIndex(currentRoundIndex),
+      currentBaseQuestionId: pick.baseId,
+      currentOddQuestionId: pick.oddId,
+      oddOneId: pick.oddOneId,
+      questionNameTarget: pick.questionNameTarget,
+      impostorNameSubstitute: pick.impostorNameSubstitute,
       answers: {},
       votes: {},
-      usedQuestionIds: usedIds,
+      usedQuestionIds: pick.usedQuestionIds,
     });
   },
 
@@ -637,6 +556,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       });
 
       return {
+        gameRunId: `run_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         currentRoundId: undefined,
         phase: "lobby" as const,
         round: 0,

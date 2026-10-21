@@ -38,7 +38,7 @@ class _IAPService {
    * In a production EAS build this triggers the native purchase sheet.
    * Here it calls the backend directly so admin-granted test purchases work.
    */
-  async purchase(sku: IapSku, userId: string): Promise<IAPPurchaseResult> {
+  async purchase(sku: IapSku | string, userId: string): Promise<IAPPurchaseResult> {
     try {
       // In development we skip receipt validation and ask the backend to
       // grant the item for the user (admin-grant path).

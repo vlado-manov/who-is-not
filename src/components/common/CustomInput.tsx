@@ -39,6 +39,8 @@ interface Props extends Omit<TextInputProps, "onChange"> {
   unstyled?: boolean;
 }
 
+import { useUiStyle } from "../../context/UiStyleContext";
+
 const DEFAULT_BORDER = "#FA8900";
 const DEFAULT_BORDER_FOCUSED = "#FA3A00";
 
@@ -60,6 +62,7 @@ const CustomInput = forwardRef<CustomInputHandle | TextInput, Props>(
     ref
   ) => {
     const inputRef = useRef<TextInput>(null);
+    const uiStyle = useUiStyle();
     const [focused, setFocused] = useState(false);
 
     useImperativeHandle(ref, () => ({
@@ -109,6 +112,14 @@ const CustomInput = forwardRef<CustomInputHandle | TextInput, Props>(
           : (borderColor ?? DEFAULT_BORDER),
       },
       containerStyle,
+          // TikTok look: a flat filled field instead of the thick game border.
+      uiStyle !== "game" && [
+        styles.tiktokContainer,
+        {
+          backgroundColor:
+            uiStyle === "tiktokLight" ? "#F1F1F2" : "rgba(255,255,255,0.16)",
+        },
+      ],
     ];
 
     const {
@@ -128,7 +139,16 @@ const CustomInput = forwardRef<CustomInputHandle | TextInput, Props>(
           autoCapitalize={rest.autoCapitalize ?? "none"}
           autoCorrect={rest.autoCorrect ?? false}
           className={inputClassName}
-          style={[styles.input, inputStyle, restStyle]}
+          style={[
+            styles.input,
+            inputStyle,
+            restStyle,
+            uiStyle !== "game" && [
+              styles.tiktokInput,
+              { color: uiStyle === "tiktokLight" ? "#161823" : "#FFFFFF" },
+            ],
+          ]}
+          selectionColor={uiStyle !== "game" ? "#FE2C55" : undefined}
           onFocus={(e) => {
             setFocused(true);
             onFocusProp?.(e);
@@ -173,6 +193,20 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#000",
     borderRadius: 16,
+  },
+
+  tiktokContainer: {
+    borderWidth: 0,
+    borderRadius: 8,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  tiktokInput: {
+    height: 52,
+    paddingVertical: 0,
+    fontSize: 20,
+    fontFamily: "TikTokSans-SemiBold",
+    borderRadius: 8,
   },
 
   /** Used when unstyled = true */

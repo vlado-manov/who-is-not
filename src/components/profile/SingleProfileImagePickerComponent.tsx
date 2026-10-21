@@ -1,4 +1,4 @@
-import { View, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import { View, TouchableOpacity, StyleSheet } from "react-native";
 import AppImage from "../AppImage";
 import React from "react";
 import { ICharacter } from "../../types/character";
@@ -7,6 +7,7 @@ import { useAuthStore } from "../../store/useUserStore";
 import { FontAwesome } from "@expo/vector-icons";
 import AudioManager from "../../utils/audioManager";
 import PlayerDeathGrayscaleImage from "../game/PlayerDeathGrayscaleImage";
+import { TT } from "../../constants/tiktokTheme";
 
 const AVATAR_SIZE = 148;
 
@@ -53,20 +54,12 @@ const styles = StyleSheet.create({
     height: AVATAR_SIZE,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 14,
+    borderRadius: TT.cardRadius,
     borderWidth: 3,
     borderColor: "transparent",
   },
   wrapperSelected: {
-    borderColor: "rgba(251,192,32,0.95)",
-    ...(Platform.OS === "ios"
-      ? {
-          shadowColor: "#ffd800",
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.9,
-          shadowRadius: 12,
-        }
-      : { elevation: 12 }),
+    borderColor: TT.primary,
   },
   avatar: {
     width: AVATAR_SIZE,

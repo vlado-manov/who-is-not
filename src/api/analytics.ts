@@ -33,6 +33,8 @@ export async function trackGameStarted(input: {
   language?: string;
   userId?: string;
   packs?: string[];
+  /** Marks a LOCAL game played in Cam Mode. */
+  variant?: "CAM";
 }) {
   return trackEvent({
     eventId: makeId("evt_game_started"),
@@ -44,6 +46,7 @@ export async function trackGameStarted(input: {
       playersCount: input.playersCount,
       language: input.language,
       ...(input.packs && input.packs.length ? { packs: input.packs } : {}),
+      ...(input.variant ? { variant: input.variant } : {}),
     },
   });
 }

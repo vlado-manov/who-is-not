@@ -8,15 +8,12 @@ import {
   Easing,
   Share,
   Pressable,
-  ImageBackground,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { SafeAreaView } from "react-native-safe-area-context";
 import FullBleedStack from "../components/FullBleedStack";
-import ImageBackgroundWithLoadGate from "../components/ImageBackgroundWithLoadGate";
-import WarmBubblesOverlay from "../components/WarmBubblesOverlay";
 import CustomText from "../components/common/CustomText";
 import { backgrounds } from "../../assets/backgrounds";
 import { useTranslation } from "react-i18next";
@@ -35,14 +32,24 @@ import {
   LOBBY_START_MESSAGE_TYPE,
   MIN_ONLINE_PLAYERS,
 } from "../constants/onlineLobby";
-import ScreenTopBar from "../components/common/ScreenTopBar";
+import ImageBackgroundWithLoadGate from "../components/ImageBackgroundWithLoadGate";
+import WarmBubblesOverlay from "../components/WarmBubblesOverlay";
+import AnimatedLogoHero from "../components/AnimatedLogoHero";
+import {
+  LOGO_LIFT,
+  SHEET_GAP,
+  SHEET_RADIUS,
+  SheetTopRow,
+} from "../components/LogoSheetLayout";
+import LightPlate from "../components/cam/LightPlate";
+import { UiStyleProvider } from "../context/UiStyleContext";
+import { TTL } from "../constants/tiktokTheme";
 import { useUserSettingsSheet } from "../context/UserSettingsModalContext";
 import { useResponsive } from "../utils/responsive";
 import { goBackFromCreateGameToMenu } from "../navigation/goBackFromCreateGameToMenu";
 import { ApiError } from "../api/types";
 import { usePlateModalCardWidth } from "../components/modals/usePlateModalCardWidth";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
-import AnimatedLogoHero from "../components/AnimatedLogoHero";
 import { game_images } from "../../assets/images";
 import { useAuthStore } from "../store/useUserStore";
 
@@ -324,352 +331,363 @@ export default function OnlineJoinScreen() {
         </ImageBackgroundWithLoadGate>
       }
     >
-      <SafeAreaView style={styles.safe} edges={["left", "right"]}>
-        <ScreenTopBar
-          variant="soloBackFromCenter"
-          horizontalPadding={horizontalPadding}
-          topIconSize={topIconSize}
-          showBack
-          onSettings={() => openUserSettings()}
-          onProfile={() => {}}
-          onBack={onBackPress}
-          backAccessibilityLabel={t("back_btn")}
-        />
-        <ScrollView
-          removeClippedSubviews={false}
-          contentContainerStyle={{
-            flexGrow: 1,
-            paddingBottom: 16,
-            alignItems: isTablet ? "center" : undefined,
-          }}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={[{ width: "100%" }, isTablet && { maxWidth: 560 }]}>
-            <View
-              style={{
-                paddingHorizontal: horizontalPadding,
-                alignItems: "center",
-              }}
-            >
-              <AnimatedLogoHero
-                logoSource={logoSource}
-                overlaySource={game_images.menuPlayIcon}
-                logoWidth={logo.width}
-                logoHeight={logo.height}
-                overlayLayout={storeIconOverlay}
-                marginTop={logoBlockMarginTop}
-                onPress={toggleSound}
-              />
-            </View>
+      <UiStyleProvider value="tiktokLight">
+        <SafeAreaView style={styles.safe} edges={["left", "right"]}>
+          <ScrollView
+            removeClippedSubviews={false}
+            contentContainerStyle={{
+              flexGrow: 1,
+              alignItems: isTablet ? "center" : undefined,
+            }}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={[styles.column, isTablet && { maxWidth: 560 }]}>
+              <View
+                style={{
+                  paddingHorizontal: horizontalPadding,
+                  alignItems: "center",
+                }}
+              >
+                <AnimatedLogoHero
+                  logoSource={logoSource}
+                  overlaySource={game_images.menuPlayIcon}
+                  logoWidth={logo.width}
+                  logoHeight={logo.height}
+                  overlayLayout={storeIconOverlay}
+                  marginTop={Math.max(0, logoBlockMarginTop - LOGO_LIFT)}
+                  onPress={toggleSound}
+                />
+              </View>
 
-            <View className="gap-5 w-full items-stretch">
-              <View style={styles.modalWrap}>
-                <View style={styles.namePlateShadow}>
-                  <ImageBackground
-                    source={backgrounds.bg005}
-                    resizeMode="stretch"
-                    imageStyle={{ borderRadius: 18 }}
-                    style={styles.namePlate}
-                  >
-                    <View style={styles.namePlateContent}>
-                      <CustomText
-                        variant="p"
-                        className="text-center"
-                        textColor="#762a05"
+              {/* Same layout as the host's lobby: the room in a white sheet under the logo. */}
+              <View style={styles.sheet}>
+                <SheetTopRow
+                  helpMode="online"
+                  onBack={onBackPress}
+                  backLabel={t("back_btn")}
+                  title={t("online_room_code_label")}
+                />
+                <View className="gap-5 w-full items-stretch">
+                  <View style={styles.modalWrap}>
+                    <View style={styles.namePlateShadow}>
+                      <LightPlate
+                        source={backgrounds.bg005}
+                        resizeMode="stretch"
+                        imageStyle={{ borderRadius: 18 }}
+                        style={styles.namePlate}
                       >
-                        {t("online_room_code_label")}
-                      </CustomText>
-                      <View style={styles.nameDivider} />
-                      <TouchableOpacity
-                        onPress={() => void copyCode()}
-                        activeOpacity={0.9}
-                      >
-                        <View style={styles.codeBox}>
-                          <CustomText
-                            variant="h4-headline"
-                            className="text-center tracking-[0.2em]"
-                            textColor="#592410"
+                        <View style={styles.namePlateContent}>
+                          <TouchableOpacity
+                            onPress={() => void copyCode()}
+                            activeOpacity={0.9}
                           >
-                            {joinCode}
-                          </CustomText>
-                        </View>
-                      </TouchableOpacity>
-                      <View style={styles.nameDivider} />
+                            <View style={styles.codeBox}>
+                              <CustomText
+                                variant="h4-headline"
+                                className="text-center tracking-[0.2em]"
+                                textColor={TTL.text}
+                              >
+                                {joinCode}
+                              </CustomText>
+                            </View>
+                          </TouchableOpacity>
+                          <View style={styles.nameDivider} />
 
-                      <View style={styles.quickActionsRow}>
-                        <Pressable
-                          onPress={() => void copyCode()}
-                          style={styles.quickActionItem}
-                        >
-                          <View className="flex-row items-center gap-2 justify-center">
-                            <Feather name="copy" size={18} color="#592410" />
+                          <View style={styles.quickActionsRow}>
+                            <Pressable
+                              onPress={() => void copyCode()}
+                              style={styles.quickActionItem}
+                            >
+                              <View className="flex-row items-center gap-2 justify-center">
+                                <Feather
+                                  name="copy"
+                                  size={18}
+                                  color={TTL.text}
+                                />
+                                <CustomText
+                                  variant="p-small"
+                                  textColor={TTL.text}
+                                  numberOfLines={2}
+                                >
+                                  {t("copy_link")}
+                                </CustomText>
+                              </View>
+                            </Pressable>
+                            <Pressable
+                              onPress={() => void shareCode()}
+                              style={styles.quickActionItem}
+                            >
+                              <View className="flex-row items-center gap-2 justify-center">
+                                <Feather
+                                  name="share-2"
+                                  size={18}
+                                  color={TTL.text}
+                                />
+                                <CustomText
+                                  variant="p-small"
+                                  textColor={TTL.text}
+                                  numberOfLines={2}
+                                >
+                                  {t("share")}
+                                </CustomText>
+                              </View>
+                            </Pressable>
+                          </View>
+                          <View style={styles.nameDivider} />
+                          <View style={styles.roomMetaBox}>
                             <CustomText
                               variant="p-small"
-                              textColor="#592410"
-                              numberOfLines={2}
+                              className="text-center"
+                              textColor={TTL.text}
                             >
-                              {t("copy_link")}
+                              {t("online_waiting_players_status", {
+                                defaultValue: "Waiting players: {{count}}",
+                                count: participantCount,
+                              })}
                             </CustomText>
-                          </View>
-                        </Pressable>
-                        <Pressable
-                          onPress={() => void shareCode()}
-                          style={styles.quickActionItem}
-                        >
-                          <View className="flex-row items-center gap-2 justify-center">
-                            <Feather name="share-2" size={18} color="#592410" />
                             <CustomText
-                              variant="p-small"
-                              textColor="#592410"
-                              numberOfLines={2}
+                              variant="p-xsmall"
+                              className="text-center mt-1"
+                              textColor={TTL.text2}
                             >
-                              {t("share")}
+                              {connLabel}
                             </CustomText>
                           </View>
-                        </Pressable>
-                      </View>
-                      <View style={styles.nameDivider} />
-                      <View style={styles.roomMetaBox}>
-                        <CustomText
-                          variant="p-small"
-                          className="text-center"
-                          textColor="#592410"
-                        >
-                          {t("online_waiting_players_status", {
-                            defaultValue: "Waiting players: {{count}}",
-                            count: participantCount,
-                          })}
-                        </CustomText>
-                        <CustomText
-                          variant="p-xsmall"
-                          className="text-center mt-1"
-                          textColor="#762a05"
-                        >
-                          {connLabel}
-                        </CustomText>
-                      </View>
+                        </View>
+                      </LightPlate>
                     </View>
-                  </ImageBackground>
+                  </View>
+
+                  <View
+                    style={[
+                      { paddingHorizontal: horizontalPadding },
+                      styles.ctaBelowSettings,
+                    ]}
+                  >
+                    <Animated.View
+                      style={{
+                        transform: [{ scale: playersPulse }],
+                      }}
+                      className="w-full"
+                    >
+                      <View className="flex-row flex-wrap gap-2 justify-center">
+                        {Array.from({
+                          length: Math.max(6, participantCount),
+                        }).map((_, i) => {
+                          const active = i < participantCount;
+                          return (
+                            <Animated.View
+                              key={i}
+                              style={{
+                                transform: [
+                                  {
+                                    scale: i < SLOT_MAX ? slotScale[i] : 1,
+                                  },
+                                ],
+                              }}
+                            >
+                              <View
+                                style={[
+                                  styles.playerSlotBg,
+                                  active
+                                    ? styles.playerSlotBgActive
+                                    : styles.playerSlotBgInactive,
+                                ]}
+                              >
+                                {active && i < SLOT_MAX ? (
+                                  <Animated.View
+                                    pointerEvents="none"
+                                    style={[
+                                      StyleSheet.absoluteFill,
+                                      {
+                                        borderRadius: 10,
+                                        backgroundColor: "#FFFFFF",
+                                        opacity: slotGlow[i],
+                                      },
+                                    ]}
+                                  />
+                                ) : null}
+                                <MaterialCommunityIcons
+                                  name={active ? "account-check" : "account"}
+                                  size={22}
+                                  color={active ? "#FFFFFF" : TTL.text2}
+                                />
+                              </View>
+                            </Animated.View>
+                          );
+                        })}
+                      </View>
+                    </Animated.View>
+
+                    <CustomText
+                      variant="p-small"
+                      className="text-center mt-6 px-2"
+                      textColor={TTL.text}
+                    >
+                      {participantCount < MIN_ONLINE_PLAYERS
+                        ? t("online_min_players_hint", {
+                            min: MIN_ONLINE_PLAYERS,
+                          })
+                        : t("online_guest_wait_host")}
+                    </CustomText>
+                  </View>
                 </View>
               </View>
-
-              <View
-                style={[
-                  { paddingHorizontal: horizontalPadding },
-                  styles.ctaBelowSettings,
-                ]}
-              >
-                <Animated.View
-                  style={{
-                    transform: [{ scale: playersPulse }],
-                  }}
-                  className="w-full"
-                >
-                  <View className="flex-row flex-wrap gap-2 justify-center">
-                    {Array.from({
-                      length: Math.max(6, participantCount),
-                    }).map((_, i) => {
-                      const active = i < participantCount;
-                      return (
-                        <Animated.View
-                          key={i}
-                          style={{
-                            transform: [
-                              {
-                                scale: i < SLOT_MAX ? slotScale[i] : 1,
-                              },
-                            ],
-                          }}
-                        >
-                          <ImageBackground
-                            source={backgrounds.bg005}
-                            resizeMode="stretch"
-                            imageStyle={{ borderRadius: 10 }}
-                            style={[
-                              styles.playerSlotBg,
-                              active
-                                ? styles.playerSlotBgActive
-                                : styles.playerSlotBgInactive,
-                            ]}
-                          >
-                            {active && i < SLOT_MAX ? (
-                              <Animated.View
-                                pointerEvents="none"
-                                style={[
-                                  StyleSheet.absoluteFill,
-                                  {
-                                    borderRadius: 10,
-                                    backgroundColor: "#ff9d00",
-                                    opacity: slotGlow[i],
-                                  },
-                                ]}
-                              />
-                            ) : null}
-                            <MaterialCommunityIcons
-                              name={active ? "account-check" : "account"}
-                              size={22}
-                              color={active ? "#b5f7c2" : "#d8d8d8"}
-                            />
-                          </ImageBackground>
-                        </Animated.View>
-                      );
-                    })}
-                  </View>
-                </Animated.View>
-
-                <CustomText
-                  variant="p-small"
-                  className="text-center mt-6 px-2"
-                  textColor="rgba(255,255,255,0.9)"
-                >
-                  {participantCount < MIN_ONLINE_PLAYERS
-                    ? t("online_min_players_hint", {
-                        min: MIN_ONLINE_PLAYERS,
-                      })
-                    : t("online_guest_wait_host")}
-                </CustomText>
-              </View>
             </View>
-          </View>
-        </ScrollView>
+          </ScrollView>
 
-        {copyToastVisible ? (
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              styles.copyToastOuter,
-              {
-                opacity: copyToastOpacity,
-                paddingHorizontal: horizontalPadding,
-              },
-            ]}
-          >
-            <ImageBackground
-              source={backgrounds.bg005}
-              resizeMode="stretch"
-              imageStyle={{ borderRadius: 14 }}
-              style={styles.copyToastPlate}
+          {copyToastVisible ? (
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.copyToastOuter,
+                {
+                  opacity: copyToastOpacity,
+                  paddingHorizontal: horizontalPadding,
+                },
+              ]}
             >
-              <CustomText
-                variant="p-small"
-                className="text-center"
-                textColor="#592410"
-              >
-                {t("online_code_copied_toast")}
-              </CustomText>
-            </ImageBackground>
-          </Animated.View>
-        ) : null}
-
-        {showLeaveGuestModal ? (
-          <Pressable
-            style={styles.plateModalBackdrop}
-            onPress={() => setShowLeaveGuestModal(false)}
-          >
-            <Pressable
-              style={[styles.plateModalCenter, { width: plateModalWidth }]}
-              onPress={() => {}}
-            >
-              <ImageBackground
+              <LightPlate
                 source={backgrounds.bg005}
                 resizeMode="stretch"
-                imageStyle={{ borderRadius: 18 }}
-                style={[styles.plateModalCard, { width: plateModalWidth }]}
+                imageStyle={{ borderRadius: 14 }}
+                style={styles.copyToastPlate}
               >
                 <CustomText
-                  variant="p"
-                  className="text-center"
-                  textColor="#762a05"
-                >
-                  {t("online_leave_guest_title")}
-                </CustomText>
-                <View style={styles.nameDivider} />
-                <CustomText
                   variant="p-small"
-                  className="text-center px-2"
-                  textColor="#592410"
+                  className="text-center"
+                  textColor={TTL.text}
                 >
-                  {t("online_leave_guest_message")}
+                  {t("online_code_copied_toast")}
                 </CustomText>
-                <View style={styles.modalBtnRow}>
-                  <Pressable
-                    style={styles.modalSecondaryBtn}
-                    onPress={() => setShowLeaveGuestModal(false)}
+              </LightPlate>
+            </Animated.View>
+          ) : null}
+
+          {showLeaveGuestModal ? (
+            <Pressable
+              style={styles.plateModalBackdrop}
+              onPress={() => setShowLeaveGuestModal(false)}
+            >
+              <Pressable
+                style={[styles.plateModalCenter, { width: plateModalWidth }]}
+                onPress={() => {}}
+              >
+                <LightPlate
+                  source={backgrounds.bg005}
+                  resizeMode="stretch"
+                  imageStyle={{ borderRadius: 18 }}
+                  style={[styles.plateModalCard, { width: plateModalWidth }]}
+                >
+                  <CustomText
+                    variant="p"
+                    className="text-center"
+                    textColor={TTL.text2}
                   >
-                    <CustomText variant="p-small" textColor="#592410">
-                      {t("cancel")}
-                    </CustomText>
-                  </Pressable>
+                    {t("online_leave_guest_title")}
+                  </CustomText>
+                  <View style={styles.nameDivider} />
+                  <CustomText
+                    variant="p-small"
+                    className="text-center px-2"
+                    textColor={TTL.text}
+                  >
+                    {t("online_leave_guest_message")}
+                  </CustomText>
+                  <View style={styles.modalBtnRow}>
+                    <Pressable
+                      style={styles.modalSecondaryBtn}
+                      onPress={() => setShowLeaveGuestModal(false)}
+                    >
+                      <CustomText variant="p-small" textColor={TTL.text}>
+                        {t("cancel")}
+                      </CustomText>
+                    </Pressable>
+                    <Pressable
+                      style={styles.modalPrimaryBtn}
+                      onPress={confirmLeaveGuest}
+                    >
+                      <CustomText variant="p-small" textColor="#fff">
+                        {t("online_leave_guest_confirm")}
+                      </CustomText>
+                    </Pressable>
+                  </View>
+                </LightPlate>
+              </Pressable>
+            </Pressable>
+          ) : null}
+
+          {showRoomEndedModal ? (
+            <Pressable
+              style={styles.plateModalBackdrop}
+              onPress={dismissRoomEndedAndExit}
+            >
+              <Pressable
+                style={[styles.plateModalCenter, { width: plateModalWidth }]}
+                onPress={() => {}}
+              >
+                <LightPlate
+                  source={backgrounds.bg005}
+                  resizeMode="stretch"
+                  imageStyle={{ borderRadius: 18 }}
+                  style={[styles.plateModalCard, { width: plateModalWidth }]}
+                >
+                  <CustomText
+                    variant="p"
+                    className="text-center"
+                    textColor={TTL.text2}
+                  >
+                    {t("online_room_ended_title")}
+                  </CustomText>
+                  <View style={styles.nameDivider} />
+                  <CustomText
+                    variant="p-small"
+                    className="text-center px-2"
+                    textColor={TTL.text}
+                  >
+                    {t("online_room_ended_guest_body")}
+                  </CustomText>
                   <Pressable
-                    style={styles.modalPrimaryBtn}
-                    onPress={confirmLeaveGuest}
+                    style={[
+                      styles.modalPrimaryBtn,
+                      { marginTop: 12, alignSelf: "stretch" },
+                    ]}
+                    onPress={dismissRoomEndedAndExit}
                   >
                     <CustomText variant="p-small" textColor="#fff">
-                      {t("online_leave_guest_confirm")}
+                      {t("ok")}
                     </CustomText>
                   </Pressable>
-                </View>
-              </ImageBackground>
+                </LightPlate>
+              </Pressable>
             </Pressable>
-          </Pressable>
-        ) : null}
-
-        {showRoomEndedModal ? (
-          <Pressable
-            style={styles.plateModalBackdrop}
-            onPress={dismissRoomEndedAndExit}
-          >
-            <Pressable
-              style={[styles.plateModalCenter, { width: plateModalWidth }]}
-              onPress={() => {}}
-            >
-              <ImageBackground
-                source={backgrounds.bg005}
-                resizeMode="stretch"
-                imageStyle={{ borderRadius: 18 }}
-                style={[styles.plateModalCard, { width: plateModalWidth }]}
-              >
-                <CustomText
-                  variant="p"
-                  className="text-center"
-                  textColor="#762a05"
-                >
-                  {t("online_room_ended_title")}
-                </CustomText>
-                <View style={styles.nameDivider} />
-                <CustomText
-                  variant="p-small"
-                  className="text-center px-2"
-                  textColor="#592410"
-                >
-                  {t("online_room_ended_guest_body")}
-                </CustomText>
-                <Pressable
-                  style={[
-                    styles.modalPrimaryBtn,
-                    { marginTop: 12, alignSelf: "stretch" },
-                  ]}
-                  onPress={dismissRoomEndedAndExit}
-                >
-                  <CustomText variant="p-small" textColor="#fff">
-                    {t("ok")}
-                  </CustomText>
-                </Pressable>
-              </ImageBackground>
-            </Pressable>
-          </Pressable>
-        ) : null}
-      </SafeAreaView>
+          ) : null}
+        </SafeAreaView>
+      </UiStyleProvider>
     </FullBleedStack>
   );
 }
 
 const styles = StyleSheet.create({
+  column: {
+    width: "100%",
+    flexGrow: 1,
+  },
+  // White panel under the logo, as on the host screen.
+  sheet: {
+    flexGrow: 1,
+    marginTop: SHEET_GAP,
+    paddingBottom: 24,
+    gap: 12,
+    backgroundColor: TTL.bg,
+    borderTopLeftRadius: SHEET_RADIUS,
+    borderTopRightRadius: SHEET_RADIUS,
+  },
   root: { flex: 1, backgroundColor: "#0a0a0a" },
   safe: { flex: 1, backgroundColor: "transparent" },
   plateModalBackdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(0,0,0,0.82)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "stretch",
     paddingHorizontal: 20,
@@ -697,18 +715,18 @@ const styles = StyleSheet.create({
   modalSecondaryBtn: {
     paddingVertical: 12,
     paddingHorizontal: 18,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,247,236,0.85)",
-    borderWidth: 1,
-    borderColor: "rgba(160,110,60,0.4)",
+    borderRadius: 8,
+    backgroundColor: TTL.fill,
+    borderWidth: 0,
+    borderColor: TTL.line,
   },
   modalPrimaryBtn: {
     paddingVertical: 12,
     paddingHorizontal: 18,
-    borderRadius: 12,
-    backgroundColor: "#8b2b1a",
-    borderWidth: 1,
-    borderColor: "rgba(89,36,16,0.6)",
+    borderRadius: 8,
+    backgroundColor: TTL.primary,
+    borderWidth: 0,
+    borderColor: TTL.text2,
   },
   ctaBelowSettings: {
     zIndex: 1,
@@ -722,10 +740,10 @@ const styles = StyleSheet.create({
   },
   namePlateShadow: {
     shadowColor: "#fff",
-    shadowOpacity: 1,
+    shadowOpacity: 0,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 14,
+    elevation: 0,
     width: "100%",
     alignSelf: "stretch",
   },
@@ -733,15 +751,15 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     paddingVertical: 20,
     alignItems: "center",
-    shadowColor: "#ffd800",
+    shadowColor: "transparent",
     shadowOpacity: 0.8,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 4 },
     elevation: 14,
     borderTopWidth: 1,
-    borderTopColor: "rgba(251,192,32,1)",
+    borderTopColor: TTL.line,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(160,110,60,0.7)",
+    borderBottomColor: TTL.line,
     overflow: "hidden",
     width: "100%",
     alignSelf: "stretch",
@@ -758,16 +776,17 @@ const styles = StyleSheet.create({
     maxWidth: "100%",
     height: 1,
     marginVertical: 10,
-    backgroundColor: "rgba(89,36,16,0.5)",
+    // No rules between sections: spacing separates them.
+    backgroundColor: "transparent",
   },
   codeBox: {
     width: "100%",
     maxWidth: "100%",
     alignSelf: "stretch",
-    backgroundColor: "rgba(255,247,236,0.9)",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(160,110,60,0.4)",
+    backgroundColor: TTL.fill,
+    borderRadius: 8,
+    borderWidth: 0,
+    borderColor: TTL.line,
     paddingVertical: 16,
     paddingHorizontal: 18,
   },
@@ -780,37 +799,37 @@ const styles = StyleSheet.create({
   quickActionItem: {
     flex: 1,
     minWidth: 0,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(160,110,60,0.3)",
-    backgroundColor: "rgba(255,247,236,0.6)",
+    borderRadius: 8,
+    borderWidth: 0,
+    borderColor: TTL.line,
+    backgroundColor: TTL.fill,
     paddingVertical: 10,
     paddingHorizontal: 8,
   },
   roomMetaBox: {
     width: "100%",
     alignSelf: "stretch",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(160,110,60,0.3)",
-    backgroundColor: "rgba(255,247,236,0.6)",
+    borderRadius: 8,
+    borderWidth: 0,
+    borderColor: TTL.line,
+    backgroundColor: TTL.fill,
     paddingVertical: 10,
     paddingHorizontal: 12,
   },
   playerSlotBg: {
     width: 48,
     height: 48,
-    borderRadius: 10,
+    borderRadius: 8,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
+    borderWidth: 0,
   },
   playerSlotBgActive: {
-    borderColor: "rgba(160,110,60,0.55)",
+    backgroundColor: TTL.primary,
   },
   playerSlotBgInactive: {
-    borderColor: "rgba(160,110,60,0.3)",
+    backgroundColor: TTL.fill,
   },
   copyToastOuter: {
     position: "absolute",
@@ -825,8 +844,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     borderRadius: 14,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(160,110,60,0.45)",
+    borderWidth: 0,
+    borderColor: TTL.line,
     shadowColor: "#000",
     shadowOpacity: 0.22,
     shadowRadius: 10,

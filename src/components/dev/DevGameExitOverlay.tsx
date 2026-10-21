@@ -1,17 +1,38 @@
-import React from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import React, { useRef } from "react";
+import { Animated, PanResponder, Pressable, StyleSheet } from "react-native";
 import { CommonActions, useNavigation } from "@react-navigation/native";
 
 import { useGameStore } from "../../store/useGameStore";
 import CustomText from "../common/CustomText";
 import AudioManager from "../../utils/audioManager";
 
+/** Finger travel before a touch counts as a drag instead of a tap. */
+const DRAG_THRESHOLD = 4;
+
 /**
  * Floating exit when a dev-seeded game is active (gameId prefix dev_).
+ * It can be dragged anywhere on the screen, like the Expo dev-menu button, so
+ * it never covers the part of the game being checked; a tap still exits.
  */
 export default function DevGameExitOverlay() {
   const navigation = useNavigation();
   const gameId = useGameStore((s) => s.gameId);
+  const position = useRef(new Animated.ValueXY()).current;
+
+  const dragResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) =>
+        Math.abs(g.dx) > DRAG_THRESHOLD || Math.abs(g.dy) > DRAG_THRESHOLD,
+      // Continue from where the button was left last time.
+      onPanResponderGrant: () => position.extractOffset(),
+      onPanResponderMove: Animated.event(
+        [null, { dx: position.x, dy: position.y }],
+        { useNativeDriver: false },
+      ),
+      onPanResponderRelease: () => position.extractOffset(),
+      onPanResponderTerminate: () => position.extractOffset(),
+    }),
+  ).current;
 
   if (!__DEV__ || !gameId?.startsWith("dev_")) return null;
 
@@ -39,7 +60,10 @@ export default function DevGameExitOverlay() {
   };
 
   return (
-    <View pointerEvents="box-none" style={styles.wrap}>
+    <Animated.View
+      style={[styles.wrap, { transform: position.getTranslateTransform() }]}
+      {...dragResponder.panHandlers}
+    >
       <Pressable
         onPress={exit}
         style={styles.btn}
@@ -49,7 +73,7 @@ export default function DevGameExitOverlay() {
           Exit lab
         </CustomText>
       </Pressable>
-    </View>
+    </Animated.View>
   );
 }
 

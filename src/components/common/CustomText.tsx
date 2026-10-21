@@ -2,10 +2,14 @@
 import React, { ReactNode, useMemo } from "react";
 import {
   Platform,
+  StyleSheet,
   Text,
   TextProps,
+  TextStyle,
   useWindowDimensions,
 } from "react-native";
+
+import { useUiStyle } from "../../context/UiStyleContext";
 
 type TextVariant =
   | "h0"
@@ -48,6 +52,48 @@ const SINGLE_LINE_SHRINK_VARIANTS = new Set<TextVariant>([
   "label",
 ]);
 
+/**
+ * TikTok look (see `UiStyleContext`): one family, smaller display sizes. The
+ * game's display variants (h0–h5) are far larger than app UI headings.
+ */
+const TIKTOK_TEXT: Record<TextVariant, { size: number; family: string }> = {
+  h0: { size: 48, family: "TikTokSans-ExtraBold" },
+  h1: { size: 40, family: "TikTokSans-ExtraBold" },
+  h2: { size: 32, family: "TikTokSans-ExtraBold" },
+  "h2-small": { size: 22, family: "TikTokSans-Bold" },
+  "h2-headline": { size: 26, family: "TikTokSans-Bold" },
+  h3: { size: 28, family: "TikTokSans-ExtraBold" },
+  "h3-headline": { size: 22, family: "TikTokSans-Bold" },
+  "h3-small": { size: 20, family: "TikTokSans-Bold" },
+  h4: { size: 24, family: "TikTokSans-Bold" },
+  "h4-headline": { size: 22, family: "TikTokSans-Bold" },
+  h5: { size: 20, family: "TikTokSans-Bold" },
+  "h5-headline": { size: 17, family: "TikTokSans-Bold" },
+  h6: { size: 15, family: "TikTokSans-SemiBold" },
+  "h6-headline": { size: 18, family: "TikTokSans-Bold" },
+  p: { size: 15, family: "TikTokSans-Medium" },
+  "p-small": { size: 13, family: "TikTokSans-Medium" },
+  "p-xsmall": { size: 11, family: "TikTokSans-Medium" },
+  label: { size: 17, family: "TikTokSans-SemiBold" },
+  footnote: { size: 13, family: "TikTokSans-Regular" },
+  quote: { size: 18, family: "TikTokSans-Medium" },
+};
+
+/** An inline `fontWeight` picks the matching TikTok Sans face (the family has no synthetic bold). */
+function tiktokFamilyForWeight(
+  weight: TextStyle["fontWeight"],
+  fallback: string,
+): string {
+  if (weight === undefined || weight === "normal") return fallback;
+  const n = weight === "bold" ? 700 : Number(weight);
+  if (!Number.isFinite(n)) return fallback;
+  if (n >= 800) return "TikTokSans-ExtraBold";
+  if (n >= 700) return "TikTokSans-Bold";
+  if (n >= 600) return "TikTokSans-SemiBold";
+  if (n >= 500) return "TikTokSans-Medium";
+  return "TikTokSans-Regular";
+}
+
 interface Props extends TextProps {
   children: ReactNode;
   variant?: TextVariant;
@@ -74,6 +120,9 @@ export default function CustomText({
   sizeDelta = 0,
   ...rest
 }: Props) {
+  const uiStyle = useUiStyle();
+  const tiktok = uiStyle === "game" ? null : TIKTOK_TEXT[variant];
+  const lightUi = uiStyle === "tiktokLight";
   const { width } = useWindowDimensions();
   const { style: restStyle, ...textRest } = rest;
   const isTablet = width >= 768;
@@ -176,15 +225,29 @@ export default function CustomText({
 
   const isTailwindTextClass =
     typeof textColor === "string" && textColor.startsWith("text-");
-  const colorClass = isTailwindTextClass ? (textColor as string) : "text-white";
+  // Default text is white, except on the light TikTok background.
+  const colorClass = isTailwindTextClass
+    ? (textColor as string)
+    : lightUi
+      ? ""
+      : "text-white";
   const inlineColor =
     textColor && !isTailwindTextClass
       ? { color: textColor as string }
-      : undefined;
+      : lightUi && !isTailwindTextClass
+        ? { color: "#161823" }
+        : undefined;
 
   return (
     <Text
-      className={[fontClass, colorClass, sanitizedClassName]
+      className={[
+        fontClass,
+        colorClass,
+        // Tilted headings belong to the game look.
+        tiktok
+          ? sanitizedClassName.replace(/-?rotate-\S+/g, "")
+          : sanitizedClassName,
+      ]
         .filter(Boolean)
         .join(" ")
         .trim()}
@@ -198,7 +261,7 @@ export default function CustomText({
         : {})}
       {...textRest}
       style={[
-        { fontSize },
+        { fontSize: tiktok ? tiktok.size + sizeDelta : fontSize },
         inlineColor,
         headingSingleLineShrink && {
           flexShrink: 1,
@@ -218,6 +281,14 @@ export default function CustomText({
           textShadowRadius: 0,
         },
         restStyle,
+        // Last, so screens that set their own game font inline still switch.
+        tiktok && {
+          fontFamily: tiktokFamilyForWeight(
+            StyleSheet.flatten(restStyle)?.fontWeight,
+            tiktok.family,
+          ),
+          fontWeight: "normal",
+        },
       ]}
     >
       {children}

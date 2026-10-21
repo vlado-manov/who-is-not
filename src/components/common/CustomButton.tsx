@@ -11,6 +11,7 @@ import {
 import AppImage from "../AppImage";
 import { LinearGradient } from "expo-linear-gradient";
 import AudioManager from "../../utils/audioManager";
+import { useUiStyle } from "../../context/UiStyleContext";
 
 /* -------------------------------------------------------------------------- */
 /* TYPES */
@@ -30,6 +31,12 @@ export type ButtonSize = "xs" | "sm" | "md" | "lg";
 interface CustomButtonProps {
   title: string;
   onPress?: (e: GestureResponderEvent) => void;
+  /**
+   * Fires on touch-down, before `onPress`. For buttons where the moment of the
+   * touch matters (the DeathMatch stopwatch); the click sound then plays on
+   * touch-down as well.
+   */
+  onPressIn?: (e: GestureResponderEvent) => void;
 
   variant?: ButtonVariant;
   appearance?: ButtonAppearance;
@@ -144,6 +151,33 @@ const BTN_SIZE_HEIGHT: Record<ButtonSize, number> = {
   lg: 96,
 };
 
+/* TikTok look (see `UiStyleContext`): flat, 8pt radius, sentence-case label. */
+const TIKTOK_BTN_COLORS: Record<ButtonAppearance, string> = {
+  primary: "#FE2C55",
+  secondary: "rgba(120,120,128,0.45)",
+  tertiary: "#FFFFFF",
+  danger: "#FE2C55",
+  custom: "#FE2C55",
+};
+
+/** On white: grey secondary with dark text, black tertiary. */
+const TIKTOK_LIGHT_BTN_COLORS: Record<ButtonAppearance, string> = {
+  primary: "#FE2C55",
+  secondary: "#F1F1F2",
+  tertiary: "#161823",
+  danger: "#FE2C55",
+  custom: "#FE2C55",
+};
+
+const TIKTOK_BTN_HEIGHT: Record<ButtonSize, number> = {
+  xs: 40,
+  sm: 44,
+  md: 48,
+  lg: 52,
+};
+
+const TIKTOK_BTN_MAX_FONT = 17;
+
 function getPresetOverlayOffsets(
   preset: CustomButtonProps["iconOverlayPreset"],
   iconPosition: "inline" | "leftAbsolute",
@@ -184,6 +218,7 @@ function mergeIconOverlayOffsets(
 export default function CustomButton({
   title,
   onPress,
+  onPressIn: onPressInProp,
 
   variant = "default",
   appearance = "primary",
@@ -239,18 +274,25 @@ export default function CustomButton({
   buttonClassName,
   accessibilityLabel: accessibilityLabelProp,
 }: CustomButtonProps) {
+  const uiStyle = useUiStyle();
   const accessibilityLabel =
     accessibilityLabelProp ?? (title ? title : undefined);
   const pressAnim = useRef(new Animated.Value(0)).current;
 
   /* ----------------------------- Animations ------------------------------ */
 
-  const onPressIn = () =>
+  const handlePressIn = (e: GestureResponderEvent) => {
+    // The caller first: it may be timing the touch.
+    if (onPressInProp) {
+      onPressInProp(e);
+      AudioManager.playButtonClick();
+    }
     Animated.timing(pressAnim, {
       toValue: 1,
       duration: 80,
       useNativeDriver: true,
     }).start();
+  };
 
   const onPressOut = () =>
     Animated.timing(pressAnim, {
@@ -369,6 +411,116 @@ export default function CustomButton({
 
   /* ------------------------------------------------------------------------ */
 
+  if (uiStyle !== "game") {
+    const lightUi = uiStyle === "tiktokLight";
+    const tiktokHeight =
+      variant === "circle" ? diameter : (height ?? TIKTOK_BTN_HEIGHT[btnSize]);
+    const tiktokColors = lightUi ? TIKTOK_LIGHT_BTN_COLORS : TIKTOK_BTN_COLORS;
+    const darkLabel = lightUi
+      ? appearance === "secondary"
+      : appearance === "tertiary";
+    const tiktokLabelColor = titleColor ?? (darkLabel ? "#161823" : "#fff");
+    return (
+      <View
+        // Tilts belong to the game look.
+        className={buttonClassName?.replace(/-?rotate-\S+/g, "").trim()}
+        style={fullWidth && { width: "100%" }}
+      >
+        <Pressable
+          disabled={disabled}
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabel}
+          onPress={(e) => {
+            if (!onPressInProp) AudioManager.playButtonClick();
+            onPress?.(e);
+          }}
+          onPressIn={handlePressIn}
+          onPressOut={onPressOut}
+        >
+          <Animated.View
+            style={{
+              transform: [{ scale }],
+              height: tiktokHeight,
+              width: variant === "circle" ? diameter : "100%",
+              borderRadius: variant === "circle" ? diameter / 2 : 8,
+              backgroundColor: solidColor ?? tiktokColors[appearance],
+              borderWidth: borderWidthProp ?? 0,
+              borderColor: borderColor ?? "transparent",
+              opacity: disabled ? 0.5 : 1,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              paddingHorizontal: variant === "circle" ? 0 : 16,
+              overflow: "hidden",
+            }}
+          >
+            {iconNode}
+            {icon && (
+              <AppImage
+                source={icon}
+                contentFit="contain"
+                style={{
+                  width: Math.min(iw, tiktokHeight * 0.6),
+                  height: Math.min(ih, tiktokHeight * 0.6),
+                }}
+              />
+            )}
+            {title ? (
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+                style={{
+                  flexShrink: 1,
+                  color: tiktokLabelColor,
+                  fontSize: Math.min(resolvedFontSize, TIKTOK_BTN_MAX_FONT),
+                  fontFamily: "TikTokSans-Bold",
+                }}
+              >
+                {title}
+              </Text>
+            ) : null}
+            <Animated.View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                inset: 0,
+                backgroundColor: "#000",
+                opacity: overlayOpacity,
+              }}
+            />
+          </Animated.View>
+        </Pressable>
+        {label && (
+          <View
+            style={{
+              position: "absolute",
+              top: -8,
+              ...(labelSide === "left" ? { left: 8 } : { right: 8 }),
+              backgroundColor: "#fff",
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+              borderRadius: 4,
+              maxWidth: 148,
+            }}
+          >
+            <Text
+              numberOfLines={1}
+              style={{
+                color: "#161823",
+                fontSize: 10,
+                fontFamily: "TikTokSans-Bold",
+              }}
+            >
+              {label}
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
   return (
     <View
       className={buttonClassName}
@@ -405,10 +557,10 @@ export default function CustomButton({
           accessibilityRole="button"
           accessibilityLabel={accessibilityLabel}
           onPress={(e) => {
-            AudioManager.playButtonClick();
+            if (!onPressInProp) AudioManager.playButtonClick();
             onPress?.(e);
           }}
-          onPressIn={onPressIn}
+          onPressIn={handlePressIn}
           onPressOut={onPressOut}
         >
           <View style={{ position: "relative", width: "100%" }}>

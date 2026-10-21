@@ -1,4 +1,11 @@
-import { useCallback, useEffect, Fragment, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  Fragment,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   View,
   TouchableOpacity,
@@ -11,15 +18,12 @@ import {
   Easing,
   Share,
   Pressable,
-  ImageBackground,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import FullBleedStack from "../components/FullBleedStack";
-import ImageBackgroundWithLoadGate from "../components/ImageBackgroundWithLoadGate";
-import WarmBubblesOverlay from "../components/WarmBubblesOverlay";
 import CustomText from "../components/common/CustomText";
 import CustomButton from "../components/common/CustomButton";
 import { backgrounds } from "../../assets/backgrounds";
@@ -44,7 +48,18 @@ import {
   LOBBY_START_MESSAGE_TYPE,
   MIN_ONLINE_PLAYERS,
 } from "../constants/onlineLobby";
-import ScreenTopBar from "../components/common/ScreenTopBar";
+import ImageBackgroundWithLoadGate from "../components/ImageBackgroundWithLoadGate";
+import WarmBubblesOverlay from "../components/WarmBubblesOverlay";
+import AnimatedLogoHero from "../components/AnimatedLogoHero";
+import {
+  LOGO_LIFT,
+  SHEET_GAP,
+  SHEET_RADIUS,
+  SheetTopRow,
+} from "../components/LogoSheetLayout";
+import LightPlate from "../components/cam/LightPlate";
+import { UiStyleProvider } from "../context/UiStyleContext";
+import { TTL } from "../constants/tiktokTheme";
 import { useUserSettingsSheet } from "../context/UserSettingsModalContext";
 import { useResponsive } from "../utils/responsive";
 import { goBackFromCreateGameToMenu } from "../navigation/goBackFromCreateGameToMenu";
@@ -59,7 +74,6 @@ import {
   inviteFriendToGame,
   type FriendItem,
 } from "../api/friends";
-import AnimatedLogoHero from "../components/AnimatedLogoHero";
 import Round1TransitionOverlay from "../components/Round1TransitionOverlay";
 import { game_images } from "../../assets/images";
 import { useAuthStore } from "../store/useUserStore";
@@ -134,7 +148,9 @@ export default function OnlineHostScreen() {
   const [copyToastVisible, setCopyToastVisible] = useState(false);
   const copyToastOpacity = useRef(new Animated.Value(0)).current;
   const [friendsForInvite, setFriendsForInvite] = useState<FriendItem[]>([]);
-  const [invitedFriendIds, setInvitedFriendIds] = useState<Set<string>>(new Set());
+  const [invitedFriendIds, setInvitedFriendIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   const showCopyToast = useCallback(() => {
     setCopyToastVisible(true);
@@ -216,7 +232,9 @@ export default function OnlineHostScreen() {
         setAvailablePacks(accessible);
         setSelectedSlugs((prev) => {
           if (accessible.length === 0) return prev;
-          const valid = prev.filter((s) => accessible.some((p) => p.slug === s));
+          const valid = prev.filter((s) =>
+            accessible.some((p) => p.slug === s),
+          );
           if (valid.length > 0) return valid;
           const main = accessible.find((p) => isMainPack(p.slug));
           return [main?.slug ?? accessible[0].slug];
@@ -546,703 +564,721 @@ export default function OnlineHostScreen() {
         </ImageBackgroundWithLoadGate>
       }
     >
-      <SafeAreaView style={styles.safe} edges={["left", "right"]}>
-        <ScreenTopBar
-          variant="soloBackFromCenter"
-          horizontalPadding={horizontalPadding}
-          topIconSize={topIconSize}
-          showBack
-          onSettings={() => openUserSettings()}
-          onProfile={() => {}}
-          onBack={onBackPress}
-          backAccessibilityLabel={t("back_btn")}
-        />
-        <ScrollView
-          removeClippedSubviews={false}
-          contentContainerStyle={{
-            flexGrow: 1,
-            paddingBottom: 16,
-            alignItems: isTablet ? "center" : undefined,
-          }}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={[{ width: "100%" }, isTablet && { maxWidth: 560 }]}>
-            <View
-              style={{
-                paddingHorizontal: horizontalPadding,
-                alignItems: "center",
-              }}
-            >
-              <AnimatedLogoHero
-                logoSource={logoSource}
-                overlaySource={game_images.menuPlayIcon}
-                logoWidth={logo.width}
-                logoHeight={logo.height}
-                overlayLayout={storeIconOverlay}
-                marginTop={logoBlockMarginTop}
-                onPress={toggleSound}
-              />
-            </View>
-
-            {!joinCode ? (
-              <Animated.View
+      <UiStyleProvider value="tiktokLight">
+        <SafeAreaView style={styles.safe} edges={["left", "right"]}>
+          <ScrollView
+            removeClippedSubviews={false}
+            contentContainerStyle={{
+              flexGrow: 1,
+              alignItems: isTablet ? "center" : undefined,
+            }}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={[styles.column, isTablet && { maxWidth: 560 }]}>
+              <View
                 style={{
-                  opacity: settingsOpacity,
-                  transform: [{ translateY: settingsTranslateY }],
+                  paddingHorizontal: horizontalPadding,
+                  alignItems: "center",
                 }}
-                className="gap-4 w-full items-stretch"
               >
-                <View style={styles.modalWrap}>
-                  <View style={styles.namePlateShadow}>
-                    <ImageBackground
-                      source={backgrounds.bg005}
-                      resizeMode="stretch"
-                      imageStyle={{ borderRadius: 18 }}
-                      style={styles.namePlate}
-                    >
-                      <View style={styles.namePlateContent}>
-                        <CustomText
-                          variant="p"
-                          className="text-center"
-                          textColor="#762a05"
-                        >
-                          {t("game_settings")}
-                        </CustomText>
-                        <View style={styles.nameDivider} />
-                        <View style={styles.settingsSection}>
-                          <CustomText
-                            variant="h6"
-                            className="text-center mb-2"
-                            textColor="#592410"
-                          >
-                            {t("lives_per_player")}
-                          </CustomText>
-                          <View style={styles.livesRow}>
-                            {LIVES_OPTIONS.map((l) => (
-                              <Pressable
-                                key={l}
-                                onPress={() => {
-                                  AudioManager.playButtonClick();
-                                  setSelectedLives(l);
-                                }}
-                                style={[
-                                  styles.livesOption,
-                                  selectedLives === l &&
-                                    styles.livesOptionSelected,
-                                ]}
-                              >
-                                <CustomText
-                                  variant="p"
-                                  textColor={
-                                    selectedLives === l ? "#592410" : "#762a05"
-                                  }
-                                >
-                                  {String(l)}
-                                </CustomText>
-                              </Pressable>
-                            ))}
-                          </View>
-                        </View>
-                        <View style={styles.nameDivider} />
-                        <View style={styles.settingsSection}>
-                          <CustomText
-                            variant="h6"
-                            className="text-center mb-2"
-                            textColor="#592410"
-                          >
-                            {t("time_for_discussion")}
-                          </CustomText>
-                          <View style={styles.dropdownWrap}>
-                            <Pressable
-                              style={styles.dropdownTrigger}
-                              onPress={() => {
-                                AudioManager.playButtonClick();
-                                setOpenTimeDropdown((v) => !v);
-                              }}
-                            >
-                              <CustomText variant="p" textColor="#592410">
-                                {selectedDiscussionLabel}
-                              </CustomText>
-                              <FontAwesome
-                                name={
-                                  openTimeDropdown ? "angle-up" : "angle-down"
-                                }
-                                size={20}
-                                color="#762a05"
-                              />
-                            </Pressable>
-                            {openTimeDropdown ? (
-                              <View style={styles.dropdownList}>
-                                <ScrollView
-                                  nestedScrollEnabled
-                                  showsVerticalScrollIndicator={false}
-                                  keyboardShouldPersistTaps="handled"
-                                >
-                                  {TIME_OPTIONS.map((sec) => (
-                                    <Pressable
-                                      key={sec}
-                                      style={[
-                                        styles.dropdownItem,
-                                        sec === selectedSec &&
-                                          styles.dropdownItemSelected,
-                                      ]}
-                                      onPress={() => {
-                                        AudioManager.playButtonClick();
-                                        setSelectedSec(sec);
-                                        setOpenTimeDropdown(false);
-                                      }}
-                                    >
-                                      <CustomText
-                                        variant="p-small"
-                                        textColor={
-                                          sec === selectedSec
-                                            ? "#762a05"
-                                            : "#592410"
-                                        }
-                                      >
-                                        {formatDiscussionLabel(sec)}
-                                      </CustomText>
-                                    </Pressable>
-                                  ))}
-                                </ScrollView>
-                              </View>
-                            ) : null}
-                          </View>
-                        </View>
-                        <View style={styles.nameDivider} />
-                        <View
-                          style={[styles.settingsSection, styles.packsSection]}
-                        >
-                          <CustomText
-                            variant="h6"
-                            className="text-center mb-2"
-                            textColor="#592410"
-                          >
-                            {t("packages_included")}
-                          </CustomText>
-                          {packsLoading ? (
-                            <View style={styles.packsLoading}>
-                              <ActivityIndicator size="small" color="#762a05" />
-                            </View>
-                          ) : (
-                            <ScrollView
-                              style={styles.packsScroll}
-                              contentContainerStyle={styles.packsScrollContent}
-                              showsVerticalScrollIndicator={false}
-                              nestedScrollEnabled
-                            >
-                              {availablePacks.length === 0 ? (
-                                <CustomText
-                                  variant="p-small"
-                                  className="text-center py-2"
-                                  textColor="#762a05"
-                                >
-                                  {t("no_packs_available") ||
-                                    "No question packs available."}
-                                </CustomText>
-                              ) : (
-                                <View style={styles.packsList}>
-                                  {availablePacks.map((pack) => {
-                                    const checked = selectedSlugs.includes(
-                                      pack.slug,
-                                    );
-                                    const isMain = isMainPack(pack.slug);
-                                    return (
-                                      <Pressable
-                                        key={pack.slug}
-                                        onPress={() => {
-                                          AudioManager.playButtonClick();
-                                          setSelectedSlugs((prev) => {
-                                            if (prev.includes(pack.slug)) {
-                                              if (prev.length === 1) {
-                                                Alert.alert(
-                                                  t("required_alert_title"),
-                                                  t("required_alert_message"),
-                                                );
-                                                return prev;
-                                              }
-                                              return prev.filter(
-                                                (x) => x !== pack.slug,
-                                              );
-                                            }
-                                            if (prev.length >= 5) {
-                                              Alert.alert(
-                                                t("limit_alert_title"),
-                                                t("limit_alert_message"),
-                                              );
-                                              return prev;
-                                            }
-                                            return [...prev, pack.slug];
-                                          });
-                                        }}
-                                        style={[
-                                          styles.packRow,
-                                          checked && styles.packRowChecked,
-                                        ]}
-                                      >
-                                        <CustomText
-                                          variant="p-small"
-                                          textColor={
-                                            checked ? "#592410" : "#762a05"
-                                          }
-                                        >
-                                          {pack.title} ({pack.questionsCount})
-                                          {isMain ? " ★" : ""}
-                                        </CustomText>
-                                        <View
-                                          style={[
-                                            styles.checkbox,
-                                            checked && styles.checkboxChecked,
-                                          ]}
-                                        >
-                                          {checked ? (
-                                            <FontAwesome
-                                              name="check"
-                                              size={12}
-                                              color="#fff"
-                                            />
-                                          ) : null}
-                                        </View>
-                                      </Pressable>
-                                    );
-                                  })}
-                                </View>
-                              )}
-                            </ScrollView>
-                          )}
-                        </View>
-                      </View>
-                    </ImageBackground>
-                  </View>
-                </View>
-                <View
-                  style={[
-                    { paddingHorizontal: 24, marginTop: 8 },
-                    styles.ctaBelowSettings,
-                  ]}
-                >
-                  {createError ? (
-                    <CustomText className="text-red-200 text-center">
-                      {createError}
-                    </CustomText>
-                  ) : null}
-                  <CustomButton
-                    title={t("online_create_room_btn")}
-                    fullWidth
-                    onPress={() => {
-                      AudioManager.playButtonClick();
-                      void handleCreateRoom();
-                    }}
-                    disabled={creating}
-                    backgroundImage={backgrounds.bg026}
-                    shadowColor="#005f07"
-                  />
-                  {creating ? (
-                    <ActivityIndicator color="#fff" size="large" />
-                  ) : null}
-                </View>
-              </Animated.View>
-            ) : (
-              <Animated.View
-                style={{
-                  opacity: roomOpacity,
-                  transform: [{ translateY: roomTranslateY }],
-                }}
-                className="gap-5 w-full items-stretch"
-              >
-                <View style={styles.modalWrap}>
-                  <View style={styles.namePlateShadow}>
-                    <ImageBackground
-                      source={backgrounds.bg005}
-                      resizeMode="stretch"
-                      imageStyle={{ borderRadius: 18 }}
-                      style={styles.namePlate}
-                    >
-                      <View style={styles.namePlateContent}>
-                        <CustomText
-                          variant="p"
-                          className="text-center"
-                          textColor="#762a05"
-                        >
-                          {t("online_room_code_label")}
-                        </CustomText>
-                        <View style={styles.nameDivider} />
-                        <TouchableOpacity
-                          onPress={() => void copyCode()}
-                          activeOpacity={0.9}
-                        >
-                          <View style={styles.codeBox}>
-                            <CustomText
-                              variant="h4-headline"
-                              className="text-center tracking-[0.2em]"
-                              textColor="#592410"
-                            >
-                              {joinCode}
-                            </CustomText>
-                          </View>
-                        </TouchableOpacity>
-                        <View style={styles.nameDivider} />
+                <AnimatedLogoHero
+                  logoSource={logoSource}
+                  overlaySource={game_images.menuPlayIcon}
+                  logoWidth={logo.width}
+                  logoHeight={logo.height}
+                  overlayLayout={storeIconOverlay}
+                  marginTop={Math.max(0, logoBlockMarginTop - LOGO_LIFT)}
+                  onPress={toggleSound}
+                />
+              </View>
 
-                        <View style={styles.quickActionsRow}>
-                          <Pressable
-                            onPress={() => void copyCode()}
-                            style={styles.quickActionItem}
-                          >
-                            <View className="flex-row items-center gap-2 justify-center">
-                              <Feather name="copy" size={18} color="#592410" />
-                              <CustomText
-                                variant="p-small"
-                                textColor="#592410"
-                                numberOfLines={2}
-                              >
-                                {t("copy_link")}
-                              </CustomText>
-                            </View>
-                          </Pressable>
-                          <Pressable
-                            onPress={() => void shareCode()}
-                            style={styles.quickActionItem}
-                          >
-                            <View className="flex-row items-center gap-2 justify-center">
-                              <Feather
-                                name="share-2"
-                                size={18}
-                                color="#592410"
-                              />
-                              <CustomText
-                                variant="p-small"
-                                textColor="#592410"
-                                numberOfLines={2}
-                              >
-                                {t("share")}
-                              </CustomText>
-                            </View>
-                          </Pressable>
-                        </View>
-                        <View style={styles.nameDivider} />
-                        <View style={styles.roomMetaBox}>
-                          <CustomText
-                            variant="p-small"
-                            className="text-center"
-                            textColor="#592410"
-                          >
-                            {t("online_waiting_players_status", {
-                              defaultValue: "Waiting players: {{count}}",
-                              count: participantCount,
-                            })}
-                          </CustomText>
-                          <CustomText
-                            variant="p-xsmall"
-                            className="text-center mt-1"
-                            textColor="#762a05"
-                          >
-                            {connLabel}
-                          </CustomText>
-                          {hostSecret ? (
-                            <CustomText
-                              variant="p-xsmall"
-                              className="text-center mt-2"
-                              textColor="#762a05"
-                            >
-                              {t("online_host_secret_hint")}
-                            </CustomText>
-                          ) : null}
-                        </View>
-                      </View>
-                    </ImageBackground>
-                  </View>
-                </View>
-
-                <View
-                  style={[
-                    { paddingHorizontal: horizontalPadding },
-                    styles.ctaBelowSettings,
-                  ]}
-                >
+              {/* The options sit in a white sheet under the logo, down to the bottom. */}
+              <View style={styles.sheet}>
+                <SheetTopRow
+                  helpMode="online"
+                  onBack={onBackPress}
+                  backLabel={t("back_btn")}
+                  title={
+                    joinCode ? t("online_room_code_label") : t("game_settings")
+                  }
+                />
+                {!joinCode ? (
                   <Animated.View
                     style={{
-                      transform: [{ scale: playersPulse }],
+                      opacity: settingsOpacity,
+                      transform: [{ translateY: settingsTranslateY }],
                     }}
-                    className="w-full"
+                    className="gap-4 w-full items-stretch"
                   >
-                    <View className="flex-row flex-wrap gap-2 justify-center">
-                      {Array.from({
-                        length: Math.max(6, participantCount),
-                      }).map((_, i) => {
-                        const active = i < participantCount;
-                        return (
-                          <Animated.View
-                            key={i}
-                            style={{
-                              transform: [
-                                {
-                                  scale: i < SLOT_MAX ? slotScale[i] : 1,
-                                },
-                              ],
-                            }}
-                          >
-                            <ImageBackground
-                              source={backgrounds.bg005}
-                              resizeMode="stretch"
-                              imageStyle={{ borderRadius: 10 }}
+                    <View style={styles.modalWrap}>
+                      <View style={styles.namePlateShadow}>
+                        <LightPlate
+                          source={backgrounds.bg005}
+                          resizeMode="stretch"
+                          imageStyle={{ borderRadius: 18 }}
+                          style={styles.namePlate}
+                        >
+                          <View style={styles.namePlateContent}>
+                            <View style={styles.settingsSection}>
+                              <CustomText
+                                variant="h6"
+                                className="text-center mb-2"
+                                textColor={TTL.text}
+                              >
+                                {t("lives_per_player")}
+                              </CustomText>
+                              <View style={styles.livesRow}>
+                                {LIVES_OPTIONS.map((l) => (
+                                  <Pressable
+                                    key={l}
+                                    onPress={() => {
+                                      AudioManager.playButtonClick();
+                                      setSelectedLives(l);
+                                    }}
+                                    style={[
+                                      styles.livesOption,
+                                      selectedLives === l &&
+                                        styles.livesOptionSelected,
+                                    ]}
+                                  >
+                                    <CustomText
+                                      variant="p"
+                                      textColor={
+                                        selectedLives === l ? TTL.bg : TTL.text
+                                      }
+                                    >
+                                      {String(l)}
+                                    </CustomText>
+                                  </Pressable>
+                                ))}
+                              </View>
+                            </View>
+                            <View style={styles.nameDivider} />
+                            <View style={styles.settingsSection}>
+                              <CustomText
+                                variant="h6"
+                                className="text-center mb-2"
+                                textColor={TTL.text}
+                              >
+                                {t("time_for_discussion")}
+                              </CustomText>
+                              <View style={styles.dropdownWrap}>
+                                <Pressable
+                                  style={styles.dropdownTrigger}
+                                  onPress={() => {
+                                    AudioManager.playButtonClick();
+                                    setOpenTimeDropdown((v) => !v);
+                                  }}
+                                >
+                                  <CustomText variant="p" textColor={TTL.text}>
+                                    {selectedDiscussionLabel}
+                                  </CustomText>
+                                  <FontAwesome
+                                    name={
+                                      openTimeDropdown
+                                        ? "angle-up"
+                                        : "angle-down"
+                                    }
+                                    size={20}
+                                    color={TTL.text2}
+                                  />
+                                </Pressable>
+                                {openTimeDropdown ? (
+                                  <View style={styles.dropdownList}>
+                                    <ScrollView
+                                      nestedScrollEnabled
+                                      showsVerticalScrollIndicator={false}
+                                      keyboardShouldPersistTaps="handled"
+                                    >
+                                      {TIME_OPTIONS.map((sec) => (
+                                        <Pressable
+                                          key={sec}
+                                          style={[
+                                            styles.dropdownItem,
+                                            sec === selectedSec &&
+                                              styles.dropdownItemSelected,
+                                          ]}
+                                          onPress={() => {
+                                            AudioManager.playButtonClick();
+                                            setSelectedSec(sec);
+                                            setOpenTimeDropdown(false);
+                                          }}
+                                        >
+                                          <CustomText
+                                            variant="p-small"
+                                            textColor={
+                                              sec === selectedSec
+                                                ? TTL.text2
+                                                : TTL.text
+                                            }
+                                          >
+                                            {formatDiscussionLabel(sec)}
+                                          </CustomText>
+                                        </Pressable>
+                                      ))}
+                                    </ScrollView>
+                                  </View>
+                                ) : null}
+                              </View>
+                            </View>
+                            <View style={styles.nameDivider} />
+                            <View
                               style={[
-                                styles.playerSlotBg,
-                                active
-                                  ? styles.playerSlotBgActive
-                                  : styles.playerSlotBgInactive,
+                                styles.settingsSection,
+                                styles.packsSection,
                               ]}
                             >
-                              {active && i < SLOT_MAX ? (
-                                <Animated.View
-                                  pointerEvents="none"
-                                  style={[
-                                    StyleSheet.absoluteFill,
-                                    {
-                                      borderRadius: 10,
-                                      backgroundColor: "#ff9d00",
-                                      opacity: slotGlow[i],
-                                    },
-                                  ]}
-                                />
-                              ) : null}
-                              <MaterialCommunityIcons
-                                name={active ? "account-check" : "account"}
-                                size={24}
-                                color={active ? "#12e049" : "#d8d8d8"}
-                              />
-                            </ImageBackground>
-                          </Animated.View>
-                        );
-                      })}
+                              <CustomText
+                                variant="h6"
+                                className="text-center mb-2"
+                                textColor={TTL.text}
+                              >
+                                {t("packages_included")}
+                              </CustomText>
+                              {packsLoading ? (
+                                <View style={styles.packsLoading}>
+                                  <ActivityIndicator
+                                    size="small"
+                                    color={TTL.text2}
+                                  />
+                                </View>
+                              ) : (
+                                <ScrollView
+                                  style={styles.packsScroll}
+                                  contentContainerStyle={
+                                    styles.packsScrollContent
+                                  }
+                                  showsVerticalScrollIndicator={false}
+                                  nestedScrollEnabled
+                                >
+                                  {availablePacks.length === 0 ? (
+                                    <CustomText
+                                      variant="p-small"
+                                      className="text-center py-2"
+                                      textColor={TTL.text2}
+                                    >
+                                      {t("no_packs_available") ||
+                                        "No question packs available."}
+                                    </CustomText>
+                                  ) : (
+                                    <View style={styles.packsList}>
+                                      {availablePacks.map((pack) => {
+                                        const checked = selectedSlugs.includes(
+                                          pack.slug,
+                                        );
+                                        const isMain = isMainPack(pack.slug);
+                                        return (
+                                          <Pressable
+                                            key={pack.slug}
+                                            onPress={() => {
+                                              AudioManager.playButtonClick();
+                                              setSelectedSlugs((prev) => {
+                                                if (prev.includes(pack.slug)) {
+                                                  if (prev.length === 1) {
+                                                    Alert.alert(
+                                                      t("required_alert_title"),
+                                                      t(
+                                                        "required_alert_message",
+                                                      ),
+                                                    );
+                                                    return prev;
+                                                  }
+                                                  return prev.filter(
+                                                    (x) => x !== pack.slug,
+                                                  );
+                                                }
+                                                if (prev.length >= 5) {
+                                                  Alert.alert(
+                                                    t("limit_alert_title"),
+                                                    t("limit_alert_message"),
+                                                  );
+                                                  return prev;
+                                                }
+                                                return [...prev, pack.slug];
+                                              });
+                                            }}
+                                            style={[
+                                              styles.packRow,
+                                              checked && styles.packRowChecked,
+                                            ]}
+                                          >
+                                            <CustomText
+                                              variant="p-small"
+                                              textColor={
+                                                checked ? TTL.text : TTL.text2
+                                              }
+                                            >
+                                              {pack.title} (
+                                              {pack.questionsCount})
+                                              {isMain ? " ★" : ""}
+                                            </CustomText>
+                                            <View
+                                              style={[
+                                                styles.checkbox,
+                                                checked &&
+                                                  styles.checkboxChecked,
+                                              ]}
+                                            >
+                                              {checked ? (
+                                                <FontAwesome
+                                                  name="check"
+                                                  size={12}
+                                                  color="#fff"
+                                                />
+                                              ) : null}
+                                            </View>
+                                          </Pressable>
+                                        );
+                                      })}
+                                    </View>
+                                  )}
+                                </ScrollView>
+                              )}
+                            </View>
+                          </View>
+                        </LightPlate>
+                      </View>
+                    </View>
+                    <View
+                      style={[
+                        { paddingHorizontal: 24, marginTop: 8 },
+                        styles.ctaBelowSettings,
+                      ]}
+                    >
+                      {createError ? (
+                        <CustomText className="text-red-200 text-center">
+                          {createError}
+                        </CustomText>
+                      ) : null}
+                      <CustomButton
+                        title={t("online_create_room_btn")}
+                        fullWidth
+                        onPress={() => {
+                          AudioManager.playButtonClick();
+                          void handleCreateRoom();
+                        }}
+                        disabled={creating}
+                        backgroundImage={backgrounds.bg026}
+                        shadowColor="#005f07"
+                      />
+                      {creating ? (
+                        <ActivityIndicator color={TTL.text} size="large" />
+                      ) : null}
                     </View>
                   </Animated.View>
-
-                </View>
-
-                {/* Friends invite panel — same wrapper as room code plate for matching width */}
-                {friendsForInvite.length > 0 && (
-                  <View style={styles.modalWrap}>
-                    <View style={styles.namePlateShadow}>
-                      <ImageBackground
-                        source={backgrounds.bg005}
-                        resizeMode="stretch"
-                        imageStyle={{ borderRadius: 18 }}
-                        style={styles.namePlate}
-                      >
-                        <View style={styles.namePlateContent}>
-                          <CustomText
-                            variant="p"
-                            className="text-center"
-                            textColor="#762a05"
-                          >
-                            {t("online_invite_friends")}
-                          </CustomText>
-                          {friendsForInvite.map((f) => (
-                            <Fragment key={f.friendshipId}>
-                              <View style={styles.nameDivider} />
-                              <View style={styles.inviteFriendRow}>
-                                <CustomText
-                                  variant="p-small"
-                                  textColor="#592410"
-                                  style={{ flex: 1 }}
-                                  numberOfLines={1}
-                                >
-                                  {f.name}
-                                </CustomText>
-                                <Pressable
-                                  onPress={() => void handleInviteFriend(f.friendshipId)}
-                                  disabled={invitedFriendIds.has(f.friendshipId)}
-                                  style={[
-                                    styles.inviteFriendBtn,
-                                    invitedFriendIds.has(f.friendshipId) &&
-                                      styles.inviteFriendBtnDone,
-                                  ]}
-                                >
-                                  <CustomText
-                                    variant="p-xsmall"
-                                    textColor={
-                                      invitedFriendIds.has(f.friendshipId)
-                                        ? "#762a05"
-                                        : "#fff"
-                                    }
-                                  >
-                                    {invitedFriendIds.has(f.friendshipId)
-                                      ? t("online_invited")
-                                      : t("online_invite_btn")}
-                                  </CustomText>
-                                </Pressable>
-                              </View>
-                            </Fragment>
-                          ))}
-                        </View>
-                      </ImageBackground>
-                    </View>
-                  </View>
-                )}
-
-                {/* Start button — only rendered (and takes layout space) when game can start */}
-                {canStartGame && (
+                ) : (
                   <Animated.View
                     style={{
-                      paddingHorizontal: horizontalPadding,
-                      opacity: startCtaOpacity,
-                      transform: [{ scale: startCtaScale }],
+                      opacity: roomOpacity,
+                      transform: [{ translateY: roomTranslateY }],
                     }}
+                    className="gap-5 w-full items-stretch"
                   >
-                    <CustomButton
-                      title={t("online_start_game_btn")}
-                      fullWidth
-                      onPress={() => void handleStartGame()}
-                      disabled={!canStartGame}
-                      backgroundImage={backgrounds.bg026}
-                      shadowColor="#005f07"
-                    />
+                    <View style={styles.modalWrap}>
+                      <View style={styles.namePlateShadow}>
+                        <LightPlate
+                          source={backgrounds.bg005}
+                          resizeMode="stretch"
+                          imageStyle={{ borderRadius: 18 }}
+                          style={styles.namePlate}
+                        >
+                          <View style={styles.namePlateContent}>
+                            <TouchableOpacity
+                              onPress={() => void copyCode()}
+                              activeOpacity={0.9}
+                            >
+                              <View style={styles.codeBox}>
+                                <CustomText
+                                  variant="h4-headline"
+                                  className="text-center tracking-[0.2em]"
+                                  textColor={TTL.text}
+                                >
+                                  {joinCode}
+                                </CustomText>
+                              </View>
+                            </TouchableOpacity>
+                            <View style={styles.nameDivider} />
+
+                            <View style={styles.quickActionsRow}>
+                              <Pressable
+                                onPress={() => void copyCode()}
+                                style={styles.quickActionItem}
+                              >
+                                <View className="flex-row items-center gap-2 justify-center">
+                                  <Feather
+                                    name="copy"
+                                    size={18}
+                                    color={TTL.text}
+                                  />
+                                  <CustomText
+                                    variant="p-small"
+                                    textColor={TTL.text}
+                                    numberOfLines={2}
+                                  >
+                                    {t("copy_link")}
+                                  </CustomText>
+                                </View>
+                              </Pressable>
+                              <Pressable
+                                onPress={() => void shareCode()}
+                                style={styles.quickActionItem}
+                              >
+                                <View className="flex-row items-center gap-2 justify-center">
+                                  <Feather
+                                    name="share-2"
+                                    size={18}
+                                    color={TTL.text}
+                                  />
+                                  <CustomText
+                                    variant="p-small"
+                                    textColor={TTL.text}
+                                    numberOfLines={2}
+                                  >
+                                    {t("share")}
+                                  </CustomText>
+                                </View>
+                              </Pressable>
+                            </View>
+                            <View style={styles.nameDivider} />
+                            <View style={styles.roomMetaBox}>
+                              <CustomText
+                                variant="p-small"
+                                className="text-center"
+                                textColor={TTL.text}
+                              >
+                                {t("online_waiting_players_status", {
+                                  defaultValue: "Waiting players: {{count}}",
+                                  count: participantCount,
+                                })}
+                              </CustomText>
+                              <CustomText
+                                variant="p-xsmall"
+                                className="text-center mt-1"
+                                textColor={TTL.text2}
+                              >
+                                {connLabel}
+                              </CustomText>
+                              {hostSecret ? (
+                                <CustomText
+                                  variant="p-xsmall"
+                                  className="text-center mt-2"
+                                  textColor={TTL.text2}
+                                >
+                                  {t("online_host_secret_hint")}
+                                </CustomText>
+                              ) : null}
+                            </View>
+                          </View>
+                        </LightPlate>
+                      </View>
+                    </View>
+
+                    <View
+                      style={[
+                        { paddingHorizontal: horizontalPadding },
+                        styles.ctaBelowSettings,
+                      ]}
+                    >
+                      <Animated.View
+                        style={{
+                          transform: [{ scale: playersPulse }],
+                        }}
+                        className="w-full"
+                      >
+                        <View className="flex-row flex-wrap gap-2 justify-center">
+                          {Array.from({
+                            length: Math.max(6, participantCount),
+                          }).map((_, i) => {
+                            const active = i < participantCount;
+                            return (
+                              <Animated.View
+                                key={i}
+                                style={{
+                                  transform: [
+                                    {
+                                      scale: i < SLOT_MAX ? slotScale[i] : 1,
+                                    },
+                                  ],
+                                }}
+                              >
+                                <View
+                                  style={[
+                                    styles.playerSlotBg,
+                                    active
+                                      ? styles.playerSlotBgActive
+                                      : styles.playerSlotBgInactive,
+                                  ]}
+                                >
+                                  {active && i < SLOT_MAX ? (
+                                    <Animated.View
+                                      pointerEvents="none"
+                                      style={[
+                                        StyleSheet.absoluteFill,
+                                        {
+                                          borderRadius: 10,
+                                          backgroundColor: "#FFFFFF",
+                                          opacity: slotGlow[i],
+                                        },
+                                      ]}
+                                    />
+                                  ) : null}
+                                  <MaterialCommunityIcons
+                                    name={active ? "account-check" : "account"}
+                                    size={24}
+                                    color={active ? "#FFFFFF" : TTL.text2}
+                                  />
+                                </View>
+                              </Animated.View>
+                            );
+                          })}
+                        </View>
+                      </Animated.View>
+                    </View>
+
+                    {/* Friends invite panel — same wrapper as room code plate for matching width */}
+                    {friendsForInvite.length > 0 && (
+                      <View style={styles.modalWrap}>
+                        <View style={styles.namePlateShadow}>
+                          <LightPlate
+                            source={backgrounds.bg005}
+                            resizeMode="stretch"
+                            imageStyle={{ borderRadius: 18 }}
+                            style={styles.namePlate}
+                          >
+                            <View style={styles.namePlateContent}>
+                              <CustomText
+                                variant="p"
+                                className="text-center"
+                                textColor={TTL.text2}
+                              >
+                                {t("online_invite_friends")}
+                              </CustomText>
+                              {friendsForInvite.map((f) => (
+                                <Fragment key={f.friendshipId}>
+                                  <View style={styles.nameDivider} />
+                                  <View style={styles.inviteFriendRow}>
+                                    <CustomText
+                                      variant="p-small"
+                                      textColor={TTL.text}
+                                      style={{ flex: 1 }}
+                                      numberOfLines={1}
+                                    >
+                                      {f.name}
+                                    </CustomText>
+                                    <Pressable
+                                      onPress={() =>
+                                        void handleInviteFriend(f.friendshipId)
+                                      }
+                                      disabled={invitedFriendIds.has(
+                                        f.friendshipId,
+                                      )}
+                                      style={[
+                                        styles.inviteFriendBtn,
+                                        invitedFriendIds.has(f.friendshipId) &&
+                                          styles.inviteFriendBtnDone,
+                                      ]}
+                                    >
+                                      <CustomText
+                                        variant="p-xsmall"
+                                        textColor={
+                                          invitedFriendIds.has(f.friendshipId)
+                                            ? TTL.text2
+                                            : "#fff"
+                                        }
+                                      >
+                                        {invitedFriendIds.has(f.friendshipId)
+                                          ? t("online_invited")
+                                          : t("online_invite_btn")}
+                                      </CustomText>
+                                    </Pressable>
+                                  </View>
+                                </Fragment>
+                              ))}
+                            </View>
+                          </LightPlate>
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Start button — only rendered (and takes layout space) when game can start */}
+                    {canStartGame && (
+                      <Animated.View
+                        style={{
+                          paddingHorizontal: horizontalPadding,
+                          opacity: startCtaOpacity,
+                          transform: [{ scale: startCtaScale }],
+                        }}
+                      >
+                        <CustomButton
+                          title={t("online_start_game_btn")}
+                          fullWidth
+                          onPress={() => void handleStartGame()}
+                          disabled={!canStartGame}
+                          backgroundImage={backgrounds.bg026}
+                          shadowColor="#005f07"
+                        />
+                      </Animated.View>
+                    )}
                   </Animated.View>
                 )}
-              </Animated.View>
-            )}
-          </View>
-        </ScrollView>
-        {copyToastVisible ? (
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              styles.copyToastOuter,
-              {
-                opacity: copyToastOpacity,
-                paddingHorizontal: horizontalPadding,
-              },
-            ]}
-          >
-            <ImageBackground
-              source={backgrounds.bg005}
-              resizeMode="stretch"
-              imageStyle={{ borderRadius: 14 }}
-              style={styles.copyToastPlate}
+              </View>
+            </View>
+          </ScrollView>
+          {copyToastVisible ? (
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.copyToastOuter,
+                {
+                  opacity: copyToastOpacity,
+                  paddingHorizontal: horizontalPadding,
+                },
+              ]}
             >
-              <CustomText
-                variant="p-small"
-                className="text-center"
-                textColor="#592410"
+              <LightPlate
+                source={backgrounds.bg005}
+                resizeMode="stretch"
+                imageStyle={{ borderRadius: 14 }}
+                style={styles.copyToastPlate}
               >
-                {t("online_code_copied_toast")}
-              </CustomText>
-            </ImageBackground>
-          </Animated.View>
-        ) : null}
-        {showStartTransition ? (
-          <Round1TransitionOverlay onDone={onStartTransitionDone} />
-        ) : null}
-        {showLeaveRoomModal ? (
-          <Pressable
-            style={styles.plateModalBackdrop}
-            onPress={() => setShowLeaveRoomModal(false)}
-          >
-            <TouchableWithoutFeedback accessible={false}>
-              <View
-                style={[styles.plateModalCenter, { width: plateModalWidth }]}
-              >
-                <ImageBackground
-                  source={backgrounds.bg005}
-                  resizeMode="stretch"
-                  imageStyle={{ borderRadius: 18 }}
-                  style={[styles.plateModalCard, { width: plateModalWidth }]}
+                <CustomText
+                  variant="p-small"
+                  className="text-center"
+                  textColor={TTL.text}
                 >
-                  <CustomText
-                    variant="p"
-                    className="text-center"
-                    textColor="#762a05"
+                  {t("online_code_copied_toast")}
+                </CustomText>
+              </LightPlate>
+            </Animated.View>
+          ) : null}
+          {showStartTransition ? (
+            <Round1TransitionOverlay onDone={onStartTransitionDone} />
+          ) : null}
+          {showLeaveRoomModal ? (
+            <Pressable
+              style={styles.plateModalBackdrop}
+              onPress={() => setShowLeaveRoomModal(false)}
+            >
+              <TouchableWithoutFeedback accessible={false}>
+                <View
+                  style={[styles.plateModalCenter, { width: plateModalWidth }]}
+                >
+                  <LightPlate
+                    source={backgrounds.bg005}
+                    resizeMode="stretch"
+                    imageStyle={{ borderRadius: 18 }}
+                    style={[styles.plateModalCard, { width: plateModalWidth }]}
                   >
-                    {t("online_leave_room_title")}
-                  </CustomText>
-                  <View style={styles.nameDivider} />
-                  <CustomText
-                    variant="p-small"
-                    className="text-center px-2"
-                    textColor="#592410"
-                  >
-                    {t("online_leave_room_message")}
-                  </CustomText>
-                  <View style={styles.modalBtnRow}>
-                    <Pressable
-                      style={styles.modalSecondaryBtn}
-                      onPress={() => setShowLeaveRoomModal(false)}
+                    <CustomText
+                      variant="p"
+                      className="text-center"
+                      textColor={TTL.text2}
                     >
-                      <CustomText variant="p-small" textColor="#592410">
-                        {t("cancel")}
-                      </CustomText>
-                    </Pressable>
+                      {t("online_leave_room_title")}
+                    </CustomText>
+                    <View style={styles.nameDivider} />
+                    <CustomText
+                      variant="p-small"
+                      className="text-center px-2"
+                      textColor={TTL.text}
+                    >
+                      {t("online_leave_room_message")}
+                    </CustomText>
+                    <View style={styles.modalBtnRow}>
+                      <Pressable
+                        style={styles.modalSecondaryBtn}
+                        onPress={() => setShowLeaveRoomModal(false)}
+                      >
+                        <CustomText variant="p-small" textColor={TTL.text}>
+                          {t("cancel")}
+                        </CustomText>
+                      </Pressable>
+                      <Pressable
+                        style={styles.modalPrimaryBtn}
+                        onPress={() => void confirmLeaveAndCloseRoom()}
+                      >
+                        <CustomText variant="p-small" textColor="#fff">
+                          {t("online_leave_room_confirm")}
+                        </CustomText>
+                      </Pressable>
+                    </View>
+                  </LightPlate>
+                </View>
+              </TouchableWithoutFeedback>
+            </Pressable>
+          ) : null}
+          {showRoomEndedModal ? (
+            <Pressable
+              style={styles.plateModalBackdrop}
+              onPress={dismissRoomEndedAndExit}
+            >
+              <TouchableWithoutFeedback accessible={false}>
+                <View
+                  style={[styles.plateModalCenter, { width: plateModalWidth }]}
+                >
+                  <LightPlate
+                    source={backgrounds.bg005}
+                    resizeMode="stretch"
+                    imageStyle={{ borderRadius: 18 }}
+                    style={[styles.plateModalCard, { width: plateModalWidth }]}
+                  >
+                    <CustomText
+                      variant="p"
+                      className="text-center"
+                      textColor={TTL.text2}
+                    >
+                      {t("online_room_ended_title")}
+                    </CustomText>
+                    <View style={styles.nameDivider} />
+                    <CustomText
+                      variant="p-small"
+                      className="text-center px-2"
+                      textColor={TTL.text}
+                    >
+                      {t("online_room_ended_message")}
+                    </CustomText>
                     <Pressable
-                      style={styles.modalPrimaryBtn}
-                      onPress={() => void confirmLeaveAndCloseRoom()}
+                      style={[
+                        styles.modalPrimaryBtn,
+                        { marginTop: 12, alignSelf: "stretch" },
+                      ]}
+                      onPress={dismissRoomEndedAndExit}
                     >
                       <CustomText variant="p-small" textColor="#fff">
-                        {t("online_leave_room_confirm")}
+                        {t("ok")}
                       </CustomText>
                     </Pressable>
-                  </View>
-                </ImageBackground>
-              </View>
-            </TouchableWithoutFeedback>
-          </Pressable>
-        ) : null}
-        {showRoomEndedModal ? (
-          <Pressable
-            style={styles.plateModalBackdrop}
-            onPress={dismissRoomEndedAndExit}
-          >
-            <TouchableWithoutFeedback accessible={false}>
-              <View
-                style={[styles.plateModalCenter, { width: plateModalWidth }]}
-              >
-                <ImageBackground
-                  source={backgrounds.bg005}
-                  resizeMode="stretch"
-                  imageStyle={{ borderRadius: 18 }}
-                  style={[styles.plateModalCard, { width: plateModalWidth }]}
-                >
-                  <CustomText
-                    variant="p"
-                    className="text-center"
-                    textColor="#762a05"
-                  >
-                    {t("online_room_ended_title")}
-                  </CustomText>
-                  <View style={styles.nameDivider} />
-                  <CustomText
-                    variant="p-small"
-                    className="text-center px-2"
-                    textColor="#592410"
-                  >
-                    {t("online_room_ended_message")}
-                  </CustomText>
-                  <Pressable
-                    style={[
-                      styles.modalPrimaryBtn,
-                      { marginTop: 12, alignSelf: "stretch" },
-                    ]}
-                    onPress={dismissRoomEndedAndExit}
-                  >
-                    <CustomText variant="p-small" textColor="#fff">
-                      {t("ok")}
-                    </CustomText>
-                  </Pressable>
-                </ImageBackground>
-              </View>
-            </TouchableWithoutFeedback>
-          </Pressable>
-        ) : null}
-      </SafeAreaView>
+                  </LightPlate>
+                </View>
+              </TouchableWithoutFeedback>
+            </Pressable>
+          ) : null}
+        </SafeAreaView>
+      </UiStyleProvider>
     </FullBleedStack>
   );
 }
 
 const styles = StyleSheet.create({
+  column: {
+    width: "100%",
+    flexGrow: 1,
+  },
+  // White panel under the logo: rounded top corners, square at the bottom edge.
+  sheet: {
+    flexGrow: 1,
+    marginTop: SHEET_GAP,
+    paddingBottom: 24,
+    gap: 12,
+    backgroundColor: TTL.bg,
+    borderTopLeftRadius: SHEET_RADIUS,
+    borderTopRightRadius: SHEET_RADIUS,
+  },
   root: { flex: 1, backgroundColor: "#0a0a0a" },
   safe: { flex: 1, backgroundColor: "transparent" },
   plateModalBackdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(0,0,0,0.82)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "stretch",
     paddingHorizontal: 20,
@@ -1269,18 +1305,18 @@ const styles = StyleSheet.create({
   modalSecondaryBtn: {
     paddingVertical: 12,
     paddingHorizontal: 18,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,247,236,0.85)",
-    borderWidth: 1,
-    borderColor: "rgba(160,110,60,0.4)",
+    borderRadius: 8,
+    backgroundColor: TTL.fill,
+    borderWidth: 0,
+    borderColor: TTL.line,
   },
   modalPrimaryBtn: {
     paddingVertical: 12,
     paddingHorizontal: 18,
-    borderRadius: 12,
-    backgroundColor: "#8b2b1a",
-    borderWidth: 1,
-    borderColor: "rgba(89,36,16,0.6)",
+    borderRadius: 8,
+    backgroundColor: TTL.primary,
+    borderWidth: 0,
+    borderColor: TTL.text2,
   },
   ctaBelowSettings: {
     zIndex: 1,
@@ -1294,7 +1330,7 @@ const styles = StyleSheet.create({
   },
   namePlateShadow: {
     shadowColor: "#fff",
-    shadowOpacity: 1,
+    shadowOpacity: 0,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 14,
@@ -1306,15 +1342,15 @@ const styles = StyleSheet.create({
     // paddingHorizontal: 24,
     paddingVertical: 20,
     alignItems: "center",
-    shadowColor: "#ffd800",
+    shadowColor: "transparent",
     shadowOpacity: 0.8,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 4 },
     elevation: 14,
     borderTopWidth: 1,
-    borderTopColor: "rgba(251,192,32,1)",
+    borderTopColor: TTL.line,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(160,110,60,0.7)",
+    borderBottomColor: TTL.line,
     overflow: "hidden",
     width: "100%",
     alignSelf: "stretch",
@@ -1339,7 +1375,8 @@ const styles = StyleSheet.create({
     maxWidth: "100%",
     height: 1,
     marginVertical: 10,
-    backgroundColor: "rgba(89,36,16,0.5)",
+    // No rules between sections: spacing separates them.
+    backgroundColor: "transparent",
   },
   livesRow: {
     flexDirection: "row",
@@ -1351,14 +1388,14 @@ const styles = StyleSheet.create({
   livesOption: {
     paddingVertical: 12,
     paddingHorizontal: 24,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,247,236,0.6)",
-    borderWidth: 1,
-    borderColor: "rgba(160,110,60,0.3)",
+    borderRadius: 8,
+    backgroundColor: TTL.fill,
+    borderWidth: 0,
+    borderColor: TTL.line,
   },
   livesOptionSelected: {
-    backgroundColor: "rgba(251,192,32,0.25)",
-    borderColor: "rgba(160,110,60,0.5)",
+    // Chosen option: black with white text.
+    backgroundColor: TTL.text,
   },
   dropdownWrap: {
     width: "100%",
@@ -1376,23 +1413,21 @@ const styles = StyleSheet.create({
     width: "100%",
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,247,236,0.9)",
-    borderWidth: 1,
-    borderColor: "rgba(160,110,60,0.4)",
+    borderRadius: 8,
+    backgroundColor: TTL.fill,
+    borderWidth: 0,
+    borderColor: TTL.line,
   },
+  // Opens in the flow under the trigger: an absolutely placed list hangs
+  // outside its parent, where it cannot be touched or scrolled.
   dropdownList: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: "100%",
     marginTop: 6,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,247,236,0.98)",
+    borderRadius: 8,
+    backgroundColor: TTL.card,
     borderWidth: 1,
-    borderColor: "rgba(160,110,60,0.4)",
+    borderColor: TTL.line,
     overflow: "hidden",
-    maxHeight: 240,
+    maxHeight: 220,
     zIndex: 30,
     elevation: 12,
   },
@@ -1401,7 +1436,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   dropdownItemSelected: {
-    backgroundColor: "rgba(251,192,32,0.25)",
+    backgroundColor: TTL.fill,
   },
   packsLoading: {
     paddingVertical: 20,
@@ -1428,36 +1463,35 @@ const styles = StyleSheet.create({
     width: "100%",
     paddingVertical: 10,
     paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,247,236,0.6)",
-    borderWidth: 1,
-    borderColor: "rgba(160,110,60,0.3)",
+    borderRadius: 8,
+    backgroundColor: TTL.fill,
+    borderWidth: 0,
+    borderColor: TTL.line,
   },
   packRowChecked: {
-    backgroundColor: "rgba(251,192,32,0.2)",
-    borderColor: "rgba(160,110,60,0.5)",
+    backgroundColor: TTL.fill,
   },
   checkbox: {
     width: 22,
     height: 22,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: "rgba(89,36,16,0.5)",
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: TTL.text2,
     alignItems: "center",
     justifyContent: "center",
   },
   checkboxChecked: {
-    backgroundColor: "#592410",
-    borderColor: "#592410",
+    backgroundColor: TTL.primary,
+    borderColor: TTL.primary,
   },
   codeBox: {
     width: "100%",
     maxWidth: "100%",
     alignSelf: "stretch",
-    backgroundColor: "rgba(255,247,236,0.9)",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(160,110,60,0.4)",
+    backgroundColor: TTL.fill,
+    borderRadius: 8,
+    borderWidth: 0,
+    borderColor: TTL.line,
     paddingVertical: 16,
     paddingHorizontal: 18,
   },
@@ -1470,37 +1504,37 @@ const styles = StyleSheet.create({
   quickActionItem: {
     flex: 1,
     minWidth: 0,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(160,110,60,0.3)",
-    backgroundColor: "rgba(255,247,236,0.6)",
+    borderRadius: 8,
+    borderWidth: 0,
+    borderColor: TTL.line,
+    backgroundColor: TTL.fill,
     paddingVertical: 10,
     paddingHorizontal: 8,
   },
   roomMetaBox: {
     width: "100%",
     alignSelf: "stretch",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(160,110,60,0.3)",
-    backgroundColor: "rgba(255,247,236,0.6)",
+    borderRadius: 8,
+    borderWidth: 0,
+    borderColor: TTL.line,
+    backgroundColor: TTL.fill,
     paddingVertical: 10,
     paddingHorizontal: 12,
   },
   playerSlotBg: {
     width: 48,
     height: 48,
-    borderRadius: 10,
+    borderRadius: 8,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
+    borderWidth: 0,
   },
   playerSlotBgActive: {
-    borderColor: "rgba(160,110,60,0.55)",
+    backgroundColor: TTL.primary,
   },
   playerSlotBgInactive: {
-    borderColor: "rgba(160,110,60,0.3)",
+    backgroundColor: TTL.fill,
   },
   copyToastOuter: {
     position: "absolute",
@@ -1515,8 +1549,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     borderRadius: 14,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(160,110,60,0.45)",
+    borderWidth: 0,
+    borderColor: TTL.line,
     shadowColor: "#000",
     shadowOpacity: 0.22,
     shadowRadius: 10,
@@ -1527,18 +1561,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    paddingVertical: 4,
+    paddingVertical: 10,
+    // Light rule so each row is easy to follow across.
+    borderBottomWidth: 1,
+    borderBottomColor: TTL.fill,
   },
   inviteFriendBtn: {
     paddingVertical: 7,
     paddingHorizontal: 14,
-    borderRadius: 10,
-    backgroundColor: "#8b2b1a",
-    borderWidth: 1,
-    borderColor: "rgba(89,36,16,0.6)",
+    borderRadius: 8,
+    backgroundColor: TTL.primary,
+    borderWidth: 0,
+    borderColor: TTL.text2,
   },
   inviteFriendBtnDone: {
-    backgroundColor: "rgba(255,247,236,0.85)",
-    borderColor: "rgba(160,110,60,0.4)",
+    backgroundColor: TTL.fill,
+    borderColor: TTL.line,
   },
 });

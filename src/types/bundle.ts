@@ -22,6 +22,10 @@ export interface IBundle {
   isFeatured: boolean;
   availableFrom?: Date;
   availableTo?: Date;
+  /** Slugs of the heroes a fixed bundle unlocks. */
+  heroSlugs?: string[];
+  /** The bundle unlocks every paid hero the player does not own yet. */
+  includesAllPaidHeroes?: boolean;
   timesBought?: number;
   lastBought?: Date;
 }

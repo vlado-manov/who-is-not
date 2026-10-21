@@ -51,39 +51,17 @@ export default function LanguageSelector() {
 
         return (
           <View key={code} style={{ marginHorizontal: 4 }}>
-            {active && (
-              <View
-                pointerEvents="none"
-                style={{
-                  position: "absolute",
-                  inset: -6,
-                  borderRadius: 12,
-                  backgroundColor: "rgba(255, 236, 33, 0.35)",
-                }}
-              />
-            )}
-
             <Pressable
               onPress={() => setLang(code as Lang)}
-              style={[
-                {
-                  paddingHorizontal: Platform.OS === "android" ? 8 : 10,
-                  paddingVertical: Platform.OS === "android" ? 5 : 6,
-                  borderRadius: 10,
-                  backgroundColor: active
-                    ? "#ffec21"
-                    : "rgba(255,255,255,0.15)",
-                  borderWidth: active ? 2 : 1,
-                  borderColor: active ? "#fff3a0" : "rgba(255,255,255,0.3)",
-                },
-                active &&
-                  Platform.OS === "ios" && {
-                    shadowColor: "#ffec21",
-                    shadowOpacity: 0.9,
-                    shadowRadius: 8,
-                    shadowOffset: { width: 0, height: 0 },
-                  },
-              ]}
+              // The chosen language is marked by its fill and border only — no glow.
+              style={{
+                paddingHorizontal: Platform.OS === "android" ? 8 : 10,
+                paddingVertical: Platform.OS === "android" ? 5 : 6,
+                borderRadius: 10,
+                backgroundColor: active ? "#ffec21" : "rgba(255,255,255,0.15)",
+                borderWidth: 2,
+                borderColor: active ? "#fff3a0" : "rgba(255,255,255,0.45)",
+              }}
             >
               <AppImage
                 source={img}

@@ -5,6 +5,9 @@ import { game_images } from "../../../../assets/images";
 import i18n from "../../../i18n";
 import { useAuthStore } from "../../../store/useUserStore";
 
+/** Longest the hero picker waits for these pictures before it opens. */
+const PASS_DEVICE_ASSETS_WAIT_MS = 6000;
+
 function getUri(source: { uri?: string } | string | undefined): string | null {
   if (!source) return null;
   if (typeof source === "string") return source;
@@ -42,7 +45,14 @@ export function usePassDeviceAssetsReady(): boolean {
       getUri(logo),
     ].filter((u): u is string => Boolean(u));
 
-    Promise.all(urls.map((u) => Image.prefetch(u).catch(() => false)))
+    // Waited for, but not forever: a picture that never arrives must not
+    // keep the hero picker on its loading screen.
+    Promise.race([
+      Promise.all(urls.map((u) => Image.prefetch(u).catch(() => false))),
+      new Promise<void>((resolve) =>
+        setTimeout(() => resolve(), PASS_DEVICE_ASSETS_WAIT_MS),
+      ),
+    ])
       .then(() => mounted && setReady(true))
       .catch(() => mounted && setReady(true));
 

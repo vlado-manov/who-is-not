@@ -10,7 +10,6 @@ import {
   Animated,
   Easing,
   Image,
-  ImageBackground,
   Pressable,
   StyleSheet,
   TextInput,
@@ -20,10 +19,10 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
-import { backgrounds } from "../../../assets/backgrounds";
 import CustomText from "../common/CustomText";
 import CustomButton from "../common/CustomButton";
-import PurpleConfirmModal from "../common/PurpleConfirmModal";
+import CamConfirmSheet from "../cam/CamConfirmSheet";
+import { TT } from "../../constants/tiktokTheme";
 import { useAuthStore } from "../../store/useUserStore";
 import {
   createUserCustomQuestion,
@@ -69,7 +68,7 @@ const TYPE_META: Record<
     desc: "One person gets chosen",
     placeholder: "e.g. Who is most likely to stay up until 5am? 🌙",
     color: "#059669",
-    accent: "#10b981",
+    accent: TT.text,
     bg: "rgba(16,185,129,0.10)",
     glow: "rgba(16,185,129,0.45)",
   },
@@ -78,7 +77,7 @@ const TYPE_META: Record<
     label: "Give me a number…",
     desc: "Answer with a number",
     placeholder: "e.g. How many cups of coffee a day? ☕",
-    color: "#d97706",
+    color: TT.text,
     accent: "#f59e0b",
     bg: "rgba(245,158,11,0.10)",
     glow: "rgba(245,158,11,0.45)",
@@ -181,15 +180,10 @@ function PromoCard({ onGoToStore }: { onGoToStore: () => void }) {
 
   return (
     <View style={P.outer}>
-      <ImageBackground
-        source={backgrounds.bg005}
-        resizeMode="stretch"
-        imageStyle={{ borderRadius: 20 }}
-        style={P.plate}
-      >
+      <View style={P.plate}>
         <View style={P.headerRow}>
           <View style={P.iconWrap}>
-            <Ionicons name="create" size={24} color="#762a05" />
+            <Ionicons name="create" size={24} color={TT.text} />
           </View>
           <View style={{ flex: 1 }}>
             <CustomText style={P.title}>Custom Questions</CustomText>
@@ -228,13 +222,13 @@ function PromoCard({ onGoToStore }: { onGoToStore: () => void }) {
             glowColor="rgba(249,115,22,0.55)"
             shadowColor="#c2410c"
             onPress={onGoToStore}
-            iconNode={<Ionicons name="star" size={18} color="#fff" />}
+            iconNode={<Ionicons name="star" size={18} color={TT.text} />}
           />
         </Animated.View>
         <CustomText style={P.hint}>
           Your questions play automatically in every game
         </CustomText>
-      </ImageBackground>
+      </View>
     </View>
   );
 }
@@ -242,56 +236,56 @@ function PromoCard({ onGoToStore }: { onGoToStore: () => void }) {
 const P = StyleSheet.create({
   outer: {
     marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 22,
+    borderRadius: TT.cardRadius,
     borderWidth: 1.5,
     overflow: "hidden",
-    borderColor: "rgba(251,192,32,0.55)",
-    shadowColor: "#ffd800",
+    borderColor: TT.line,
+    shadowColor: "transparent",
     shadowOpacity: 0.4,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 12,
   },
   plate: {
-    borderRadius: 20,
+    backgroundColor: TT.surface,
+    borderRadius: TT.cardRadius,
     overflow: "hidden",
     paddingHorizontal: 20,
     paddingVertical: 20,
     gap: 14,
     borderTopWidth: 1,
-    borderTopColor: "rgba(251,192,32,1)",
+    borderTopColor: "transparent",
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(160,110,60,0.7)",
+    borderBottomColor: "transparent",
   },
   headerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   iconWrap: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: "rgba(118,42,5,0.12)",
+    backgroundColor: TT.surface2,
     borderWidth: 1,
-    borderColor: "rgba(160,110,60,0.45)",
+    borderColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },
-  title: { color: "#3d1502", fontSize: 15, fontWeight: "800" },
-  sub: { color: "rgba(118,42,5,0.78)", fontSize: 12, marginTop: 1 },
+  title: { color: TT.text, fontSize: 15, fontWeight: "800" },
+  sub: { color: TT.text2, fontSize: 12, marginTop: 1 },
   badge: {
-    backgroundColor: "rgba(251,191,36,0.5)",
+    backgroundColor: TT.primary,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderWidth: 1,
-    borderColor: "rgba(160,110,60,0.45)",
+    borderColor: "transparent",
   },
   badgeText: {
-    color: "#3d1502",
+    color: TT.text,
     fontSize: 9,
     fontWeight: "900",
     letterSpacing: 0.8,
   },
-  divider: { height: 1, backgroundColor: "rgba(89,36,16,0.22)" },
+  divider: { height: 1, backgroundColor: TT.line },
   previewRow: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -299,8 +293,8 @@ const P = StyleSheet.create({
   },
   previewItem: { alignItems: "center", gap: 6 },
   previewImg: { width: 72, height: 80 },
-  previewLabel: { color: "#592410", fontSize: 11, fontWeight: "700" },
-  hint: { color: "rgba(89,36,16,0.50)", fontSize: 11, textAlign: "center" },
+  previewLabel: { color: TT.text, fontSize: 11, fontWeight: "700" },
+  hint: { color: TT.text2, fontSize: 11, textAlign: "center" },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -415,7 +409,7 @@ function TypeCard({
             TC.card,
             active
               ? { borderColor: m.accent, borderWidth: 2 }
-              : { borderColor: "rgba(0,0,0,0.08)", borderWidth: 1 },
+              : { borderColor: TT.line, borderWidth: 1 },
             full && !active && { opacity: 0.55 },
           ]}
         >
@@ -454,7 +448,7 @@ function TypeCard({
           </Animated.View>
 
           <CustomText
-            style={[TC.name, { color: active ? m.color : m.color + "bb" }]}
+            style={[TC.name, { color: active ? m.accent : TT.text }]}
           >
             {m.name}
           </CustomText>
@@ -468,12 +462,12 @@ function TypeCard({
                 TC.slotFill,
                 {
                   width: `${Math.min(100, (count / limit) * 100)}%` as any,
-                  backgroundColor: full ? "#dc2626" : m.accent,
+                  backgroundColor: full ? TT.primary : m.accent,
                 },
               ]}
             />
           </View>
-          <CustomText style={[TC.slotLabel, full && { color: "#b91c1c" }]}>
+          <CustomText style={[TC.slotLabel, full && { color: TT.primary }]}>
             {full ? "Full" : `${count} / ${limit}`}
           </CustomText>
         </View>
@@ -485,7 +479,7 @@ function TypeCard({
 const TC = StyleSheet.create({
   wrapper: { flex: 1 },
   card: {
-    borderRadius: 16,
+    borderRadius: TT.radius,
     paddingHorizontal: 8,
     paddingTop: 10,
     paddingBottom: 12,
@@ -493,7 +487,7 @@ const TC = StyleSheet.create({
     gap: 4,
     minHeight: 148,
     overflow: "hidden",
-    backgroundColor: "#fff",
+    backgroundColor: TT.surface2,
     ...CARD_SHADOW,
   },
   topBar: {
@@ -502,21 +496,21 @@ const TC = StyleSheet.create({
     left: 0,
     right: 0,
     height: 3,
-    borderRadius: 16,
+    borderRadius: TT.radius,
   },
   icon: { width: 68, height: 78, marginBottom: 2 },
   name: { fontSize: 13, fontWeight: "900", letterSpacing: 0.2 },
-  desc: { color: "#9ca3af", fontSize: 9, textAlign: "center", lineHeight: 13 },
+  desc: { color: TT.text2, fontSize: 9, textAlign: "center", lineHeight: 13 },
   slotBar: {
     height: 3,
     width: "80%",
     borderRadius: 2,
-    backgroundColor: "rgba(0,0,0,0.07)",
+    backgroundColor: TT.line,
     overflow: "hidden",
     marginTop: 4,
   },
   slotFill: { height: "100%", borderRadius: 2 },
-  slotLabel: { color: "#9ca3af", fontSize: 9, fontWeight: "700" },
+  slotLabel: { color: TT.text2, fontSize: 9, fontWeight: "700" },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -580,10 +574,10 @@ function AddToPackButton({
     } as any).start();
 
   const gradColors = typeFull
-    ? (["#9ca3af", "#6b7280"] as const)
+    ? ([TT.surface2, TT.surface2] as const)
     : enabled && !saving
-      ? (["#ea580c", "#fbbf24"] as const)
-      : (["#d1d5db", "#9ca3af"] as const);
+      ? ([TT.primary, TT.primary] as const)
+      : ([TT.surface2, TT.surface2] as const);
 
   return (
     <Animated.View
@@ -603,23 +597,18 @@ function AddToPackButton({
           style={ABP.grad}
         >
           {saving ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={TT.text} />
           ) : typeFull ? (
             <>
-              <Ionicons name="lock-closed" size={15} color="#fff" />
+              <Ionicons name="lock-closed" size={15} color={TT.text} />
               <CustomText style={ABP.label}>Limit reached</CustomText>
             </>
           ) : (
             <>
-              <CustomText style={ABP.heart}>❤️</CustomText>
-              <CustomText style={ABP.label}>ADD TO MY PACK</CustomText>
+              <CustomText style={ABP.label}>Add to my pack</CustomText>
             </>
           )}
         </LinearGradient>
-        {/* Glow when enabled */}
-        {enabled && !saving && !typeFull && (
-          <View style={ABP.glow} pointerEvents="none" />
-        )}
       </Pressable>
     </Animated.View>
   );
@@ -627,16 +616,16 @@ function AddToPackButton({
 
 const ABP = StyleSheet.create({
   wrap: {
-    borderRadius: 16,
+    borderRadius: TT.radius,
     overflow: "visible",
-    shadowColor: "#ea580c",
+    shadowColor: "transparent",
     shadowOpacity: 0.4,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,
   },
   grad: {
-    borderRadius: 16,
+    borderRadius: TT.radius,
     paddingVertical: 14,
     flexDirection: "row",
     alignItems: "center",
@@ -644,15 +633,7 @@ const ABP = StyleSheet.create({
     gap: 8,
     overflow: "hidden",
   },
-  heart: { fontSize: 18 },
-  label: { color: "#fff", fontSize: 15, fontWeight: "900", letterSpacing: 0.6 },
-  glow: {
-    position: "absolute",
-    inset: -4,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: "rgba(251,191,36,0.45)",
-  },
+  label: { color: TT.text, fontSize: 16, fontWeight: "700" },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -736,7 +717,7 @@ function SimpleQuestionCard({
                 { backgroundColor: m.bg, borderColor: m.accent + "55" },
               ]}
             >
-              <CustomText style={[SQ.pillLabel, { color: m.color }]}>
+              <CustomText style={[SQ.pillLabel, { color: m.accent }]}>
                 {m.name.toUpperCase()}
               </CustomText>
             </View>
@@ -747,7 +728,7 @@ function SimpleQuestionCard({
           <Ionicons
             name="chevron-forward"
             size={15}
-            color="#d1d5db"
+            color={TT.text2}
             style={{ flexShrink: 0 }}
           />
         </Pressable>
@@ -763,7 +744,6 @@ const SQ = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 10,
-    backgroundColor: "#fff",
   },
   icon: { width: 28, height: 32, flexShrink: 0 },
   textWrap: { flex: 1, gap: 3 },
@@ -776,7 +756,7 @@ const SQ = StyleSheet.create({
   },
   pillLabel: { fontSize: 8, fontWeight: "900", letterSpacing: 0.7 },
   questionText: {
-    color: "#1f2937",
+    color: TT.text,
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "500",
@@ -841,7 +821,6 @@ function EmptyPackCard() {
 
 const EP = StyleSheet.create({
   wrap: {
-    marginTop: 10,
     borderRadius: 18,
     overflow: "hidden",
     borderWidth: 1,
@@ -951,7 +930,7 @@ function SavedQuestionsCard({
           style={MSQ.header}
         >
           <View style={MSQ.headerIconWrap}>
-            <Ionicons name="albums-outline" size={18} color="#10b981" />
+            <Ionicons name="albums-outline" size={18} color={TT.text} />
           </View>
           <CustomText style={MSQ.headerTitle}>My Saved Questions</CustomText>
           <View style={MSQ.badge}>
@@ -963,7 +942,7 @@ function SavedQuestionsCard({
             <Ionicons
               name={expanded ? "chevron-up" : "chevron-down"}
               size={18}
-              color="#9ca3af"
+              color={TT.text2}
             />
           </Animated.View>
         </Pressable>
@@ -993,11 +972,10 @@ function SavedQuestionsCard({
 
 const MSQ = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
+    backgroundColor: TT.surface,
+    borderRadius: TT.cardRadius,
     overflow: "hidden",
     ...CARD_SHADOW,
-    marginTop: 12,
   },
   header: {
     flexDirection: "row",
@@ -1010,30 +988,30 @@ const MSQ = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 10,
-    backgroundColor: "rgba(16,185,129,0.1)",
+    backgroundColor: TT.surface2,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
-  headerTitle: { flex: 1, color: "#1f2937", fontSize: 14, fontWeight: "800" },
+  headerTitle: { flex: 1, color: TT.text, fontSize: 14, fontWeight: "800" },
   badge: {
     width: 28,
     height: 28,
-    borderRadius: 14,
-    backgroundColor: "#fbbf24",
+    borderRadius: TT.radius,
+    backgroundColor: TT.primary,
     alignItems: "center",
     justifyContent: "center",
   },
-  badgeNum: { color: "#78350f", fontSize: 13, fontWeight: "900" },
+  badgeNum: { color: TT.text, fontSize: 13, fontWeight: "900" },
   listWrap: { overflow: "hidden" },
   topDivider: {
     height: 1,
-    backgroundColor: "rgba(0,0,0,0.06)",
+    backgroundColor: TT.line,
     marginHorizontal: 16,
   },
   rowDivider: {
     height: 1,
-    backgroundColor: "rgba(0,0,0,0.05)",
+    backgroundColor: TT.line,
     marginHorizontal: 52,
   },
 });
@@ -1167,13 +1145,13 @@ export default function ProfilePremiumQuestionsCard() {
         {/* Header */}
         <View style={C.header}>
           <View style={C.headerIconWrap}>
-            <Ionicons name="library-outline" size={20} color="#d97706" />
+            <Ionicons name="library-outline" size={20} color={TT.text} />
           </View>
           <View style={{ flex: 1 }}>
             <View style={C.headerTitleRow}>
               <CustomText style={C.headerTitle}>My Question Pack</CustomText>
               <View style={C.premiumBadge}>
-                <Ionicons name="star" size={8} color="#92400e" />
+                <Ionicons name="star" size={8} color={TT.text} />
                 <CustomText style={C.premiumBadgeText}>PREMIUM</CustomText>
               </View>
             </View>
@@ -1182,7 +1160,7 @@ export default function ProfilePremiumQuestionsCard() {
               automatically!
             </CustomText>
           </View>
-          {loading && <ActivityIndicator color="#d97706" size="small" />}
+          {loading && <ActivityIndicator color={TT.text} size="small" />}
         </View>
 
         <View style={C.divider} />
@@ -1231,7 +1209,7 @@ export default function ProfilePremiumQuestionsCard() {
                   />
                   <View style={{ flex: 1 }}>
                     <CustomText
-                      style={[C.eyebrowTitle, { color: activeM.color }]}
+                      style={[C.eyebrowTitle, { color: activeM.accent }]}
                     >
                       New {activeM.name.toLowerCase()} question
                     </CustomText>
@@ -1241,7 +1219,7 @@ export default function ProfilePremiumQuestionsCard() {
                   </View>
                   {typeFull && (
                     <View style={C.fullChip}>
-                      <Ionicons name="lock-closed" size={10} color="#b91c1c" />
+                      <Ionicons name="lock-closed" size={10} color={TT.primary} />
                       <CustomText style={C.fullChipText}>Full</CustomText>
                     </View>
                   )}
@@ -1265,18 +1243,18 @@ export default function ProfilePremiumQuestionsCard() {
                       : (activeM?.placeholder ?? "")
                   }
                   placeholderTextColor={
-                    typeFull ? "rgba(185,28,28,0.5)" : "#9ca3af"
+                    typeFull ? TT.text2 : TT.text2
                   }
                   multiline
                   editable={!typeFull && !!selectedType}
-                  style={[C.input, activeM && { color: activeM.color }]}
+                  style={C.input}
                 />
                 {text.length > 0 && (
                   <View style={C.charRow}>
                     <CustomText
                       style={[
                         C.charCount,
-                        text.length > charLimit * 0.9 && { color: "#b45309" },
+                        text.length > charLimit * 0.9 && { color: TT.primary },
                       ]}
                     >
                       {text.length} / {charLimit}
@@ -1294,7 +1272,7 @@ export default function ProfilePremiumQuestionsCard() {
 
               {error && (
                 <View style={C.errorRow}>
-                  <Ionicons name="warning-outline" size={14} color="#b91c1c" />
+                  <Ionicons name="warning-outline" size={14} color={TT.primary} />
                   <CustomText style={C.errorText}>{error}</CustomText>
                 </View>
               )}
@@ -1314,10 +1292,9 @@ export default function ProfilePremiumQuestionsCard() {
       ) : null}
 
       {/* ── Delete confirmation — centered purple popup ──────────── */}
-      <PurpleConfirmModal
+      <CamConfirmSheet
         visible={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
-        emoji="🗑️"
         title="Delete question?"
         body={
           deleteTarget
@@ -1326,7 +1303,6 @@ export default function ProfilePremiumQuestionsCard() {
         }
         cancelLabel="Keep it"
         confirmLabel={saving ? "Deleting…" : "Delete"}
-        confirmColors={["#dc2626", "#b91c1c"]}
         onConfirm={() => void onDeleteConfirmed()}
       />
     </View>
@@ -1334,11 +1310,12 @@ export default function ProfilePremiumQuestionsCard() {
 }
 
 const C = StyleSheet.create({
-  outer: { marginHorizontal: 16, marginTop: 16, marginBottom: 20 },
+  // No vertical margins: the profile screen spaces its sections with one gap.
+  outer: { marginHorizontal: 16, gap: TT.sectionGap },
 
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
+    backgroundColor: TT.surface,
+    borderRadius: TT.cardRadius,
     overflow: "hidden",
     ...CARD_SHADOW,
   },
@@ -1354,9 +1331,9 @@ const C = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "rgba(245,158,11,0.1)",
+    backgroundColor: TT.surface2,
     borderWidth: 1,
-    borderColor: "rgba(245,158,11,0.25)",
+    borderColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
     marginTop: 1,
@@ -1368,13 +1345,13 @@ const C = StyleSheet.create({
     gap: 8,
     flexWrap: "wrap",
   },
-  headerTitle: { color: "#111827", fontSize: 15, fontWeight: "800" },
-  headerSub: { color: "#6b7280", fontSize: 11.5, marginTop: 4, lineHeight: 17 },
+  headerTitle: { color: TT.text, fontSize: 15, fontWeight: "800" },
+  headerSub: { color: TT.text2, fontSize: 11.5, marginTop: 4, lineHeight: 17 },
   premiumBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    backgroundColor: "rgba(251,191,36,0.18)",
+    backgroundColor: TT.primary,
     borderRadius: 7,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -1382,7 +1359,7 @@ const C = StyleSheet.create({
     borderColor: "rgba(251,191,36,0.55)",
   },
   premiumBadgeText: {
-    color: "#92400e",
+    color: TT.text,
     fontSize: 8,
     fontWeight: "900",
     letterSpacing: 0.8,
@@ -1390,7 +1367,7 @@ const C = StyleSheet.create({
 
   divider: {
     height: 1,
-    backgroundColor: "rgba(0,0,0,0.07)",
+    backgroundColor: TT.line,
     marginHorizontal: 16,
   },
   typeSection: { paddingHorizontal: 12, paddingTop: 14, paddingBottom: 8 },
@@ -1408,46 +1385,46 @@ const C = StyleSheet.create({
   inputEyebrow: { flexDirection: "row", alignItems: "center", gap: 10 },
   eyebrowImg: { width: 38, height: 44, flexShrink: 0 },
   eyebrowTitle: { fontSize: 13, fontWeight: "800" },
-  eyebrowSub: { color: "#9ca3af", fontSize: 11, marginTop: 1 },
+  eyebrowSub: { color: TT.text2, fontSize: 11, marginTop: 1 },
 
   fullChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    backgroundColor: "rgba(254,226,226,0.9)",
+    backgroundColor: TT.primarySoft,
     borderRadius: 8,
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderWidth: 1,
-    borderColor: "rgba(220,38,38,0.3)",
+    borderColor: "transparent",
   },
-  fullChipText: { color: "#b91c1c", fontSize: 10, fontWeight: "700" },
+  fullChipText: { color: TT.primary, fontSize: 10, fontWeight: "700" },
 
   inputWrap: {
     borderWidth: 1.5,
-    borderRadius: 14,
-    borderColor: "rgba(0,0,0,0.10)",
-    backgroundColor: "#f9fafb",
+    borderRadius: TT.radius,
+    borderColor: "transparent",
+    backgroundColor: TT.surface2,
     overflow: "hidden",
   },
   inputWrapFull: {
-    borderColor: "rgba(220,38,38,0.4)",
-    backgroundColor: "rgba(254,226,226,0.5)",
+    borderColor: TT.primary,
+    backgroundColor: TT.primarySoft,
   },
   input: {
     minHeight: 68,
     paddingHorizontal: 14,
     paddingTop: 12,
     paddingBottom: 8,
-    color: "#111827",
+    color: TT.text,
     fontSize: 14,
     lineHeight: 22,
   },
   charRow: { paddingHorizontal: 14, paddingBottom: 8, alignItems: "flex-end" },
-  charCount: { color: "#9ca3af", fontSize: 10, fontWeight: "600" },
+  charCount: { color: TT.text2, fontSize: 10, fontWeight: "600" },
 
   errorRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  errorText: { color: "#b91c1c", fontSize: 12, flex: 1 },
+  errorText: { color: TT.primary, fontSize: 12, flex: 1 },
 
   emptyWrap: {
     alignItems: "center",
@@ -1463,9 +1440,9 @@ const C = StyleSheet.create({
     marginBottom: 4,
   },
   emptyImg: { width: 52, height: 58 },
-  emptyTitle: { color: "#374151", fontSize: 14, fontWeight: "800" },
+  emptyTitle: { color: TT.text, fontSize: 14, fontWeight: "800" },
   emptyText: {
-    color: "#6b7280",
+    color: TT.text2,
     fontSize: 12,
     textAlign: "center",
     lineHeight: 18,

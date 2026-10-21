@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useEffect } from "react";
 import {
   View,
   Image,
+  Alert,
   ScrollView,
   StyleSheet,
   Animated,
@@ -23,15 +24,26 @@ import PremiumComponent from "../components/store/PremiumComponent";
 import HeroSliderComponent from "../components/store/HeroSliderComponent";
 import LoadingComponent from "../components/store/LoadingComponent";
 import SuccessComponent from "../components/store/SuccessComponent";
+import BundleSuccessComponent from "../components/store/BundleSuccessComponent";
+import DonationThanksComponent from "../components/store/DonationThanksComponent";
+import PremiumSuccessComponent from "../components/store/PremiumSuccessComponent";
+import { getPackPrice } from "../utils/bundlePricing";
+import PurchaseProcessingOverlay from "../components/store/PurchaseProcessingOverlay";
 import BundleComponent from "../components/store/BundleComponent";
 import { OnboardingStackParamList } from "../navigation/types";
 import { ICharacter } from "../types/character";
 import { BUNDLES } from "../data/bundles";
-import ScreenTopBar from "../components/common/ScreenTopBar";
+import { Ionicons } from "@expo/vector-icons";
+import CamNavBar from "../components/cam/CamNavBar";
+import { UiStyleProvider } from "../context/UiStyleContext";
 import { useUserSettingsSheet } from "../context/UserSettingsModalContext";
 import { useResponsive } from "../utils/responsive";
 import AnimatedLogoHero from "../components/AnimatedLogoHero";
 import { useHeroesStore } from "../store/useHeroesStore";
+import { useDemoUnlocks } from "../store/useDemoUnlocks";
+import { isUnlockedFor, unlockOf } from "../game/unlocks";
+import { purchaseItem } from "../services/purchases";
+import SkinCard from "../components/store/SkinCard";
 import { fetchCatalogCharacterProducts } from "../api/catalog";
 import { queryKeys } from "../api/queryKeys";
 import { useAuthStore } from "../store/useUserStore";
@@ -41,6 +53,15 @@ import { useStorePurchase } from "../hooks/useStorePurchase";
 import { IAP_SKUS, IAP_FALLBACK_PRICES } from "../services/iapConstants";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Store">;
+
+/**
+ * Dev builds only: tapping buy on a hero, a bundle or Premium plays the processing
+ * state and the purchase confirmation without charging or unlocking anything, so the flow can
+ * be reviewed before store products exist. Release builds always run the real
+ * purchase. Set to `false` to test real purchases in a dev build.
+ */
+const PREVIEW_HERO_PURCHASE_FLOW = __DEV__;
+const PREVIEW_PROCESSING_MS = 1400;
 
 export type StoreHeroItem = ICharacter & {
   productId?: string;
@@ -153,7 +174,7 @@ function StoreHeader() {
         logoWidth={logo.width}
         logoHeight={logo.height}
         overlayLayout={htpOverlay}
-        marginTop={120}
+        marginTop={72}
       />
       <CustomText
         variant="h3"
@@ -591,7 +612,7 @@ const DONATE_ICON_URI =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/951b8784-dbee-4520-9cc5-091221b351d4-donateIcon.webp";
 
 // ── Support card ─────────────────────────────────────────────────────────────
-function SupportCard() {
+function SupportCard({ onDonate }: { onDonate: () => void }) {
   const { t } = useTranslation();
   const { width: screenW } = useWindowDimensions();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -648,7 +669,7 @@ function SupportCard() {
           <CustomText style={supportStyles.body}>
             {t("store_support_body")}
           </CustomText>
-          <Pressable style={supportStyles.btn} hitSlop={8}>
+          <Pressable style={supportStyles.btn} hitSlop={8} onPress={onDonate}>
             <LinearGradient
               colors={["#e11d48", "#be123c"]}
               start={{ x: 0, y: 0 }}
@@ -691,16 +712,20 @@ const StoreScreen = () => {
   const navigation = useNavigation<Nav>();
   const { openUserSettings } = useUserSettingsSheet();
   const { t } = useTranslation();
-  const { horizontalPadding, topIconSize, isTablet } = useResponsive();
+  const { isTablet } = useResponsive();
   const userId = useAuthStore((s) => s.user.id);
   const isPremium = useAuthStore((s) => s.user.isPremium);
 
   const { purchase, restore, isLoading, state, lastResult, reset } =
     useStorePurchase();
   const [successHero, setSuccessHero] = React.useState<ICharacter | null>(null);
-  const [successBundle, setSuccessBundle] = React.useState<IBundle | null>(
-    null,
-  );
+  const [donationThanks, setDonationThanks] = React.useState(false);
+  /** Between tapping Unlock and the confirmation, while previewing the flow. */
+  const [previewProcessing, setPreviewProcessing] = React.useState(false);
+  const [successBundle, setSuccessBundle] = React.useState<{
+    bundle: IBundle;
+    heroes: ICharacter[];
+  } | null>(null);
   const [successPremium, setSuccessPremium] = React.useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -740,8 +765,98 @@ const StoreScreen = () => {
       });
   }, [heroes, catalogProducts]);
 
+  // ── Bundles: which are offered, at what price, and what each unlocks ───────
+  /**
+   * Outfits for sale: sold (buy or "buy or earn"), not yet owned, and only for
+   * heroes the player already has — a skin needs its hero.
+   */
+  const demoUnlockedIds = useDemoUnlocks((s) => s.ids);
+  const userUnlockedIds = useAuthStore((s) => s.user.unlockedCharacterIds);
+  const skinsForSale = useMemo(() => {
+    const owned = new Set([...(userUnlockedIds ?? []), ...demoUnlockedIds]);
+    const out: { skin: ICharacter; hero: ICharacter }[] = [];
+    heroes.forEach((hero) => {
+      if (!isUnlockedFor(hero, owned)) return;
+      (hero.skins ?? []).forEach((skin) => {
+        const mode = unlockOf(skin).mode;
+        if (mode !== "BUY" && mode !== "BUY_OR_ACTION") return;
+        if (isUnlockedFor(skin, owned, hero)) return;
+        out.push({ skin, hero });
+      });
+    });
+    return out;
+  }, [heroes, userUnlockedIds, demoUnlockedIds]);
+
+  const handleSkinBuy = async (skin: ICharacter, hero: ICharacter) => {
+    const info = unlockOf(skin);
+    setPreviewProcessing(true);
+    const outcome = await purchaseItem(
+      {
+        kind: "SKIN",
+        characterIds: [skin.id],
+        productId: info.productId,
+        storeProductId: info.storeProductId,
+      },
+      userId,
+    );
+    setPreviewProcessing(false);
+    if (outcome.success) {
+      // The same celebration as a hero, showing the hero in the new outfit.
+      setSuccessHero({ ...skin, name: `${hero.name} · ${skin.name}` });
+    } else {
+      Alert.alert(t("required_alert_title"), outcome.error ?? t("lock_purchase_failed"));
+    }
+  };
+
+  const storeBundles = useMemo(() => {
+    const priceOf = (h: StoreHeroItem) =>
+      h.discountPrice > 0 ? h.discountPrice : h.price;
+    const offers: { bundle: IBundle; heroes: StoreHeroItem[] }[] = [];
+
+    for (const bundle of BUNDLES) {
+      if (bundle.includesAllPaidHeroes) {
+        // A pack of the heroes still locked; pointless with fewer than two.
+        if (paidHeroes.length < 2) continue;
+        const pack = getPackPrice(paidHeroes.map(priceOf));
+        if (!pack) continue;
+        offers.push({
+          heroes: paidHeroes,
+          bundle: {
+            ...bundle,
+            price: pack.fullPrice,
+            discountPrice: pack.packPrice,
+            discountPercentage: pack.savingPercent,
+            priceNote: `Save ${pack.savingPercent}%`,
+          },
+        });
+        continue;
+      }
+      if (bundle.heroSlugs) {
+        const included = bundle.heroSlugs
+          .map((slug) => paidHeroes.find((h) => h.slug === slug))
+          .filter((h): h is StoreHeroItem => !!h);
+        // `paidHeroes` holds only locked heroes: a fixed bundle is offered
+        // only while the player owns none of its heroes.
+        if (included.length !== bundle.heroSlugs.length) continue;
+        offers.push({ bundle, heroes: included });
+        continue;
+      }
+      offers.push({ bundle, heroes: [] });
+    }
+    return offers;
+  }, [paidHeroes]);
+
   // ── Purchase handlers ──────────────────────────────────────────────────────
   const handlePremiumBuy = async () => {
+    if (PREVIEW_HERO_PURCHASE_FLOW) {
+      setPreviewProcessing(true);
+      await new Promise<void>((resolve) =>
+        setTimeout(resolve, PREVIEW_PROCESSING_MS),
+      );
+      setPreviewProcessing(false);
+      setSuccessPremium(true);
+      return;
+    }
     const result = await purchase(IAP_SKUS.PREMIUM_MONTHLY);
     if (result.success) {
       setSuccessPremium(true);
@@ -758,6 +873,15 @@ const StoreScreen = () => {
   };
 
   const handleHeroBuy = async (hero: StoreHeroItem) => {
+    if (PREVIEW_HERO_PURCHASE_FLOW) {
+      setPreviewProcessing(true);
+      await new Promise<void>((resolve) =>
+        setTimeout(resolve, PREVIEW_PROCESSING_MS),
+      );
+      setPreviewProcessing(false);
+      setSuccessHero(hero);
+      return;
+    }
     const sku = (hero.productId ?? hero.slug) as any;
     const result = await purchase(sku);
     if (result.success) setSuccessHero(hero);
@@ -773,8 +897,22 @@ const StoreScreen = () => {
   };
 
   const handleBundleBuy = async (bundle: IBundle) => {
+    // The heroes are captured now: once unlocked they leave the store lists.
+    const unlocked = {
+      bundle,
+      heroes: storeBundles.find((o) => o.bundle.id === bundle.id)?.heroes ?? [],
+    };
+    if (PREVIEW_HERO_PURCHASE_FLOW) {
+      setPreviewProcessing(true);
+      await new Promise<void>((resolve) =>
+        setTimeout(resolve, PREVIEW_PROCESSING_MS),
+      );
+      setPreviewProcessing(false);
+      setSuccessBundle(unlocked);
+      return;
+    }
     const result = await purchase(bundle.productId as any);
-    if (result.success) setSuccessBundle(bundle);
+    if (result.success) setSuccessBundle(unlocked);
     void trackItemPurchased({
       playerId: userId,
       userId,
@@ -786,6 +924,19 @@ const StoreScreen = () => {
     }).catch(() => {});
   };
 
+  // There is no donation product yet, so only the preview flow exists: in dev
+  // builds the button plays "processing" and the thank-you; in release builds it
+  // does nothing until a product is wired here.
+  const handleDonate = async () => {
+    if (!PREVIEW_HERO_PURCHASE_FLOW) return;
+    setPreviewProcessing(true);
+    await new Promise<void>((resolve) =>
+      setTimeout(resolve, PREVIEW_PROCESSING_MS),
+    );
+    setPreviewProcessing(false);
+    setDonationThanks(true);
+  };
+
   const handleRestore = () => restore();
 
   return (
@@ -793,16 +944,22 @@ const StoreScreen = () => {
       rootStyle={styles.root}
       backdrop={<AnimatedStoreBackground scrollY={scrollY} />}
     >
-      <SafeAreaView style={styles.safe} edges={["left", "right"]}>
-        <ScreenTopBar
-          variant="soloBackFromCenter"
-          horizontalPadding={horizontalPadding}
-          topIconSize={topIconSize}
-          showBack
-          onSettings={() => openUserSettings()}
-          onProfile={() => {}}
+      <UiStyleProvider value="tiktok">
+      <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+        <CamNavBar
+          title={t("menu_store_btn")}
+          backLabel={t("back_btn")}
           onBack={() => navigateBackSafe(navigation)}
-          backAccessibilityLabel={t("back_btn")}
+          right={
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("game_settings")}
+              hitSlop={8}
+              onPress={() => openUserSettings()}
+            >
+              <Ionicons name="settings-outline" size={22} color="#FFFFFF" />
+            </Pressable>
+          }
         />
 
         <ScrollView
@@ -867,13 +1024,15 @@ const StoreScreen = () => {
             )}
 
             {/* ── Bundles ───────────────────────────────────────────────── */}
-            <SectionHeader
-              emoji="🎁"
-              title={t("store_bundles_section")}
-              subtitle={t("store_bundles_subtitle")}
-              delay={260}
-            />
-            {BUNDLES.map((bundle, i) => (
+            {storeBundles.length > 0 && (
+              <SectionHeader
+                emoji="🎁"
+                title={t("store_bundles_section")}
+                subtitle={t("store_bundles_subtitle")}
+                delay={260}
+              />
+            )}
+            {storeBundles.map(({ bundle }, i) => (
               <BundleComponent
                 key={bundle.id}
                 item={bundle}
@@ -883,8 +1042,34 @@ const StoreScreen = () => {
               />
             ))}
 
+            {/* ── Outfits ───────────────────────────────────────────────── */}
+            {skinsForSale.length > 0 && (
+              <>
+                <SectionHeader
+                  emoji="👕"
+                  title={t("store_skins_section")}
+                  subtitle={t("store_skins_subtitle")}
+                  delay={340}
+                />
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 12, paddingVertical: 4 }}
+                >
+                  {skinsForSale.map(({ skin, hero }) => (
+                    <SkinCard
+                      key={skin.id}
+                      skin={skin}
+                      hero={hero}
+                      onBuy={(s, h) => void handleSkinBuy(s, h)}
+                    />
+                  ))}
+                </ScrollView>
+              </>
+            )}
+
             {/* ── Footer ────────────────────────────────────────────────── */}
-            <SupportCard />
+            <SupportCard onDonate={() => void handleDonate()} />
             <RestoreRow
               onRestore={handleRestore}
               isLoading={isLoading && state === "loading"}
@@ -894,6 +1079,7 @@ const StoreScreen = () => {
 
         {/* ── Overlays ──────────────────────────────────────────────── */}
         {isLoading && <LoadingComponent />}
+        {previewProcessing && <PurchaseProcessingOverlay />}
 
         {successHero && (
           <SuccessComponent
@@ -903,42 +1089,23 @@ const StoreScreen = () => {
           />
         )}
 
+        {successBundle && (
+          <BundleSuccessComponent
+            bundle={successBundle.bundle}
+            heroes={successBundle.heroes}
+            onContinue={() => setSuccessBundle(null)}
+          />
+        )}
+
+        {donationThanks && (
+          <DonationThanksComponent onContinue={() => setDonationThanks(false)} />
+        )}
+
         {successPremium && (
-          <View style={styles.premiumSuccessOverlay}>
-            <LinearGradient
-              colors={["#1a0533", "#2d0b5a"]}
-              style={styles.premiumSuccessCard}
-            >
-              <CustomText style={styles.premiumSuccessEmoji}>⚡</CustomText>
-              <CustomText
-                variant="h2-small"
-                style={{ color: "#FFD43B" }}
-                shadow
-              >
-                {t("store_success_premium_title")}
-              </CustomText>
-              <CustomText style={styles.premiumSuccessBody}>
-                {t("store_success_premium_body")}
-              </CustomText>
-              <Pressable
-                onPress={() => setSuccessPremium(false)}
-                style={styles.premiumSuccessBtn}
-              >
-                <LinearGradient
-                  colors={["#FFD43B", "#F76B1C"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.premiumSuccessBtnGrad}
-                >
-                  <CustomText style={styles.premiumSuccessBtnText}>
-                    {t("store_success_lets_go")}
-                  </CustomText>
-                </LinearGradient>
-              </Pressable>
-            </LinearGradient>
-          </View>
+          <PremiumSuccessComponent onContinue={() => setSuccessPremium(false)} />
         )}
       </SafeAreaView>
+      </UiStyleProvider>
     </FullBleedStack>
   );
 };
@@ -980,46 +1147,6 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
   },
 
-  // ── Premium success overlay
-  premiumSuccessOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(0,0,0,0.88)",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 9999,
-  },
-  premiumSuccessCard: {
-    marginHorizontal: 28,
-    borderRadius: 28,
-    padding: 32,
-    alignItems: "center",
-    gap: 16,
-    borderWidth: 1.5,
-    borderColor: "rgba(255,212,59,0.5)",
-  },
-  premiumSuccessEmoji: { fontSize: 56 },
-  premiumSuccessBody: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 16,
-    textAlign: "center",
-    lineHeight: 24,
-  },
-  premiumSuccessBtn: {
-    alignSelf: "stretch",
-    borderRadius: 14,
-    overflow: "hidden",
-    marginTop: 4,
-  },
-  premiumSuccessBtnGrad: {
-    paddingVertical: 16,
-    alignItems: "center",
-    borderRadius: 14,
-  },
-  premiumSuccessBtnText: {
-    color: "#1a0533",
-    fontSize: 18,
-    fontWeight: "900",
-  },
 });
 
 const supportStyles = StyleSheet.create({

@@ -1,3 +1,4 @@
+import { resolvePlayerHero } from "../../game/resolvePlayerHero";
 import React, {
   useCallback,
   useEffect,
@@ -27,6 +28,8 @@ import { StackNavigationProp } from "@react-navigation/stack";
 import { backgrounds } from "../../../assets/backgrounds";
 
 import CustomText from "../../components/common/CustomText";
+import CamButton from "../../components/cam/CamButton";
+import CamText from "../../components/cam/CamText";
 import CustomButton from "../../components/common/CustomButton";
 import CardAmbienceCanvas from "../../components/game/CardAmbienceCanvas";
 
@@ -236,6 +239,18 @@ const ResultsScreen = () => {
   const isBonusRound = useGameStore((s) => s.isBonusRound);
   const round = useGameStore((s) => s.round);
   const mode = useGameStore((s) => s.mode) as GameMode;
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  /** Party mode: the "Start" button under the timer intro is waiting for a tap. */
+  const [timerStartVisible, setTimerStartVisible] = useState(false);
+  const beginCountdownRef = useRef<(() => void) | null>(null);
+  const confirmTimerStart = () => {
+    const begin = beginCountdownRef.current;
+    if (!begin) return;
+    beginCountdownRef.current = null;
+    setTimerStartVisible(false);
+    begin();
+  };
   const activeRoundNumber = (round ?? 0) + 1;
   const preVotePhase = mpPhasePreVote(activeRoundNumber);
   const [waitingPreVoteSync, setWaitingPreVoteSync] = useState(false);
@@ -348,17 +363,9 @@ const ResultsScreen = () => {
 
   /* ── DATA HELPERS ────────────────────────────────────────────────────────── */
 
-  const characterById = useMemo(() => {
-    const map: Record<string, Character> = {};
-    heroes.forEach((c) => {
-      map[c.id] = c as unknown as Character;
-    });
-    return map;
-  }, [heroes]);
-
   const getAvatar = (player: Player): ImageSourcePropType | undefined => {
     if (!player.characterId) return undefined;
-    return characterById[player.characterId]?.profileImage;
+    return resolvePlayerHero(heroes, player)?.profileImage;
   };
 
   const vanessaRateImage = useMemo(() => {
@@ -372,7 +379,7 @@ const ResultsScreen = () => {
 
   const getRateImage = (player: Player): ImageSourcePropType | null => {
     if (!player.characterId) return vanessaRateImage ?? null;
-    const char = characterById[player.characterId];
+    const char = resolvePlayerHero(heroes, player);
     return char?.rateImage ?? vanessaRateImage ?? null;
   };
 
@@ -485,7 +492,7 @@ const ResultsScreen = () => {
       clearTimeout(timerFinishTimeoutRef.current);
       timerFinishTimeoutRef.current = null;
     }
-    void AudioManager.stopBackground();
+    // The gameplay music, if it is still playing, carries on into the vote.
     void AudioManager.stopTensionLoop();
     setSecondsLeft(0);
 
@@ -511,7 +518,6 @@ const ResultsScreen = () => {
   }, [finalizeDiscussion]);
 
   useEffect(() => () => {
-    void AudioManager.stopBackground();
     void AudioManager.stopTensionLoop();
   }, []);
 
@@ -662,8 +668,9 @@ const ResultsScreen = () => {
     useCallback(() => {
       mountedRef.current = true;
 
-      // Stop any audio left over from the previous screen immediately
-      void AudioManager.stopBackground();
+      // Same music as the question screens: it carries on if it is already
+      // playing. Only the last 20 seconds replace it (with the tension loop).
+      void AudioManager.playBackgroundGame();
       void AudioManager.stopTensionLoop();
 
       hasFinishedRef.current = false;
@@ -799,11 +806,6 @@ const ResultsScreen = () => {
               useNativeDriver: true,
             } as Parameters<typeof Animated.spring>[1]),
           ]).start(() => {
-            // Guard: don't start music if the user already pressed skip
-            // before this spring animation settled.
-            if (!hasFinishedRef.current) {
-              void AudioManager.playResultsBgMusic();
-            }
             safe(() => {
               phaseRef.current = "running";
               setPhase("running");
@@ -833,44 +835,56 @@ const ResultsScreen = () => {
           duration: 140,
           useNativeDriver: true,
         }).start(() => {
-          // 2 quick pulses — timer still shows initial value (e.g. 120)
-          Animated.sequence([
-            Animated.timing(timerPulse, {
-              toValue: 1.14,
-              duration: 110,
-              easing: Easing.out(Easing.quad),
-              useNativeDriver: true,
-            }),
-            Animated.timing(timerPulse, {
-              toValue: 1,
-              duration: 110,
-              easing: Easing.in(Easing.quad),
-              useNativeDriver: true,
-            }),
-            Animated.timing(timerPulse, {
-              toValue: 1.1,
-              duration: 110,
-              easing: Easing.out(Easing.quad),
-              useNativeDriver: true,
-            }),
-            Animated.timing(timerPulse, {
-              toValue: 1,
-              duration: 110,
-              easing: Easing.in(Easing.quad),
-              useNativeDriver: true,
-            }),
-          ]).start(() => {
-            setSecondsLeft((s) => {
-              const next = Math.max(0, s - 1);
-              secondsLeftRef.current = next;
-              if (next === 0) {
-                setTimeout(() => finalizeDiscussionRef.current(), 0);
-              }
-              return next;
-            });
+          // The pulses and the countdown itself.
+          const beginCountdown = () => {
+            // 2 quick pulses — timer still shows initial value (e.g. 120)
+            Animated.sequence([
+              Animated.timing(timerPulse, {
+                toValue: 1.14,
+                duration: 110,
+                easing: Easing.out(Easing.quad),
+                useNativeDriver: true,
+              }),
+              Animated.timing(timerPulse, {
+                toValue: 1,
+                duration: 110,
+                easing: Easing.in(Easing.quad),
+                useNativeDriver: true,
+              }),
+              Animated.timing(timerPulse, {
+                toValue: 1.1,
+                duration: 110,
+                easing: Easing.out(Easing.quad),
+                useNativeDriver: true,
+              }),
+              Animated.timing(timerPulse, {
+                toValue: 1,
+                duration: 110,
+                easing: Easing.in(Easing.quad),
+                useNativeDriver: true,
+              }),
+            ]).start(() => {
+              setSecondsLeft((s) => {
+                const next = Math.max(0, s - 1);
+                secondsLeftRef.current = next;
+                if (next === 0) {
+                  setTimeout(() => finalizeDiscussionRef.current(), 0);
+                }
+                return next;
+              });
 
-            setTimeout(() => safe(startDrop), 160);
-          });
+              setTimeout(() => safe(startDrop), 160);
+            });
+          };
+
+          // Party mode: the table decides when the clock starts, with a button.
+          // Online keeps starting by itself so every device counts together.
+          if (modeRef.current === "ONLINE") {
+            beginCountdown();
+          } else {
+            beginCountdownRef.current = beginCountdown;
+            safe(() => setTimerStartVisible(true));
+          }
         });
       });
     };
@@ -1043,6 +1057,32 @@ const ResultsScreen = () => {
     finalizeDiscussion();
   };
 
+  /* Pass & play: the timer is skipped by holding it until it fills up. */
+  const skipHold = useRef(new Animated.Value(0)).current;
+
+  const startSkipHold = () => {
+    scaleUp();
+    if (mode === "ONLINE" || hasFinishedRef.current) return;
+    Animated.timing(skipHold, {
+      toValue: 1,
+      duration: TIMER_HOLD_MS,
+      easing: Easing.linear,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) handleTimerPress();
+    });
+  };
+
+  const endSkipHold = () => {
+    scaleDown();
+    if (mode === "ONLINE") return;
+    Animated.timing(skipHold, {
+      toValue: 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  };
+
   const scaleUp = () => {
     Animated.spring(scaleAnim, {
       toValue: 1.1,
@@ -1182,7 +1222,11 @@ const ResultsScreen = () => {
                       sizeDelta={2}
                       style={{ fontFamily: "Onest-SemiBold" }}
                     >
-                      {t("results_click_timer_skip")}
+                      {t(
+                        mode === "ONLINE"
+                          ? "results_click_timer_skip"
+                          : "results_hold_timer_skip",
+                      )}
                     </CustomText>
                   </>
                 ) : (
@@ -1224,7 +1268,11 @@ const ResultsScreen = () => {
                       sizeDelta={2}
                       style={{ fontFamily: "Onest-SemiBold" }}
                     >
-                      {t("results_click_timer_skip")}
+                      {t(
+                        mode === "ONLINE"
+                          ? "results_click_timer_skip"
+                          : "results_hold_timer_skip",
+                      )}
                     </CustomText>
                   </>
                 )}
@@ -1242,11 +1290,9 @@ const ResultsScreen = () => {
               ]}
             >
               <Pressable
-                onPressIn={scaleUp}
-                onPressOut={scaleDown}
+                onPressIn={startSkipHold}
+                onPressOut={endSkipHold}
                 onPress={mode === "ONLINE" ? handleTimerPress : undefined}
-                onLongPress={mode !== "ONLINE" ? handleTimerPress : undefined}
-                delayLongPress={600}
               >
                 <Animated.View
                   style={{
@@ -1275,6 +1321,25 @@ const ResultsScreen = () => {
                         { opacity: tensionGlowOpacity },
                       ]}
                     />
+                    {mode !== "ONLINE" && (
+                      <View style={styles.timerHoldClip} pointerEvents="none">
+                        <Animated.View
+                          style={[
+                            styles.timerHoldFill,
+                            {
+                              transform: [
+                                {
+                                  translateY: skipHold.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [TIMER_HOLD_SIZE, 0],
+                                  }),
+                                },
+                              ],
+                            },
+                          ]}
+                        />
+                      </View>
+                    )}
                     <View style={styles.timerTextLayer} pointerEvents="none">
                       <CustomText
                         variant="h3-headline"
@@ -1474,7 +1539,8 @@ const ResultsScreen = () => {
         {/* ── TIMER INTRO OVERLAY ──────────────────────────────────────────── */}
         <Animated.View
           style={[styles.timerIntroOverlay, { opacity: timerIntroOp }]}
-          pointerEvents="none"
+          // Touchable only while the Start button is waiting for a tap.
+          pointerEvents={timerStartVisible ? "auto" : "none"}
         >
           <View style={styles.timerIntroContent}>
             {/* Large pulsing timer */}
@@ -1531,18 +1597,19 @@ const ResultsScreen = () => {
               ]}
             >
               <View style={styles.timerIntroBanner}>
-                <CustomText variant="h5" style={styles.timerIntroBannerLabel}>
-                  ⏱
-                </CustomText>
-                <CustomText variant="h5" style={styles.timerIntroBannerText}>
-                  Your time is about to start!
-                </CustomText>
-                <CustomText
-                  variant="p-small"
-                  style={styles.timerIntroBannerSub}
-                >
-                  Discuss who didn't answer the question
-                </CustomText>
+                <CamText variant="title" center>
+                  {t("results_timer_title")}
+                </CamText>
+                <CamText variant="subtitle" center>
+                  {t("results_timer_sub")}
+                </CamText>
+                {timerStartVisible && (
+                  <CamButton
+                    title={t("results_timer_start")}
+                    style={styles.timerIntroButton}
+                    onPress={confirmTimerStart}
+                  />
+                )}
               </View>
             </Animated.View>
           </View>
@@ -1578,6 +1645,11 @@ const ResultsScreen = () => {
 };
 
 /* ── STYLES ───────────────────────────────────────────────────────────────── */
+
+/** Timer face is 155 wide; the hold fill sits inside its frame. */
+const TIMER_HOLD_INSET = 14;
+const TIMER_HOLD_SIZE = 155 - TIMER_HOLD_INSET * 2;
+const TIMER_HOLD_MS = 1100;
 
 const styles = StyleSheet.create({
   namePlateShadow: {
@@ -1672,39 +1744,32 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
   },
+  // TikTok-style popup: dark card, plain text, one red button.
   timerIntroBanner: {
-    alignItems: "center",
-    paddingHorizontal: 28,
-    paddingVertical: 18,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: "rgba(255, 210, 60, 0.55)",
-    backgroundColor: "rgba(20, 8, 50, 0.85)",
-    gap: 6,
-    shadowColor: "#ffd23c",
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 18,
+    alignSelf: "stretch",
+    marginHorizontal: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderRadius: 16,
+    backgroundColor: "#121212",
+    gap: 8,
   },
-  timerIntroBannerLabel: {
-    fontSize: 32,
-    lineHeight: 38,
+  timerIntroButton: {
+    marginTop: 8,
   },
-  timerIntroBannerText: {
-    color: "#ffeea0",
-    fontWeight: "900",
-    textAlign: "center",
-    fontSize: 22,
-    textShadowColor: "rgba(255, 210, 60, 0.8)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 14,
+  /* Hold-to-skip fill: rises inside the timer face (pass & play). */
+  timerHoldClip: {
+    position: "absolute",
+    inset: TIMER_HOLD_INSET,
+    borderRadius: 999,
+    overflow: "hidden",
   },
-  timerIntroBannerSub: {
-    color: "rgba(255, 240, 180, 0.7)",
-    textAlign: "center",
-    fontSize: 13,
-    marginTop: 2,
+  timerHoldFill: {
+    width: "100%",
+    height: TIMER_HOLD_SIZE,
+    backgroundColor: "rgba(225,35,35,0.55)",
+    borderTopWidth: 3,
+    borderTopColor: "rgba(255,190,180,0.95)",
   },
   /* ── Vote rows ────────────────────────────────────────────────────────── */
   voteRow: {

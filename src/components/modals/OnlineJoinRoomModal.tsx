@@ -3,7 +3,6 @@ import {
   View,
   Modal,
   Pressable,
-  ImageBackground,
   TextInput,
   StyleSheet,
   KeyboardAvoidingView,
@@ -14,9 +13,15 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import CustomText from "../common/CustomText";
+import LightPlate from "../cam/LightPlate";
+import { UiStyleProvider } from "../../context/UiStyleContext";
+import { TTL } from "../../constants/tiktokTheme";
 import { backgrounds } from "../../../assets/backgrounds";
 import AudioManager from "../../utils/audioManager";
-import { joinMultiplayerRoom, getMultiplayerRoomMetadata } from "../../api/multiplayer";
+import {
+  joinMultiplayerRoom,
+  getMultiplayerRoomMetadata,
+} from "../../api/multiplayer";
 import { useGameStore } from "../../store/useGameStore";
 import { createOpaquePlayerId } from "../../utils/opaquePlayerId";
 import { usePlateModalCardWidth } from "./usePlateModalCardWidth";
@@ -37,7 +42,9 @@ export default function OnlineJoinRoomModal({
 }: Props) {
   const { t } = useTranslation();
   const plateWidth = usePlateModalCardWidth();
-  const applyOnlinePartySession = useGameStore((s) => s.applyOnlinePartySession);
+  const applyOnlinePartySession = useGameStore(
+    (s) => s.applyOnlinePartySession,
+  );
 
   const guestPlayerId = useMemo(() => createOpaquePlayerId("guest"), []);
 
@@ -119,118 +126,134 @@ export default function OnlineJoinRoomModal({
       onRequestClose={onDismiss}
       statusBarTranslucent
     >
-      <KeyboardAvoidingView
-        behavior={Platform.select({ ios: "padding", android: undefined })}
-        style={styles.kb}
-      >
-        <Pressable
-          style={styles.plateModalBackdrop}
-          onPress={() => {
-            AudioManager.playButtonClick();
-            onDismiss();
-          }}
+      <UiStyleProvider value="tiktokLight">
+        <KeyboardAvoidingView
+          behavior={Platform.select({ ios: "padding", android: undefined })}
+          style={styles.kb}
         >
           <Pressable
-            style={[styles.plateModalCenter, { width: plateWidth }]}
-            onPress={() => {}}
+            style={styles.plateModalBackdrop}
+            onPress={() => {
+              AudioManager.playButtonClick();
+              onDismiss();
+            }}
           >
-            <Animated.View
-              style={{
-                width: "100%",
-                opacity: opacityAnim,
-                transform: [{ scale: scaleAnim }],
-              }}
+            <Pressable
+              style={[styles.plateModalCenter, { width: plateWidth }]}
+              onPress={() => {}}
             >
-              <ImageBackground
-                source={backgrounds.bg005}
-                resizeMode="stretch"
-                imageStyle={{ borderRadius: 18 }}
-                style={[styles.plateModalCard, { width: plateWidth }]}
+              <Animated.View
+                style={{
+                  width: "100%",
+                  opacity: opacityAnim,
+                  transform: [{ scale: scaleAnim }],
+                }}
               >
-                <CustomText
-                  variant="p"
-                  className="text-center"
-                  textColor="#762a05"
+                <LightPlate
+                  source={backgrounds.bg005}
+                  resizeMode="stretch"
+                  imageStyle={{ borderRadius: 18 }}
+                  style={[styles.plateModalCard, { width: plateWidth }]}
                 >
-                  {t("online_join_title")}
-                </CustomText>
-                <View style={styles.nameDivider} />
-                <CustomText
-                  variant="h6"
-                  className="text-center mb-2"
-                  textColor="#592410"
-                >
-                  {t("online_join_subtitle")}
-                </CustomText>
-                <CustomText
-                  variant="p-small"
-                  className="text-center mb-2"
-                  textColor="#762a05"
-                >
-                  {t("online_join_field_label")}
-                </CustomText>
-                <View style={styles.joinInputWrap}>
-                  <TextInput
-                    value={codeInput}
-                    onChangeText={(txt) => setCodeInput(txt.toUpperCase())}
-                    placeholder={t("online_join_input_placeholder")}
-                    placeholderTextColor="rgba(89,36,16,0.45)"
-                    maxLength={CODE_LEN}
-                    autoCapitalize="characters"
-                    autoCorrect={false}
-                    style={styles.joinCodeInput}
-                  />
-                </View>
-                {joinError ? (
+                  <CustomText
+                    variant="p"
+                    className="text-center"
+                    textColor={TTL.text2}
+                    style={styles.title}
+                  >
+                    {t("online_join_title")}
+                  </CustomText>
+                  <View style={styles.nameDivider} />
+                  <CustomText
+                    variant="h6"
+                    className="text-center mb-2"
+                    textColor={TTL.text}
+                    allowWrap
+                    style={styles.subtitle}
+                  >
+                    {t("online_join_subtitle")}
+                  </CustomText>
                   <CustomText
                     variant="p-small"
-                    className="text-center mt-2"
-                    textColor="#a52a2a"
+                    className="text-center mb-2"
+                    textColor={TTL.text2}
+                    style={styles.label}
                   >
-                    {joinError}
+                    {t("online_join_field_label")}
                   </CustomText>
-                ) : null}
-                <View style={styles.modalBtnRow}>
-                  <Pressable
-                    style={styles.modalSecondaryBtn}
-                    onPress={() => {
-                      AudioManager.playButtonClick();
-                      onDismiss();
-                    }}
-                  >
-                    <CustomText variant="p-small" textColor="#592410">
-                      {t("cancel")}
+                  <View style={styles.joinInputWrap}>
+                    <TextInput
+                      value={codeInput}
+                      onChangeText={(txt) => setCodeInput(txt.toUpperCase())}
+                      placeholder={t("online_join_input_placeholder")}
+                      placeholderTextColor={TTL.text2}
+                      maxLength={CODE_LEN}
+                      autoCapitalize="characters"
+                      autoCorrect={false}
+                      style={styles.joinCodeInput}
+                    />
+                  </View>
+                  {joinError ? (
+                    <CustomText
+                      variant="p-small"
+                      className="text-center mt-2"
+                      textColor={TTL.primary}
+                      allowWrap
+                      style={styles.label}
+                    >
+                      {joinError}
                     </CustomText>
-                  </Pressable>
-                  <Pressable
-                    style={[
-                      styles.modalPrimaryBtn,
-                      (joining || normalizedCode.length !== CODE_LEN) &&
-                        styles.modalPrimaryBtnDisabled,
-                    ]}
-                    disabled={joining || normalizedCode.length !== CODE_LEN}
-                    onPress={() => {
-                      AudioManager.playButtonClick();
-                      void handleJoin();
-                    }}
-                  >
-                    <CustomText variant="p-small" textColor="#fff">
-                      {t("online_join_btn")}
-                    </CustomText>
-                  </Pressable>
-                </View>
-                {joining ? (
-                  <ActivityIndicator
-                    style={{ marginTop: 12 }}
-                    color="#762a05"
-                    size="large"
-                  />
-                ) : null}
-              </ImageBackground>
-            </Animated.View>
+                  ) : null}
+                  <View style={styles.modalBtnRow}>
+                    <Pressable
+                      style={styles.modalSecondaryBtn}
+                      onPress={() => {
+                        AudioManager.playButtonClick();
+                        onDismiss();
+                      }}
+                    >
+                      <CustomText
+                        variant="p-small"
+                        textColor={TTL.text}
+                        style={styles.buttonText}
+                      >
+                        {t("cancel")}
+                      </CustomText>
+                    </Pressable>
+                    <Pressable
+                      style={[
+                        styles.modalPrimaryBtn,
+                        (joining || normalizedCode.length !== CODE_LEN) &&
+                          styles.modalPrimaryBtnDisabled,
+                      ]}
+                      disabled={joining || normalizedCode.length !== CODE_LEN}
+                      onPress={() => {
+                        AudioManager.playButtonClick();
+                        void handleJoin();
+                      }}
+                    >
+                      <CustomText
+                        variant="p-small"
+                        textColor="#fff"
+                        style={styles.buttonText}
+                      >
+                        {t("online_join_btn")}
+                      </CustomText>
+                    </Pressable>
+                  </View>
+                  {joining ? (
+                    <ActivityIndicator
+                      style={{ marginTop: 12 }}
+                      color={TTL.text2}
+                      size="large"
+                    />
+                  ) : null}
+                </LightPlate>
+              </Animated.View>
+            </Pressable>
           </Pressable>
-        </Pressable>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </UiStyleProvider>
     </Modal>
   );
 }
@@ -239,7 +262,7 @@ const styles = StyleSheet.create({
   kb: { flex: 1 },
   plateModalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.82)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "stretch",
     paddingHorizontal: 20,
@@ -268,22 +291,23 @@ const styles = StyleSheet.create({
     maxWidth: "100%",
     height: 1,
     marginVertical: 10,
-    backgroundColor: "rgba(89,36,16,0.5)",
+    backgroundColor: TTL.line,
   },
   joinCodeInput: {
     width: "100%",
     minWidth: 0,
-    backgroundColor: "rgba(255,247,236,0.9)",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(160,110,60,0.4)",
-    paddingVertical: 14,
+    backgroundColor: TTL.fill,
+    borderRadius: 8,
+    borderWidth: 0,
+    borderColor: TTL.line,
+    paddingVertical: 18,
     paddingHorizontal: 10,
-    fontSize: 20,
+    // Large and widely spaced: the code is typed letter by letter.
+    fontSize: 34,
     fontWeight: "700",
-    letterSpacing: 4,
+    letterSpacing: 8,
     textAlign: "center",
-    color: "#592410",
+    color: TTL.text,
   },
   modalBtnRow: {
     flexDirection: "row",
@@ -293,21 +317,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   modalSecondaryBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,247,236,0.85)",
-    borderWidth: 1,
-    borderColor: "rgba(160,110,60,0.4)",
+    paddingVertical: 15,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    backgroundColor: TTL.fill,
+    borderWidth: 0,
+    borderColor: TTL.line,
   },
   modalPrimaryBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 12,
-    backgroundColor: "#8b2b1a",
-    borderWidth: 1,
-    borderColor: "rgba(89,36,16,0.6)",
+    paddingVertical: 15,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    backgroundColor: TTL.primary,
+    borderWidth: 0,
+    borderColor: TTL.text2,
   },
+  // Larger than the usual popup text: this one is read while typing a code.
+  title: { fontSize: 19, lineHeight: 25 },
+  subtitle: { fontSize: 22, lineHeight: 29 },
+  label: { fontSize: 18, lineHeight: 24 },
+  buttonText: { fontSize: 19, lineHeight: 25 },
   modalPrimaryBtnDisabled: {
     opacity: 0.45,
   },

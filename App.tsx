@@ -53,6 +53,37 @@ const WELCOME_CURTAIN_LOADER_URI =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/b6612c06-2e0e-45ee-8557-483d229c70a7-loader.webp";
 
 /** Preload на assets преди HeroPickerScreen (character images, backgrounds, game URLs). */
+/** Navigation actions that take the player to another screen. */
+const SCREEN_CHANGE_ACTIONS = new Set([
+  "NAVIGATE",
+  "PUSH",
+  "REPLACE",
+  "RESET",
+  "GO_BACK",
+  "POP",
+  "POP_TO",
+  "POP_TO_TOP",
+]);
+
+/** One asset may take this long; after that the loader moves on without it. */
+const PRELOAD_ITEM_TIMEOUT_MS = 8000;
+
+/**
+ * Resolves with the promise or after the timeout, whichever is first. A single
+ * asset that never answers (dev server busy, dead connection) must not keep
+ * the start-up loader on screen forever.
+ */
+function settleWithin(promise: Promise<unknown>): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, PRELOAD_ITEM_TIMEOUT_MS);
+    const done = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    promise.then(done, done);
+  });
+}
+
 async function preloadHeroPickerAssets(
   onProgress?: (progress: number) => void,
 ): Promise<void> {
@@ -60,12 +91,16 @@ async function preloadHeroPickerAssets(
     onProgress?.(Math.max(0, Math.min(1, value)));
   };
 
+  // Every music track and effect is made ready while the loader is on screen,
+  // so nothing has to load its file at the moment it should be heard.
+  AudioManager.preloadAll();
+
   report(0);
   await Promise.all([
     ...WELCOME_BACKGROUND_URIS.map((uri) =>
-      prefetchExpoImageUri(uri).catch(() => false),
+      settleWithin(prefetchExpoImageUri(uri)),
     ),
-    prefetchExpoImageUri(WELCOME_CURTAIN_LOADER_URI).catch(() => false),
+    settleWithin(prefetchExpoImageUri(WELCOME_CURTAIN_LOADER_URI)),
   ]);
 
   const values = (obj: Record<string, unknown>) =>
@@ -81,8 +116,18 @@ async function preloadHeroPickerAssets(
 
   let chars: ICharacter[] = [];
   try {
-    chars = await fetchCharacters();
-    queryClient.setQueryData(queryKeys.characters, chars);
+    // The heroes are fetched again by the screens that need them if this is late.
+    const fetched = await Promise.race([
+      fetchCharacters(),
+      new Promise<null>((resolve) =>
+        setTimeout(() => resolve(null), PRELOAD_ITEM_TIMEOUT_MS),
+      ),
+    ]);
+    // Too late: leave the cache empty rather than cache "no heroes".
+    if (fetched) {
+      chars = fetched;
+      queryClient.setQueryData(queryKeys.characters, chars);
+    }
   } catch (e) {
     console.warn("preloadHeroPickerAssets: fetchCharacters failed", e);
   }
@@ -103,20 +148,13 @@ async function preloadHeroPickerAssets(
 
   await Promise.all([
     ...localAssets.map((moduleId) =>
-      Asset.fromModule(moduleId)
-        .downloadAsync()
-        .catch(() => null)
-        .then(markDone),
+      settleWithin(Asset.fromModule(moduleId).downloadAsync()).then(markDone),
     ),
     ...remoteUrls.map((url) =>
-      prefetchExpoImageUri(url)
-        .catch(() => false)
-        .then(markDone),
+      settleWithin(prefetchExpoImageUri(url)).then(markDone),
     ),
     ...characterUrls.map((url) =>
-      prefetchExpoImageUri(url)
-        .catch(() => false)
-        .then(markDone),
+      settleWithin(prefetchExpoImageUri(url)).then(markDone),
     ),
   ]);
 
@@ -158,6 +196,12 @@ export default function App() {
     "SofiaSansExtraCondensed-Bold": require("./assets/fonts/Sofia_Sans_Extra_Condensed/static/SofiaSansExtraCondensed-Bold.ttf"),
     "SofiaSansExtraCondensed-ExtraBold": require("./assets/fonts/Sofia_Sans_Extra_Condensed/static/SofiaSansExtraCondensed-ExtraBold.ttf"),
     "SofiaSansExtraCondensed-Black": require("./assets/fonts/Sofia_Sans_Extra_Condensed/static/SofiaSansExtraCondensed-Black.ttf"),
+    // Cam Mode (TikTok-style UI)
+    "TikTokSans-Regular": require("./assets/fonts/TikTokSans/TikTokSans_400Regular.ttf"),
+    "TikTokSans-Medium": require("./assets/fonts/TikTokSans/TikTokSans_500Medium.ttf"),
+    "TikTokSans-SemiBold": require("./assets/fonts/TikTokSans/TikTokSans_600SemiBold.ttf"),
+    "TikTokSans-Bold": require("./assets/fonts/TikTokSans/TikTokSans_700Bold.ttf"),
+    "TikTokSans-ExtraBold": require("./assets/fonts/TikTokSans/TikTokSans_800ExtraBold.ttf"),
     "StalinistOne-Regular": require("./assets/fonts/StalinistOne-Regular.ttf"),
     "Tektur-SemiBold": require("./assets/fonts/Tektur/static/Tektur-SemiBold.ttf"),
     "Tektur-Bold": require("./assets/fonts/Tektur/static/Tektur-Bold.ttf"),
@@ -174,6 +218,20 @@ export default function App() {
 
   useEffect(() => {
     AudioManager.stopBackground();
+  }, []);
+
+  // Every screen change silences what the previous screen left sounding.
+  // Listening to the action (not the state) runs this before the next screen
+  // mounts, so the sounds it starts itself are not cut.
+  const onNavReadyAudio = useCallback(() => {
+    return navRef.current?.addListener?.(
+      "__unsafe_action__",
+      (e: { data: { action: { type: string } } }) => {
+        if (SCREEN_CHANGE_ACTIONS.has(e.data.action.type)) {
+          AudioManager.stopScreenSounds();
+        }
+      },
+    );
   }, []);
 
   useEffect(() => {
@@ -336,6 +394,7 @@ export default function App() {
         <NavigationContainer
           ref={navRef}
           onReady={() => {
+            onNavReadyAudio();
             const route = navRef.current?.getCurrentRoute?.()?.name;
             lastRouteRef.current = route;
             if (route) void addCrashBreadcrumb("route_ready", { route });

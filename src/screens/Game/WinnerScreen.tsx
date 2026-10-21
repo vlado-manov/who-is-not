@@ -1,3 +1,4 @@
+import { resolvePlayerHero } from "../../game/resolvePlayerHero";
 import React, {
   useCallback,
   useEffect,
@@ -50,6 +51,7 @@ import CustomText from "../../components/common/CustomText";
 import { backgrounds } from "../../../assets/backgrounds";
 import { lottie } from "../../../assets/lottie";
 import EliminatedGameEndView from "../../components/game/EliminatedGameEndView";
+import { useReportGameCompletion } from "../../hooks/useReportGameCompletion";
 import WinnerAmbienceOverlay from "../../components/game/WinnerAmbienceOverlay";
 
 type Nav = StackNavigationProp<GameStackParamList, "Winner">;
@@ -108,6 +110,8 @@ export default function WinnerScreen() {
   const gameId = useGameStore((s) => s.gameId);
   const updateSettings = useAuthStore((s) => s.updateSettings);
   const userId = useAuthStore((s) => s.user.id);
+  // Counts this game for "play N games" unlocks — before any early return.
+  useReportGameCompletion();
   const trackGameFinishedMutation = useTrackGameFinishedMutation();
   const gameFinishedSentRef = useRef(false);
 
@@ -256,7 +260,7 @@ export default function WinnerScreen() {
 
   const winnerHeroImage = useMemo(() => {
     if (!winnerPlayer) return null;
-    const hero = heroes.find((h) => h.id === winnerPlayer.characterId);
+    const hero = resolvePlayerHero(heroes, winnerPlayer);
     if (!hero) return null;
     return hero.winnerImage ?? hero.main_image ?? hero.profileImage ?? null;
   }, [heroes, winnerPlayer]);

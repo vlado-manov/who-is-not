@@ -1,22 +1,26 @@
 import {
   ActivityIndicator,
-  TextInput,
-  View,
-  TouchableOpacity,
   ImageSourcePropType,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import AppImage from "../AppImage";
 import React, { useEffect, useState } from "react";
 import { AntDesign } from "@expo/vector-icons";
+
+import CustomButton from "../common/CustomButton";
 import CustomText from "../common/CustomText";
 import { images } from "../../../assets/images";
+import { TT } from "../../constants/tiktokTheme";
 import { useAuthStore } from "../../store/useUserStore";
 import { fetchDevLoginUsers } from "../../api/users";
 
-const ProfileLoginComponent = () => {
-  const toSrc = (img: string | ImageSourcePropType): ImageSourcePropType =>
-    typeof img === "string" ? { uri: img } : (img as ImageSourcePropType);
+const toSrc = (img: string | ImageSourcePropType): ImageSourcePropType =>
+  typeof img === "string" ? { uri: img } : (img as ImageSourcePropType);
 
+/** Sign-in options for a logged-out profile, as TikTok-style full-width buttons. */
+const ProfileLoginComponent = () => {
   const signInGoogle = useAuthStore((s) => s.signInGoogle);
   const signInApple = useAuthStore((s) => s.signInApple);
   const signInEmailPassword = useAuthStore((s) => s.signInEmailPassword);
@@ -64,55 +68,46 @@ const ProfileLoginComponent = () => {
   };
 
   return (
-    <View className="py-12 px-8 items-center justify-center">
-      <TouchableOpacity
-        activeOpacity={0.8}
+    <View style={styles.root}>
+      <CustomText variant="p" style={styles.intro}>
+        Log in to save your progress & unlock achievements
+      </CustomText>
+
+      {/* White */}
+      <CustomButton
+        title="Continue with Google"
+        appearance="tertiary"
+        fullWidth
+        btnSize="md"
+        fontSize="sm"
+        icon={toSrc(images.googleIcon)}
+        iconSize={20}
         onPress={signInGoogle}
-        className="max-w-[88%] w-full flex-row items-center justify-center rounded-2xl bg-white py-6 shadow-[0_2px_6px_rgba(0,0,0,0.15)]"
-      >
-        <AppImage
-          source={toSrc(images.googleIcon)}
-          contentFit="contain"
-          className="w-[22px] h-[22px]"
-          style={{ width: 22, height: 22 }}
-        />
-        <CustomText
-          variant="p"
-          className="ml-3 text-base font-bold"
-          textColor="black"
-        >
-          Continue with Google
-        </CustomText>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        activeOpacity={0.8}
+      />
+      {/* Black with a hairline edge, as Apple's own button */}
+      <CustomButton
+        title="Continue with Apple"
+        fullWidth
+        btnSize="md"
+        fontSize="sm"
+        solidColor="#000000"
+        borderColor={TT.chipBorder}
+        borderWidth={1}
+        iconNode={<AntDesign name="apple" size={20} color={TT.text} />}
         onPress={signInApple}
-        className="max-w-[88%] w-full mt-3 flex-row items-center justify-center rounded-2xl bg-black py-6 shadow-[0_2px_6px_rgba(0,0,0,0.15)]"
-      >
-        <AntDesign name="apple" size={22} color="white" />
-        <CustomText variant="p" className="ml-3 text-base font-bold text-white">
-          Continue with Apple
-        </CustomText>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        activeOpacity={0.8}
+      />
+      <CustomButton
+        title="Sign in with email"
+        appearance="secondary"
+        fullWidth
+        btnSize="md"
+        fontSize="sm"
         onPress={() => setShowLocalSignIn((v) => !v)}
-        className="max-w-[88%] w-full mt-3 flex-row items-center justify-center rounded-2xl bg-amber-400 py-5 shadow-[0_2px_6px_rgba(0,0,0,0.15)]"
-      >
-        <CustomText
-          variant="p"
-          className="text-base font-bold"
-          textColor="black"
-        >
-          Sign In (Seed User)
-        </CustomText>
-      </TouchableOpacity>
+      />
 
       {showLocalSignIn ? (
-        <View className="max-w-[88%] w-full mt-3 rounded-2xl border border-white/30 bg-black/30 p-3">
-          <CustomText className="text-xs mb-2 opacity-80">
+        <View style={styles.form}>
+          <CustomText variant="p-small" style={styles.note}>
             Use seeded user email + password 123412341234
           </CustomText>
           <TextInput
@@ -121,16 +116,9 @@ const ProfileLoginComponent = () => {
             autoCapitalize="none"
             keyboardType="email-address"
             placeholder="seed user email"
-            placeholderTextColor="rgba(255,255,255,0.6)"
-            style={{
-              borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.35)",
-              borderRadius: 10,
-              paddingHorizontal: 10,
-              paddingVertical: 9,
-              color: "white",
-              marginBottom: 8,
-            }}
+            placeholderTextColor={TT.text2}
+            selectionColor={TT.primary}
+            style={styles.input}
           />
           <TextInput
             value={password}
@@ -138,52 +126,86 @@ const ProfileLoginComponent = () => {
             secureTextEntry
             autoCapitalize="none"
             placeholder="password"
-            placeholderTextColor="rgba(255,255,255,0.6)"
-            style={{
-              borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.35)",
-              borderRadius: 10,
-              paddingHorizontal: 10,
-              paddingVertical: 9,
-              color: "white",
-            }}
+            placeholderTextColor={TT.text2}
+            selectionColor={TT.primary}
+            style={styles.input}
           />
 
           {seedUsers.length > 0 ? (
-            <View className="mt-2 flex-row flex-wrap gap-2">
+            <View style={styles.seedUsers}>
               {seedUsers.slice(0, 20).map((u) => (
                 <TouchableOpacity
                   key={u.email}
                   onPress={() => setEmail(u.email)}
-                  className="rounded-lg bg-white/15 px-2 py-1"
+                  style={styles.seedUser}
                 >
-                  <CustomText className="text-[11px]">{u.name}</CustomText>
+                  <CustomText variant="p-xsmall">{u.name}</CustomText>
                 </TouchableOpacity>
               ))}
             </View>
           ) : null}
 
-          <TouchableOpacity
-            onPress={() => void onLocalSignIn()}
-            disabled={loading}
-            className="mt-3 rounded-xl bg-amber-400 py-2.5"
-          >
-            {loading ? (
-              <ActivityIndicator />
-            ) : (
-              <CustomText className="text-center font-bold" textColor="black">
-                Sign In
-              </CustomText>
-            )}
-          </TouchableOpacity>
-          {error ? <CustomText className="mt-2 text-xs text-red-300">{error}</CustomText> : null}
+          {loading ? (
+            <ActivityIndicator color={TT.text} />
+          ) : (
+            <CustomButton
+              title="Sign In"
+              fullWidth
+              btnSize="sm"
+              fontSize="sm"
+              onPress={() => void onLocalSignIn()}
+            />
+          )}
+          {error ? (
+            <CustomText variant="p-small" textColor={TT.primary}>
+              {error}
+            </CustomText>
+          ) : null}
         </View>
       ) : null}
-      <CustomText className="text-center font-opensans-bold mt-6">
-        Log in to save your progress & unlock achievements
-      </CustomText>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  root: {
+    // Same side margin as the profile cards.
+    marginHorizontal: 16,
+    gap: 12,
+  },
+  intro: {
+    textAlign: "center",
+    color: TT.text2,
+  },
+  form: {
+    borderRadius: TT.cardRadius,
+    backgroundColor: TT.surface,
+    padding: 12,
+    gap: 10,
+  },
+  note: {
+    color: TT.text2,
+  },
+  input: {
+    height: 44,
+    borderRadius: TT.radius,
+    backgroundColor: TT.surface2,
+    paddingHorizontal: 12,
+    color: TT.text,
+    fontFamily: "TikTokSans-Medium",
+    fontSize: 15,
+  },
+  seedUsers: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  seedUser: {
+    borderRadius: TT.radius,
+    backgroundColor: TT.surface2,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+});
 
 export default ProfileLoginComponent;

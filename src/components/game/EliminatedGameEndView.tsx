@@ -1,3 +1,4 @@
+import { resolvePlayerHero } from "../../game/resolvePlayerHero";
 import React, { useMemo } from "react";
 import {
   Dimensions,
@@ -49,7 +50,7 @@ export default function EliminatedGameEndView({ playerId }: Props) {
   const hero = useMemo(
     () =>
       deadPlayer?.characterId
-        ? heroes.find((h) => h.id === deadPlayer.characterId)
+        ? resolvePlayerHero(heroes, deadPlayer)
         : undefined,
     [deadPlayer?.characterId, heroes],
   );

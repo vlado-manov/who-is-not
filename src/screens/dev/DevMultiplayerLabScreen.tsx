@@ -37,8 +37,8 @@ import {
   seedPlayerDeathGameOver,
   seedPlayerDeathWatchDemo,
   seedPreReveal,
-  seedQuestionScreen,
-  seedQuestionScreenOfType,
+  getRandomDevQuestionPair,
+  seedQuestionScreenWithTexts,
   seedResultsScreen,
   seedResultsScreenOfType,
   seedRevealLose,
@@ -60,6 +60,14 @@ import {
 } from "../../dev/seedDevMultiplayerLab";
 import { useGameStore } from "../../store/useGameStore";
 import DevHeroPickerModal from "./DevHeroPickerModal";
+import CamButton from "../../components/cam/CamButton";
+import CamSheet from "../../components/cam/CamSheet";
+import CamText from "../../components/cam/CamText";
+import CamTextInput from "../../components/cam/CamTextInput";
+import type { QuestionTypeApi } from "../../types/question";
+
+/** Longest question text the lab prompt accepts. */
+const QUESTION_TEXT_MAX = 160;
 
 type Nav = CompositeNavigationProp<
   StackNavigationProp<OnboardingStackParamList, "DevMultiplayerLab">,
@@ -97,13 +105,15 @@ export default function DevMultiplayerLabScreen() {
     void useHeroesStore.getState().loadHeroes();
   }, []);
 
-  useFocusEffect(useCallback(() => {
-    void AudioManager.silenceBackground();
-    void AudioManager.stopTensionLoop();
-    return () => {
-      AudioManager.resumeBackground();
-    };
-  }, []));
+  // The lab is always silent, however it was reached (opened from the menu or
+  // returned to from a game screen): everything is stopped. Nothing is resumed
+  // on the way out — the menu or the game screen that opens next starts its
+  // own music.
+  useFocusEffect(
+    useCallback(() => {
+      AudioManager.stopAllSounds();
+    }, []),
+  );
 
   const go = <T extends keyof GameStackParamList>(
     seed: () => void,
@@ -116,6 +126,37 @@ export default function DevMultiplayerLabScreen() {
       (params === undefined
         ? { screen }
         : { screen, params }) as never
+    );
+  };
+
+  /** Question type waiting for its texts; null when the prompt is closed. */
+  const [questionPromptType, setQuestionPromptType] =
+    useState<QuestionTypeApi | null>(null);
+  const [baseQuestionText, setBaseQuestionText] = useState("");
+  const [oddQuestionText, setOddQuestionText] = useState("");
+
+  const openQuestionPrompt = (type: QuestionTypeApi) => {
+    setBaseQuestionText("");
+    setOddQuestionText("");
+    setQuestionPromptType(type);
+  };
+
+  /** Opens the question screen; empty fields fall back to a random pair. */
+  const openQuestionScreen = (asImpostor: boolean, useRandom: boolean) => {
+    const type = questionPromptType;
+    if (!type) return;
+    const random = getRandomDevQuestionPair(type);
+    const texts = useRandom
+      ? random
+      : {
+          base: baseQuestionText.trim() || random.base,
+          odd: oddQuestionText.trim() || random.odd,
+        };
+    setQuestionPromptType(null);
+    go(
+      () => seedQuestionScreenWithTexts(type, texts, asImpostor),
+      "Question",
+      { playerIndex: 0 },
     );
   };
 
@@ -177,36 +218,22 @@ export default function DevMultiplayerLabScreen() {
           { index: 1 },
         ),
     },
+    // Question screens first ask which texts to show (or pick random ones).
     {
       label: "Question — pick",
-      onPress: () => go(seedQuestionScreen, "Question", { playerIndex: 0 }),
+      onPress: () => openQuestionPrompt("pick"),
     },
     {
       label: "Question — number",
-      onPress: () =>
-        go(
-          () => seedQuestionScreenOfType("number"),
-          "Question",
-          { playerIndex: 0 },
-        ),
+      onPress: () => openQuestionPrompt("number"),
     },
     {
       label: "Question — rate",
-      onPress: () =>
-        go(
-          () => seedQuestionScreenOfType("rate"),
-          "Question",
-          { playerIndex: 0 },
-        ),
+      onPress: () => openQuestionPrompt("rate"),
     },
     {
       label: "Question — input",
-      onPress: () =>
-        go(
-          () => seedQuestionScreenOfType("input"),
-          "Question",
-          { playerIndex: 0 },
-        ),
+      onPress: () => openQuestionPrompt("input"),
     },
     {
       label: "Pass device — gameplay (holder 0)",
@@ -522,6 +549,51 @@ export default function DevMultiplayerLabScreen() {
         onClose={handleHeroPickerClose}
         onSelect={handleHeroSelected}
       />
+
+      {/* Texts for the question screen: what everyone sees and what the impostor sees. */}
+      <CamSheet
+        visible={questionPromptType !== null}
+        onClose={() => setQuestionPromptType(null)}
+        title={`Question — ${questionPromptType ?? ""}`}
+        closeLabel="Close"
+      >
+        <View style={styles.promptField}>
+          <CamText variant="subtitle">Question for everyone</CamText>
+          <CamTextInput
+            value={baseQuestionText}
+            onChangeText={setBaseQuestionText}
+            maxLength={QUESTION_TEXT_MAX}
+            placeholder="Leave empty for a random one"
+          />
+        </View>
+        <View style={styles.promptField}>
+          <CamText variant="subtitle">Question for the impostor</CamText>
+          <CamTextInput
+            value={oddQuestionText}
+            onChangeText={setOddQuestionText}
+            maxLength={QUESTION_TEXT_MAX}
+            placeholder="Leave empty for a random one"
+          />
+        </View>
+        <View style={styles.promptRow}>
+          <CamButton
+            title="Open as player"
+            style={styles.promptButton}
+            onPress={() => openQuestionScreen(false, false)}
+          />
+          <CamButton
+            title="Open as impostor"
+            variant="light"
+            style={styles.promptButton}
+            onPress={() => openQuestionScreen(true, false)}
+          />
+        </View>
+        <CamButton
+          title="Skip — random questions"
+          variant="secondary"
+          onPress={() => openQuestionScreen(false, true)}
+        />
+      </CamSheet>
     </FullBleedStack>
   );
 }
@@ -529,4 +601,7 @@ export default function DevMultiplayerLabScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#0a0a0a" },
   safe: { flex: 1, backgroundColor: "transparent" },
+  promptField: { gap: 6 },
+  promptRow: { flexDirection: "row", gap: 10 },
+  promptButton: { flex: 1 },
 });

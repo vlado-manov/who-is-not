@@ -5,9 +5,12 @@ import {
   Easing,
   Pressable,
   PanResponderInstance,
+  StyleSheet,
 } from "react-native";
 import { Image } from "expo-image";
 import AppImage from "../../components/AppImage";
+import LockBadge from "./LockBadge";
+import { unlockOf } from "../../game/unlocks";
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 import { game_images } from "../../../assets/images";
@@ -80,6 +83,26 @@ export function HeroStage({
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [lockFrame, setLockFrame] = useState(0);
   const isLocked = !hero.unlocked;
+
+  // A light that sweeps across a locked hero every few seconds.
+  const shine = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!isLocked) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shine, {
+          toValue: 1,
+          duration: 1100,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.delay(2400),
+        Animated.timing(shine, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [isLocked, shine]);
 
   // Secondary image scale-swap: main squishes away, secondary pops in
   const mainImgScale = useRef(new Animated.Value(1)).current;
@@ -266,24 +289,38 @@ export function HeroStage({
           </Animated.View>
         )}
 
-        {/* Static lock overlay (no animation state leakage between heroes) */}
+        {/* Locked: the hero shows as a dark silhouette with a light sweeping
+            across it, and a padlock badge in the corner (progress ring for
+            "earn it" locks, price for "buy" locks). */}
         {isLocked && !isUnlocking && (
           <>
             <AppImage
-              key={`hero-sepia-static-${hero.id}`}
+              key={`hero-locked-${hero.id}-${hero.main_image ? "m" : ""}`}
               source={hero.main_image}
               contentFit="contain"
+              tintColor={LOCKED_TINT}
+              style={[styles.heroImage, lockStyles.silhouette]}
+            />
+            <Animated.View
+              pointerEvents="none"
               style={[
-                styles.heroImage,
-                styles.sepiaImageOverlay,
-                { opacity: 0.8 },
+                lockStyles.shine,
+                {
+                  transform: [
+                    {
+                      translateX: shine.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [-260, 260],
+                      }),
+                    },
+                    { rotate: "20deg" },
+                  ],
+                },
               ]}
             />
-            <AnimatedImage
-              source={lockFrames[0]}
-              contentFit="contain"
-              style={styles.heroLockIcon}
-            />
+            <View pointerEvents="none" style={lockStyles.badge}>
+              <LockBadge unlock={unlockOf(hero)} />
+            </View>
           </>
         )}
 
@@ -340,3 +377,29 @@ export function HeroStage({
     </View>
   );
 }
+
+/** Locked heroes: a deep violet silhouette, the sweeping light and the badge. */
+const LOCKED_TINT = "#1C1430";
+const lockStyles = StyleSheet.create({
+  silhouette: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.86,
+  },
+  shine: {
+    position: "absolute",
+    top: -40,
+    bottom: -40,
+    left: "45%",
+    width: 46,
+    backgroundColor: "rgba(255,255,255,0.14)",
+  },
+  badge: {
+    position: "absolute",
+    top: "12%",
+    right: "8%",
+  },
+});

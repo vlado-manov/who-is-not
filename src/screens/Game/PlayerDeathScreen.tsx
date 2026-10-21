@@ -1,3 +1,4 @@
+import { resolvePlayerHero } from "../../game/resolvePlayerHero";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -644,7 +645,7 @@ export default function PlayerDeathScreen() {
   const hero = useMemo(
     () =>
       deadPlayer?.characterId
-        ? heroes.find((h) => h.id === deadPlayer.characterId)
+        ? resolvePlayerHero(heroes, deadPlayer)
         : undefined,
     [deadPlayer?.characterId, heroes],
   );
@@ -685,7 +686,8 @@ export default function PlayerDeathScreen() {
     });
 
   useEffect(() => () => {
-    void AudioManager.stopBackground();
+    // Only this screen's own music: the next screen may already be playing its own.
+    void AudioManager.stopBackgroundOf("death");
   }, []);
 
   useEffect(() => {

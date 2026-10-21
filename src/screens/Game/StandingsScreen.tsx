@@ -1,4 +1,5 @@
 // src/screens/Game/StandingsScreen.tsx
+import { resolvePlayerHero } from "../../game/resolvePlayerHero";
 import React, { useMemo, useState } from "react";
 import {
   View,
@@ -23,6 +24,7 @@ import { useHeroesStore } from "../../store/useHeroesStore";
 import { useTrackGameFinishedMutation } from "../../api/hooks/useAnalyticsMutations";
 import { useTranslation } from "react-i18next";
 import { usePreventBack } from "../../hooks/usePreventBack";
+import { useGameplayMusic } from "../../hooks/useScreenMusic";
 
 type Nav = StackNavigationProp<GameStackParamList, "Standings">;
 const COLOR_CLASSES = [
@@ -41,6 +43,7 @@ const COLOR_CLASSES = [
 const StandingsScreen = () => {
   const navigation = useNavigation<Nav>();
   usePreventBack();
+  useGameplayMusic();
   const { t } = useTranslation();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isTablet = windowWidth >= 768 && windowWidth > windowHeight;
@@ -76,7 +79,7 @@ const StandingsScreen = () => {
   // топ играч + standingImage/Background на героя му (ако има)
   const topPlayer = ranking[0];
   const topCharacter = topPlayer
-    ? heroes.find((h) => h.id === topPlayer.characterId)
+    ? resolvePlayerHero(heroes, topPlayer)
     : undefined;
   const topStandingImage = (topCharacter as any)?.standingImage;
   const topStandingBackground =
@@ -116,7 +119,7 @@ const StandingsScreen = () => {
             {
               name: "Onboarding",
               state: {
-                routes: [{ name: "Welcome", params: { skipCurtain: true } }],
+                routes: [{ name: "MenuPlay" }],
                 index: 0,
               },
             },
@@ -182,7 +185,7 @@ const StandingsScreen = () => {
               {listPlayers.map((p, index) => {
                 const place =
                   topStandingImage && topPlayer ? index + 2 : index + 1;
-                const character = heroes.find((h) => h.id === p.characterId);
+                const character = resolvePlayerHero(heroes, p);
 
                 return (
                   <View

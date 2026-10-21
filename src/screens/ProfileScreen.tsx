@@ -25,7 +25,10 @@ import CustomButton from "../components/common/CustomButton";
 import ProfileImagePickerComponent from "../components/profile/ProfileImagePickerComponent";
 import ProfilePremiumQuestionsCard from "../components/profile/ProfilePremiumQuestionsCard";
 import ProfileFriendsCard from "../components/profile/ProfileFriendsCard";
-import ScreenTopBar from "../components/common/ScreenTopBar";
+import RateAppModal from "../components/modals/RateAppModal";
+import CamNavBar from "../components/cam/CamNavBar";
+import { UiStyleProvider } from "../context/UiStyleContext";
+import { TT } from "../constants/tiktokTheme";
 import { useUserSettingsSheet } from "../context/UserSettingsModalContext";
 import { useResponsive } from "../utils/responsive";
 import { Ionicons } from "@expo/vector-icons";
@@ -298,50 +301,44 @@ const ProfileScreen = () => {
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
-  const { horizontalPadding, topIconSize, isTablet } = useResponsive();
+  const [reviewVisible, setReviewVisible] = useState(false);
+  const { isTablet } = useResponsive();
 
   return (
     <FullBleedStack
       rootStyle={styles.root}
       backdrop={<AnimatedProfileBackground />}
     >
-      <SafeAreaView style={styles.safe} edges={["left", "right"]}>
+      <UiStyleProvider value="tiktok">
+      <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
         <View style={{ flex: 1 }}>
-          <ScreenTopBar
-            variant="soloBackFromCenter"
-            horizontalPadding={horizontalPadding}
-            topIconSize={topIconSize}
-            showBack
-            onSettings={() => openUserSettings()}
-            onProfile={() => {}}
+          <CamNavBar
+            title={`${t("your_profile_1")} ${t("your_profile_2")}`}
+            backLabel={t("back_btn")}
             onBack={() => navigateBackSafe(navigation)}
-            backAccessibilityLabel={t("back_btn")}
+            right={
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("game_settings")}
+                hitSlop={8}
+                onPress={() => openUserSettings()}
+              >
+                <Ionicons name="settings-outline" size={22} color="#FFFFFF" />
+              </Pressable>
+            }
           />
           <ScrollView
             showsVerticalScrollIndicator={false}
             style={{ flex: 1 }}
             contentContainerStyle={{
-              paddingTop: 72,
+              paddingTop: 8,
               paddingBottom: 16,
               alignItems: isTablet ? "center" : undefined,
             }}
           >
             <View style={[{ width: "100%" }, isTablet && { maxWidth: 560 }]}>
-            <View className="relative">
-              <View className="items-center w-full justify-center px-4 mt-2">
-                <CustomText
-                  variant="h3-headline"
-                  className="text-center w-full"
-                >
-                  {t("your_profile_1")}
-                </CustomText>
-                <CustomText
-                  variant="h3"
-                  className="-rotate-3 text-center w-full"
-                >
-                  {t("your_profile_2")}
-                </CustomText>
-              </View>
+            {/* One gap between whichever sections are shown; the sections carry no vertical margins of their own. */}
+            <View style={{ gap: TT.sectionGap }}>
               <ProfileInfoComponent
                 setImagePickerVisible={setImagePickerVisible}
               />
@@ -434,17 +431,35 @@ const ProfileScreen = () => {
               {authStatus === "guest" && <ProfileLoginComponent />}
             </View>
             <View style={footerStyles.wrap}>
-              <TouchableOpacity
-                hitSlop={8}
-                style={footerStyles.supportBtn}
-                onPress={() => navigation.navigate("Support")}
-                >
-                <Ionicons name="help-circle-outline" size={17} color="rgba(255,204,80,0.8)" />
-                <CustomText style={footerStyles.supportText}>
-                  Help & Support
-                </CustomText>
-                <Ionicons name="chevron-forward" size={15} color="rgba(255,255,255,0.3)" />
-              </TouchableOpacity>
+              <View style={footerStyles.links}>
+                {FOOTER_LINKS.map((link) => (
+                  <TouchableOpacity
+                    key={link.id}
+                    hitSlop={8}
+                    style={footerStyles.supportBtn}
+                    onPress={() => {
+                      if (link.id === "review") setReviewVisible(true);
+                      else navigation.navigate(link.route);
+                    }}
+                  >
+                    <View style={footerStyles.linkIcon}>
+                      <Ionicons name={link.icon} size={18} color={TT.text} />
+                    </View>
+                    <CustomText style={footerStyles.supportText}>
+                      {t(link.labelKey)}
+                    </CustomText>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color={TT.text2}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <RateAppModal
+                visible={reviewVisible}
+                onClose={() => setReviewVisible(false)}
+              />
                 {authStatus !== "guest" && (
                   <View style={footerStyles.logoutWrap}>
                     <CustomButton
@@ -492,6 +507,7 @@ const ProfileScreen = () => {
           )}
         </View>
       </SafeAreaView>
+      </UiStyleProvider>
     </FullBleedStack>
   );
 };
@@ -501,13 +517,44 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "transparent" },
 });
 
+/**
+ * Footer links, top to bottom. "Review" opens the rating popup; "Support the
+ * game" leads to the Store, where the donation card is.
+ */
+const FOOTER_LINKS = [
+  {
+    id: "review",
+    icon: "star-outline",
+    labelKey: "profile_review_game",
+    route: "Support",
+  },
+  {
+    id: "help",
+    icon: "help-circle-outline",
+    labelKey: "profile_help_support",
+    route: "Support",
+  },
+  {
+    id: "donate",
+    icon: "heart-outline",
+    labelKey: "profile_support_game",
+    route: "Store",
+  },
+] as const;
+
 const footerStyles = StyleSheet.create({
+  links: {
+    width: "100%",
+    // Same step as between the cards above.
+    gap: TT.sectionGap,
+  },
   wrap: {
     alignItems: "center",
-    paddingHorizontal: 28,
-    paddingTop: 16,
+    // Same 16pt side margin as the cards above.
+    paddingHorizontal: 16,
+    paddingTop: TT.sectionGap,
     paddingBottom: 12,
-    gap: 16,
+    gap: TT.sectionGap,
   },
   logoutWrap: { width: "100%", alignSelf: "stretch" },
   legalRow: {
@@ -533,23 +580,35 @@ const footerStyles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: "rgba(255,255,255,0.25)",
   },
+  // Same card, icon tile and title as the Friends card header above.
   supportBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
     width: "100%",
-    backgroundColor: "rgba(255,204,80,0.08)",
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderWidth: 1,
-    borderColor: "rgba(255,204,80,0.22)",
+    backgroundColor: TT.surface,
+    borderRadius: TT.cardRadius,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5,
+  },
+  linkIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: TT.surface2,
+    alignItems: "center",
+    justifyContent: "center",
   },
   supportText: {
     flex: 1,
-    color: "rgba(255,220,130,0.9)",
+    color: TT.text,
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "800",
   },
 });
 

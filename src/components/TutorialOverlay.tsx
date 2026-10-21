@@ -1,26 +1,23 @@
 // src/components/TutorialOverlay.tsx
 import React, { useRef, useState } from "react";
 import {
-  View,
-  FlatList,
-  Dimensions,
-  TouchableWithoutFeedback,
-  ViewToken,
-  FlatListProps,
   ImageSourcePropType,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
+  ScrollView,
   StyleSheet,
+  View,
   useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import AppImage from "./AppImage";
-import CustomText from "./common/CustomText";
-import CustomButton from "./common/CustomButton";
-import { backgrounds } from "../../assets/backgrounds";
-import { htp_images } from "../../assets/images";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 
-const { width: W } = Dimensions.get("window");
+import AppImage from "./AppImage";
+import CamButton from "./cam/CamButton";
+import CamText from "./cam/CamText";
+import { htp_images } from "../../assets/images";
+import { TT } from "../constants/tiktokTheme";
 
 export type TutorialStep = {
   num: number;
@@ -59,168 +56,88 @@ type Props = {
   steps: TutorialStep[];
 };
 
+const GUTTER = 24;
+const DOT = 6;
+
+/**
+ * Quick tutorial at the start of a game: the same three slides and texts as
+ * before, laid out the way app onboarding usually is — Skip in the corner, a
+ * large illustration, a bold headline with short points under it, progress
+ * dots and one full-width button — in the dark TikTok look of the popups.
+ */
 export default function TutorialOverlay({ visible, onSkipAll, onDoneAll, steps }: Props) {
   const { t } = useTranslation();
-  const { height: windowHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
   const [index, setIndex] = useState(0);
-  const ref = useRef<FlatList<TutorialStep>>(null);
+  const pagerRef = useRef<ScrollView>(null);
 
-  // Scale the illustration so the whole overlay fits on compact screens.
-  // 0.26 * 667 (iPhone SE) = 173px — enough to be meaningful without overflow.
-  const imageHeight = Math.max(120, Math.min(220, windowHeight * 0.26));
+  if (!visible || steps.length === 0) return null;
 
-  const getItemLayout = (_: unknown, i: number) => ({
-    length: W,
-    offset: W * i,
-    index: i,
-  });
+  const isLast = index >= steps.length - 1;
+  const imageHeight = Math.max(160, Math.min(300, height * 0.34));
 
-  const viewabilityConfig = { itemVisiblePercentThreshold: 70 };
-
-  const onViewableItemsChanged = useRef<
-    FlatListProps<TutorialStep>["onViewableItemsChanged"]
-  >(
-    ({
-      viewableItems,
-    }: {
-      viewableItems: ViewToken[];
-      changed: ViewToken[];
-    }) => {
-      const i = viewableItems?.[0]?.index;
-      if (typeof i === "number") setIndex(i);
-    }
-  ).current;
-
+  // The step follows the scroll position, so swiping and the button agree.
+  const syncIndex = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const next = Math.round(e.nativeEvent.contentOffset.x / width);
+    const clamped = Math.max(0, Math.min(steps.length - 1, next));
+    setIndex((current) => (current === clamped ? current : clamped));
+  };
   const goTo = (i: number) => {
-    ref.current?.scrollToIndex({ index: i, animated: true });
+    pagerRef.current?.scrollTo({ x: i * width, animated: true });
     setIndex(i);
   };
 
-  if (!visible) return null;
-
   return (
     <View style={[StyleSheet.absoluteFill, styles.root]}>
-      <View style={[StyleSheet.absoluteFill, styles.backdrop]} />
+      <View style={[styles.header, { marginTop: insets.top + 8 }]}>
+        <Pressable accessibilityRole="button" hitSlop={10} onPress={onSkipAll}>
+          <CamText variant="subtitle">{t("skip")}</CamText>
+        </Pressable>
+      </View>
 
-      {/*
-        SafeAreaView ensures the content respects notch/home-indicator insets.
-        All interactive elements are in normal document flow — no absolute
-        positioning — so Skip can never overlap Next.
-      */}
-      <SafeAreaView style={styles.safeArea} edges={["top", "bottom", "left", "right"]}>
-        <View style={styles.center}>
-          <View style={{ width: W, paddingTop: 24 }}>
-            <FlatList
-              ref={ref}
-              data={steps}
-              keyExtractor={(it) => `tstep-${it.num}`}
-              renderItem={({ item }) => (
-                <View style={styles.slide}>
-                  <View style={styles.cardWrap}>
-                    {/* Step number badge */}
-                    <View style={styles.badge}>
-                      <CustomText
-                        variant="h3"
-                        className="text-primary-500"
-                        responsive={false}
-                      >
-                        {item.num}
-                      </CustomText>
-                    </View>
-
-                    <View style={styles.card}>
-                      <AppImage
-                        source={item.image}
-                        contentFit="contain"
-                        style={{ width: "100%", height: imageHeight }}
-                      />
-                      <View>
-                        <CustomText
-                          variant="h5"
-                          textColor="black"
-                          className="text-center"
-                        >
-                          {item.title}
-                        </CustomText>
-                        {item.bullets.map((b, i) => (
-                          <CustomText
-                            key={i}
-                            textColor="black"
-                            className={i === 0 ? "mt-4" : "mt-2"}
-                            style={{ fontFamily: "Onest-SemiBold" }}
-                          >
-                            {b}
-                          </CustomText>
-                        ))}
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              )}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              snapToInterval={W}
-              decelerationRate="fast"
-              getItemLayout={getItemLayout}
-              onViewableItemsChanged={onViewableItemsChanged}
-              viewabilityConfig={viewabilityConfig}
-              disableIntervalMomentum
-            />
-
-            {/* Pagination dots */}
-            <View style={styles.dotsRow}>
-              {steps.map((_, i) => {
-                const active = i === index;
-                return (
-                  <TouchableWithoutFeedback key={i} onPress={() => goTo(i)}>
-                    <View
-                      style={[
-                        styles.dot,
-                        { backgroundColor: active ? "#fff" : "rgba(255,255,255,0.6)" },
-                      ]}
-                    />
-                  </TouchableWithoutFeedback>
-                );
-              })}
-            </View>
-
-            {/* Next / Got it button */}
-            <View style={styles.nextWrap}>
-              <CustomButton
-                title={index === steps.length - 1 ? t("got_it") : t("next")}
-                onPress={() =>
-                  index < steps.length - 1 ? goTo(index + 1) : onDoneAll()
-                }
-                backgroundImage={backgrounds.bg026}
-                glow
-                glowColor="rgba(41,255,25,0.8)"
-                shadowColor="#005f07"
-                horizontalPadding={48}
+      <ScrollView
+        ref={pagerRef}
+        style={styles.pager}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={syncIndex}
+        onMomentumScrollEnd={syncIndex}
+      >
+        {steps.map((step) => (
+          <View key={step.num} style={[styles.page, { width }]}>
+            <View style={styles.imageTile}>
+              <AppImage
+                source={step.image}
+                contentFit="contain"
+                style={{ width: "100%", height: imageHeight }}
               />
             </View>
-
-            {/*
-              Skip — part of normal flow, always rendered BELOW Next.
-              No absolute positioning → no possible overlap.
-            */}
-            <View style={styles.skipWrap}>
-              <Pressable
-                onPress={onSkipAll}
-                hitSlop={{ top: 12, right: 24, bottom: 12, left: 24 }}
-                style={({ pressed }) => [
-                  styles.skipBtn,
-                  pressed && styles.skipBtnPressed,
-                ]}
-              >
-                <CustomText variant="p" style={styles.skipLabel}>
-                  {t("skip")}
-                </CustomText>
-              </Pressable>
+            <View style={styles.texts}>
+              <CamText variant="question">{step.title}</CamText>
+              {step.bullets.map((bullet, i) => (
+                <CamText key={i} variant="subtitle" style={styles.bullet}>
+                  {bullet}
+                </CamText>
+              ))}
             </View>
           </View>
+        ))}
+      </ScrollView>
+
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
+        <View style={styles.dots}>
+          {steps.map((step, i) => (
+            <View key={step.num} style={[styles.dot, i === index && styles.dotActive]} />
+          ))}
         </View>
-      </SafeAreaView>
+        <CamButton
+          title={isLast ? t("continue_btn") : t("next")}
+          onPress={() => (isLast ? onDoneAll() : goTo(index + 1))}
+        />
+      </View>
     </View>
   );
 }
@@ -228,83 +145,53 @@ export default function TutorialOverlay({ visible, onSkipAll, onDoneAll, steps }
 const styles = StyleSheet.create({
   root: {
     zIndex: 99,
+    backgroundColor: TT.bg,
   },
-  backdrop: {
-    backgroundColor: "rgba(0,0,0,0.85)",
+  header: {
+    height: 44,
+    paddingHorizontal: GUTTER,
+    alignItems: "flex-end",
+    justifyContent: "center",
   },
-  safeArea: {
+  pager: {
     flex: 1,
   },
-  center: {
-    flex: 1,
-    alignItems: "center",
+  page: {
+    paddingHorizontal: GUTTER,
     justifyContent: "center",
+    gap: 28,
   },
-  slide: {
-    width: W,
-    alignItems: "center",
-    justifyContent: "flex-start",
-    paddingTop: 8,
-  },
-  cardWrap: {
-    width: "80%",
-    position: "relative",
-  },
-  badge: {
-    position: "absolute",
-    top: -8,
-    alignSelf: "center",
-    width: 64,
-    height: 64,
+  imageTile: {
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    backgroundColor: "#a855f7", // bg-primary-400
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1,
+    padding: 16,
   },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 32,
-    marginTop: 32,
-    width: "100%",
-    overflow: "hidden",
-    justifyContent: "space-between",
+  texts: {
+    gap: 10,
   },
-  dotsRow: {
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "center",
+  bullet: {
+    fontSize: 16,
+    lineHeight: 23,
+    opacity: 0.9,
+  },
+  footer: {
+    paddingHorizontal: GUTTER,
+    paddingTop: 12,
+    gap: 20,
+  },
+  dots: {
     flexDirection: "row",
-    marginTop: 24,
-    marginBottom: 8,
+    alignItems: "center",
+    gap: 6,
   },
   dot: {
-    width: 16,
-    height: 16,
-    borderRadius: 999,
-    marginHorizontal: 6,
+    width: DOT,
+    height: DOT,
+    borderRadius: DOT / 2,
+    backgroundColor: "rgba(255,255,255,0.35)",
   },
-  nextWrap: {
-    alignItems: "center",
-    marginTop: 16,
-  },
-  skipWrap: {
-    alignItems: "center",
-    marginTop: 12,
-    paddingBottom: 4,
-  },
-  skipBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 999,
-  },
-  skipBtnPressed: {
-    opacity: 0.55,
-  },
-  skipLabel: {
-    color: "rgba(255,255,255,0.55)",
-    textAlign: "center",
-    fontFamily: "Onest-SemiBold",
+  dotActive: {
+    width: DOT * 4,
+    backgroundColor: TT.text,
   },
 });

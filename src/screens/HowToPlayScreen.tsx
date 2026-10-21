@@ -1,11 +1,9 @@
 import React, { useRef, useState, useEffect } from "react";
 import {
   View,
-  TouchableOpacity,
-  FlatList,
-  TouchableWithoutFeedback,
-  FlatListProps,
-  ViewToken,
+  Pressable,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   ScrollView,
   ImageSourcePropType,
   useWindowDimensions,
@@ -17,16 +15,20 @@ import { LinearGradient } from "expo-linear-gradient";
 import AppImage from "../components/AppImage";
 import FullBleedStack from "../components/FullBleedStack";
 import { SafeAreaView } from "react-native-safe-area-context";
-import CustomText from "../components/common/CustomText";
-import ScreenTopBar from "../components/common/ScreenTopBar";
-import { useNavigation } from "@react-navigation/native";
+import CamButton from "../components/cam/CamButton";
+import CamNavBar from "../components/cam/CamNavBar";
+import CamText from "../components/cam/CamText";
+import { CAM_TEXT } from "./Cam/cam.constants";
+import {
+  useNavigation,
+  useRoute,
+  type RouteProp,
+} from "@react-navigation/native";
 import { navigateBackSafe } from "../navigation/navigateBackSafe";
 import { useTranslation } from "react-i18next";
-import { OnboardingStackParamList } from "../navigation/types";
+import { OnboardingStackParamList, type RulesMode } from "../navigation/types";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { htp_images } from "../../assets/images";
-import { useResponsive } from "../utils/responsive";
-import { useUserSettingsSheet } from "../context/UserSettingsModalContext";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Rules">;
 
@@ -327,137 +329,84 @@ type Step = {
   image: ImageSourcePropType;
 };
 
-function getHtpSteps(t: (key: string) => string): Step[] {
-  return [
-    {
-      num: 1,
-      title: t("htp_gather_title"),
-      bullets: [t("htp_gather_1"), t("htp_gather_2")],
-      image: htp_images.htp03,
-    },
-    {
-      num: 2,
-      title: t("htp_question_title"),
-      bullets: [t("htp_question_1"), t("htp_question_2")],
-      image: htp_images.htp08,
-    },
-    {
-      num: 3,
-      title: t("htp_discuss_title"),
-      bullets: [t("htp_discuss_1"), t("htp_discuss_2"), t("htp_discuss_3")],
-      image: htp_images.htp05,
-    },
-    {
-      num: 4,
-      title: t("htp_vote_title"),
-      bullets: [t("htp_vote_1"), t("htp_vote_2")],
-      image: htp_images.htp06,
-    },
-    {
-      num: 5,
-      title: t("htp_reveal_title"),
-      bullets: [t("htp_reveal_1"), t("htp_reveal_2"), t("htp_reveal_3")],
-      image: htp_images.htp07,
-    },
+type StepDef = Omit<Step, "num">;
+
+/**
+ * The steps for the game type the player has already chosen. The rounds are
+ * the same in party and online play; only the first step differs (together
+ * with one phone, or apart on a call). Cam Mode plays differently throughout.
+ */
+function getHtpSteps(t: (key: string) => string, mode?: RulesMode): Step[] {
+  const step = (
+    prefix: string,
+    bullets: number,
+    image: ImageSourcePropType,
+  ) => ({
+    title: t(`${prefix}_title`),
+    bullets: Array.from({ length: bullets }, (_, i) => t(`${prefix}_${i + 1}`)),
+    image,
+  });
+
+  const rounds: StepDef[] = [
+    step("htp_question", 2, htp_images.htp08),
+    step("htp_discuss", 3, htp_images.htp05),
+    step("htp_vote", 2, htp_images.htp06),
+    step("htp_reveal", 3, htp_images.htp07),
   ];
+
+  let steps: StepDef[];
+  if (mode === "cam") {
+    steps = [
+      step("htp_cam_setup", 2, htp_images.htp03),
+      step("htp_cam_question", 2, htp_images.htp08),
+      step("htp_cam_point", 3, htp_images.htp05),
+      step("htp_cam_lives", 2, htp_images.htp07),
+    ];
+  } else if (mode === "party") {
+    steps = [step("htp_party", 2, htp_images.htp03), ...rounds];
+  } else if (mode === "online") {
+    steps = [step("htp_online", 2, htp_images.htp03), ...rounds];
+  } else {
+    // Opened without a game type: the general version.
+    steps = [step("htp_gather", 2, htp_images.htp03), ...rounds];
+  }
+  return steps.map((s, i) => ({ ...s, num: i + 1 }));
 }
 
 type StepCardProps = {
   step: Step;
+  total: number;
   itemWidth: number;
   imageHeight: number;
-  showPrev?: boolean;
-  showNext?: boolean;
-  onPrev?: () => void;
-  onNext?: () => void;
-  t: (key: string) => string;
+  t: (key: string, options?: Record<string, unknown>) => string;
 };
 
-function StepCard({
-  step,
-  itemWidth,
-  imageHeight,
-  showPrev,
-  showNext,
-  onPrev,
-  onNext,
-  t,
-}: StepCardProps) {
+/** One tutorial page: illustration tile, "step n of m", a headline and short points. */
+function StepCard({ step, total, itemWidth, imageHeight, t }: StepCardProps) {
   return (
-    <View
-      style={{
-        width: itemWidth,
-        paddingHorizontal: 0,
-        alignItems: "center",
-        justifyContent: "flex-start",
-        paddingTop: 8,
-      }}
-    >
-      <View style={{ width: "80%", maxWidth: 480, position: "relative" }}>
-        <View
-          className="bg-primary-500 rounded-2xl items-center justify-center"
-          style={{
-            position: "absolute",
-            top: -8,
-            alignSelf: "center",
-            width: 64,
-            height: 64,
-            zIndex: 1,
-          }}
-        >
-          <CustomText
-            variant="h3"
-            className="text-primary-500"
-            responsive={false}
-          >
-            {step.num}
-          </CustomText>
-        </View>
-        {showPrev ? (
-          <View className="absolute left-4">
-            <TouchableOpacity
-              onPress={onPrev}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <CustomText className="underline">{t("htp_prev")}</CustomText>
-            </TouchableOpacity>
+    <View style={[styles.page, { width: itemWidth }]}>
+      <View style={styles.imageTile}>
+        <AppImage
+          source={step.image}
+          contentFit="contain"
+          style={{ width: "100%", height: imageHeight }}
+        />
+      </View>
+      <CamText variant="subtitle" style={styles.stepLabel}>
+        {t("htp_step_of", { n: step.num, total })}
+      </CamText>
+      <CamText variant="title" style={styles.title}>
+        {step.title}
+      </CamText>
+      <View style={styles.bullets}>
+        {step.bullets.map((bullet, i) => (
+          <View key={i} style={styles.bulletRow}>
+            <View style={styles.bulletDot} />
+            <CamText variant="subtitle" style={styles.bulletText}>
+              {bullet}
+            </CamText>
           </View>
-        ) : null}
-
-        {showNext ? (
-          <View className="absolute right-4">
-            <TouchableOpacity
-              onPress={onNext}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <CustomText className="underline">{t("htp_next")}</CustomText>
-            </TouchableOpacity>
-          </View>
-        ) : null}
-        <View
-          className="bg-white rounded-2xl p-8 mt-8 w-full overflow-hidden"
-          style={{ justifyContent: "space-between" }}
-        >
-          <AppImage
-            source={step.image}
-            contentFit="contain"
-            style={{ width: "100%", height: imageHeight }}
-          />
-          <View>
-            <CustomText variant="h5" textColor="black" className="text-center">
-              {step.title}
-            </CustomText>
-            {step.bullets.map((b, i) => (
-              <CustomText
-                key={i}
-                textColor="black"
-                className={i === 0 ? "mt-4" : "mt-2"}
-              >
-                {b}
-              </CustomText>
-            ))}
-          </View>
-        </View>
+        ))}
       </View>
     </View>
   );
@@ -465,139 +414,200 @@ function StepCard({
 
 const HowToPlayScreen = () => {
   const navigation = useNavigation<Nav>();
-  const { openUserSettings } = useUserSettingsSheet();
   const { t } = useTranslation();
-  const { horizontalPadding, topIconSize } = useResponsive();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const isTablet = windowWidth >= 768;
-  const steps = React.useMemo(() => getHtpSteps(t), [t]);
+  const route = useRoute<RouteProp<OnboardingStackParamList, "Rules">>();
+  const mode = route.params?.mode;
+  const steps = React.useMemo(() => getHtpSteps(t, mode), [t, mode]);
   const [index, setIndex] = useState(0);
-  const flatRef = useRef<FlatList<Step>>(null);
-  const cardImageHeight = Math.min(225, Math.max(160, windowHeight * 0.28));
+  const pagerRef = useRef<ScrollView>(null);
+  const pageWidth = Math.min(windowWidth, HTP.maxWidth);
+  const imageHeight = Math.min(260, Math.max(150, windowHeight * 0.3));
+  const isLast = index === steps.length - 1;
 
-  const getItemLayout = (_: any, i: number) => ({
-    length: windowWidth,
-    offset: windowWidth * i,
-    index: i,
-  });
-  const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 70,
-  }).current;
-  const onViewableItemsChanged = useRef<
-    FlatListProps<Step>["onViewableItemsChanged"]
-  >(
-    (info: {
-      viewableItems: ViewToken<Step>[];
-      changed: ViewToken<Step>[];
-    }) => {
-      const i = info.viewableItems?.[0]?.index;
-      if (typeof i === "number") setIndex(i);
-    },
-  ).current;
+  // The current step always follows the scroll position, however it moved:
+  // a finger swipe, the button, the dots or the back chevron.
+  const syncIndex = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const next = Math.round(e.nativeEvent.contentOffset.x / windowWidth);
+    const clamped = Math.max(0, Math.min(steps.length - 1, next));
+    setIndex((current) => (current === clamped ? current : clamped));
+  };
 
   const goTo = (i: number) => {
-    flatRef.current?.scrollToIndex({ index: i, animated: true });
+    pagerRef.current?.scrollTo({ x: i * windowWidth, animated: true });
+    // Also set directly, in case the scroll events are late or missing.
     setIndex(i);
   };
+  const close = () => navigateBackSafe(navigation);
+  // Standard back: one step back, and out of the tutorial from the first step.
+  const goBack = () => (index > 0 ? goTo(index - 1) : close());
 
   return (
     <FullBleedStack
       rootStyle={styles.root}
       backdrop={<AnimatedHtpBackground />}
     >
-      <SafeAreaView style={styles.safe} edges={["left", "right"]}>
-        <View style={{ flex: 1 }}>
-          <ScreenTopBar
-            variant="soloBackFromCenter"
-            horizontalPadding={horizontalPadding}
-            topIconSize={topIconSize}
-            showBack
-            onSettings={() => openUserSettings()}
-            onProfile={() => {}}
-            onBack={() => navigateBackSafe(navigation)}
-            backAccessibilityLabel={t("back_btn")}
-          />
-          <ScrollView
-            contentContainerStyle={{
-              paddingTop: 72,
-              paddingBottom: 16,
-              alignItems: "center",
-              flexGrow: 1,
-            }}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View
-              className="items-center justify-center px-4"
-              style={[{ width: "100%" }, isTablet && { maxWidth: 560 }]}
+      <SafeAreaView
+        style={styles.safe}
+        edges={["top", "left", "right", "bottom"]}
+      >
+        <CamNavBar
+          title={`${t("htp_heading_1")} ${t("htp_heading_2")}`}
+          backLabel={t("back_btn")}
+          onBack={goBack}
+          right={
+            !isLast && (
+              <Pressable accessibilityRole="button" hitSlop={8} onPress={close}>
+                <CamText variant="subtitle" numberOfLines={1}>
+                  {t("htp_skip")}
+                </CamText>
+              </Pressable>
+            )
+          }
+        />
+
+        {/* A plain paged scroller: five pages do not need a virtualised list. */}
+        <ScrollView
+          ref={pagerRef}
+          style={styles.pager}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onScroll={syncIndex}
+          onMomentumScrollEnd={syncIndex}
+          onScrollEndDrag={syncIndex}
+        >
+          {steps.map((step) => (
+            <ScrollView
+              key={step.num}
+              style={{ width: windowWidth }}
+              contentContainerStyle={styles.pageScroll}
+              showsVerticalScrollIndicator={false}
             >
-              <CustomText variant="h3-headline" className="text-center w-full">
-                {t("htp_heading_1")}
-              </CustomText>
-              <CustomText variant="h3" className="-rotate-3 text-center w-full">
-                {t("htp_heading_2")}
-              </CustomText>
-            </View>
-
-            <View style={{ flex: 1, marginTop: 32 }}>
-              <FlatList
-                ref={flatRef}
-                data={steps}
-                keyExtractor={(it) => `step-${it.num}`}
-                renderItem={({ item }) => (
-                  <StepCard
-                    step={item}
-                    itemWidth={windowWidth}
-                    imageHeight={cardImageHeight}
-                    showPrev={index > 0}
-                    showNext={index < steps.length - 1}
-                    onPrev={() => goTo(index - 1)}
-                    onNext={() => goTo(index + 1)}
-                    t={t}
-                  />
-                )}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                snapToInterval={windowWidth}
-                decelerationRate="fast"
-                getItemLayout={getItemLayout}
-                onViewableItemsChanged={onViewableItemsChanged}
-                viewabilityConfig={viewabilityConfig}
-                disableIntervalMomentum
+              <StepCard
+                step={step}
+                total={steps.length}
+                itemWidth={pageWidth}
+                imageHeight={imageHeight}
+                t={t}
               />
+            </ScrollView>
+          ))}
+        </ScrollView>
 
-              <View className="w-full items-center justify-center flex-row">
-                {steps.map((_: Step, i: number) => {
-                  const active = i === index;
-                  return (
-                    <TouchableWithoutFeedback key={i} onPress={() => goTo(i)}>
-                      <View
-                        style={{
-                          width: 16,
-                          height: 16,
-                          borderRadius: 999,
-                          marginHorizontal: 6,
-                          backgroundColor: active
-                            ? "#fff"
-                            : "rgba(255,255,255,0.6)",
-                        }}
-                      />
-                    </TouchableWithoutFeedback>
-                  );
+        {/* Fixed footer: progress dots, then one full-width primary button. */}
+        <View style={[styles.footer, { width: pageWidth }]}>
+          <View style={styles.dots}>
+            {steps.map((step, i) => (
+              <Pressable
+                key={step.num}
+                accessibilityRole="button"
+                accessibilityLabel={t("htp_step_of", {
+                  n: step.num,
+                  total: steps.length,
                 })}
-              </View>
-            </View>
-          </ScrollView>
+                hitSlop={8}
+                onPress={() => goTo(i)}
+              >
+                <View style={[styles.dot, i === index && styles.dotActive]} />
+              </Pressable>
+            ))}
+          </View>
+          <CamButton
+            title={isLast ? t("htp_done") : t("htp_next")}
+            variant={isLast ? "dark" : "primary"}
+            onPress={() => (isLast ? close() : goTo(index + 1))}
+          />
         </View>
       </SafeAreaView>
     </FullBleedStack>
   );
 };
 
+/** TikTok-like metrics for the tutorial: 44pt bar, 16pt gutters, 8pt radii. */
+const HTP = {
+  gutter: 16,
+  radius: 8,
+  maxWidth: 480,
+  dot: 6,
+} as const;
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#140304" },
   safe: { flex: 1, backgroundColor: "transparent" },
+  pager: {
+    flex: 1,
+  },
+  pageScroll: {
+    alignItems: "center",
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
+  page: {
+    paddingHorizontal: HTP.gutter,
+  },
+  imageTile: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: HTP.radius * 2,
+    padding: HTP.gutter,
+  },
+  stepLabel: {
+    marginTop: 24,
+    fontSize: 13,
+    lineHeight: 18,
+    opacity: 0.75,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  title: {
+    marginTop: 4,
+  },
+  bullets: {
+    marginTop: 12,
+    gap: 10,
+  },
+  bulletRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  bulletDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    // Sits on the first text line.
+    marginTop: 8,
+    backgroundColor: CAM_TEXT,
+  },
+  bulletText: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 22,
+    opacity: 0.9,
+  },
+  footer: {
+    alignSelf: "center",
+    paddingHorizontal: HTP.gutter,
+    paddingTop: 12,
+    paddingBottom: 8,
+    gap: 16,
+  },
+  dots: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+  },
+  dot: {
+    width: HTP.dot,
+    height: HTP.dot,
+    borderRadius: HTP.dot / 2,
+    backgroundColor: "rgba(255,255,255,0.4)",
+  },
+  dotActive: {
+    width: HTP.dot * 3,
+    backgroundColor: "#FFFFFF",
+  },
 });
 
 export default HowToPlayScreen;

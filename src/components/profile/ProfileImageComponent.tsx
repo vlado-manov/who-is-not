@@ -21,7 +21,12 @@ const ProfileImageComponent = ({ setImagePickerVisible }: Props) => {
   const heroes = useHeroesStore((s) => s.heroes);
   const toSrc = (img: string | ImageSourcePropType): ImageSourcePropType =>
     typeof img === "string" ? { uri: img } : (img as ImageSourcePropType);
-  const selectedHeroAvatar = heroes.find((h) => h.slug === avatarId)?.profileImage;
+  const selectedHeroAvatar = heroes.reduce<typeof heroes>(
+      (all, h) => all.concat(h, h.skins ?? []),
+      [],
+    ).find(
+      (h) => h.slug === avatarId,
+    )?.profileImage;
   const silentVanessaAvatar =
     heroes.find((h) => h.id === SILENT_VANESSA_ID)?.profileImage ??
     heroes.find((h) => h.name === "Silent Vanessa")?.profileImage;

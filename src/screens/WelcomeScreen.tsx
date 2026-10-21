@@ -32,6 +32,10 @@ import { useResponsive } from "../utils/responsive";
 import CustomText from "../components/common/CustomText";
 import ScreenTopBar from "../components/common/ScreenTopBar";
 import { useUserSettingsSheet } from "../context/UserSettingsModalContext";
+import { Ionicons } from "@expo/vector-icons";
+
+/** Icons on the Store and Playbook buttons. */
+const MENU_ICON_SIZE = 30;
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Welcome">;
 
@@ -58,8 +62,6 @@ export default function WelcomeScreen() {
   } = useResponsive();
 
   /** ~P30 Pro and similar; when they can't stay on one row, stack diagonally. */
-  const stackStoreAndRulebook = windowWidth < 420;
-  const stackedButtonsWidth = "65%";
   const buttonsVerticalGap = 10;
 
   const btnIconW = 72;
@@ -175,7 +177,7 @@ export default function WelcomeScreen() {
                 maxWidth: isTablet ? 560 : 420,
                 alignSelf: "center",
                 paddingTop: 20,
-                paddingBottom: stackStoreAndRulebook ? 8 : 64,
+                paddingBottom: 64,
               }}
             >
               <CustomButton
@@ -204,25 +206,31 @@ export default function WelcomeScreen() {
 
             <View
               style={{
-                flexDirection: stackStoreAndRulebook ? "column" : "row",
+                // Icon-only buttons are narrow enough to share one row on any phone.
+                flexDirection: "row",
                 gap: buttonsVerticalGap,
                 width: "100%",
                 maxWidth: isTablet ? 560 : 420,
                 alignSelf: "center",
                 alignItems: "stretch",
-                marginTop: stackStoreAndRulebook ? buttonsVerticalGap : 16,
+                marginTop: 16,
                 marginBottom: 8,
               }}
             >
               <View
-                style={
-                  stackStoreAndRulebook
-                    ? { width: stackedButtonsWidth, alignSelf: "flex-start" }
-                    : { flex: 1, minWidth: 0, paddingTop: 8 }
-                }
+                style={{ flex: 1, minWidth: 0, paddingTop: 8 }}
               >
                 <CustomButton
-                  title={t("menu_store_btn")}
+                  // Icon only; the name stays as the accessibility label.
+                  title=""
+                  accessibilityLabel={t("menu_store_btn")}
+                  iconNode={
+                    <Ionicons
+                      name="storefront"
+                      size={MENU_ICON_SIZE}
+                      color="#FFFFFF"
+                    />
+                  }
                   appearance="secondary"
                   btnSize="sm"
                   fontSize="sm"
@@ -242,14 +250,14 @@ export default function WelcomeScreen() {
                 />
               </View>
               <View
-                style={
-                  stackStoreAndRulebook
-                    ? { width: stackedButtonsWidth, alignSelf: "flex-end" }
-                    : { flex: 1, minWidth: 0, paddingTop: 8 }
-                }
+                style={{ flex: 1, minWidth: 0, paddingTop: 8 }}
               >
                 <CustomButton
-                  title={t("menu_htp_btn")}
+                  title=""
+                  accessibilityLabel={t("menu_htp_btn")}
+                  iconNode={
+                    <Ionicons name="book" size={MENU_ICON_SIZE} color="#FFFFFF" />
+                  }
                   appearance="tertiary"
                   onPress={() => navigation.navigate("Rules")}
                   btnSize="sm"

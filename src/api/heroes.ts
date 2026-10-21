@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { apiGet, getApiBaseUrl } from "./client";
 import { ApiError } from "./types";
-import { ICharacter } from "../types/character";
+import { ICharacter, IUnlockInfo } from "../types/character";
 import { backgrounds } from "../../assets/backgrounds";
 import type { ImageSourcePropType } from "react-native";
 
@@ -39,6 +39,10 @@ type CharacterDto = {
     win: Record<string, string[]> | string[];
     lose: Record<string, string[]> | string[];
   };
+  /** Newer backends: how it unlocks, and the hero's skins (same shape). */
+  unlock?: IUnlockInfo;
+  skins?: CharacterDto[];
+  parentCharacterId?: string;
 };
 
 /** Resolves media URL - prepends API base when path is relative (e.g. /storage/...). */
@@ -100,7 +104,7 @@ export async function fetchCharacters(lang?: string, userId?: string): Promise<I
   );
   const fallbackMainFromDb = asImage(silentVanessaFallbackRow?.mainImageUrl);
 
-  return rows.map((row) => {
+  const mapRow = (row: CharacterDto): ICharacter => {
     const fallbackAvatar = fallbackAvatarFromDb;
     const fallbackMain = fallbackMainFromDb;
 
@@ -193,8 +197,55 @@ export async function fetchCharacters(lang?: string, userId?: string): Promise<I
         typeof row.quotes.lose === "object" && !Array.isArray(row.quotes.lose)
           ? (row.quotes.lose as Record<string, string[]>)
           : undefined,
+      unlock: row.unlock,
     };
+  };
+
+  return rows.map((row) => {
+    const hero = mapRow(row);
+    hero.skins = (row.skins ?? []).map((skinRow) =>
+      completeSkin(hero, skinRow, mapRow(skinRow)),
+    );
+    return hero;
   });
+}
+
+/**
+ * A skin with everything it did not upload taken from its hero, media type by
+ * media type and quotes category by category, so every screen can use it as a
+ * full hero.
+ */
+function completeSkin(
+  hero: ICharacter,
+  row: CharacterDto,
+  skin: ICharacter,
+): ICharacter {
+  const has = (url?: string | null) => Boolean(url?.trim());
+  const pick = <T,>(own: boolean, mine: T, base: T): T => (own ? mine : base);
+  return {
+    ...skin,
+    parentCharacterId: hero.id,
+    background: hero.background,
+    main_image: pick(has(row.mainImageUrl), skin.main_image, hero.main_image),
+    secondaryImage: pick(has(row.secondaryImageUrl), skin.secondaryImage, hero.secondaryImage),
+    profileImage: pick(has(row.profileImageUrl), skin.profileImage, hero.profileImage),
+    rateImage: pick(has(getRateUrlFromRow(row)), skin.rateImage, hero.rateImage),
+    winnerImage: pick(has(row.winnerImageUrl), skin.winnerImage, hero.winnerImage),
+    finalWinnerImage: pick(has(row.finalWinnerImageUrl), skin.finalWinnerImage, hero.finalWinnerImage),
+    finalLoserImage: pick(has(row.finalLoserImageUrl), skin.finalLoserImage, hero.finalLoserImage),
+    deathmatch_image: pick(has(row.deathmatchImageUrl), skin.deathmatch_image, hero.deathmatch_image),
+    deathImage: pick(has(row.deathImageUrl), skin.deathImage, hero.deathImage),
+    winImages: pick(row.winImages.length > 0, skin.winImages, hero.winImages),
+    winImagesByVariant: pick(row.winImages.length > 0, skin.winImagesByVariant, hero.winImagesByVariant),
+    loseImages: pick(row.loseImages.length > 0, skin.loseImages, hero.loseImages),
+    loseImagesByVariant: pick(row.loseImages.length > 0, skin.loseImagesByVariant, hero.loseImagesByVariant),
+    quotes_nameSelected: pick(skin.quotes_nameSelected.length > 0, skin.quotes_nameSelected, hero.quotes_nameSelected),
+    quotes_selected: pick(skin.quotes_selected.length > 0, skin.quotes_selected, hero.quotes_selected),
+    winQuotes: pick(skin.winQuotes.length > 0, skin.winQuotes, hero.winQuotes),
+    winQuotesByVariant: pick(skin.winQuotes.length > 0, skin.winQuotesByVariant, hero.winQuotesByVariant),
+    loseQuotes: pick(skin.loseQuotes.length > 0, skin.loseQuotes, hero.loseQuotes),
+    loseQuotesByVariant: pick(skin.loseQuotes.length > 0, skin.loseQuotesByVariant, hero.loseQuotesByVariant),
+  };
 }
 
 function getImageUri(

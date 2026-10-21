@@ -2,7 +2,6 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import {
   Animated,
-  Easing,
   ImageBackground,
   View,
   useWindowDimensions,
@@ -26,9 +25,10 @@ import { useGameStore } from "../../store/useGameStore";
 import { backgrounds } from "../../../assets/backgrounds";
 import CustomText from "../../components/common/CustomText";
 import { game_images } from "../../../assets/images";
-import CustomButton from "../../components/common/CustomButton";
+import HoldToConfirmButton from "./HoldToConfirmButton";
 import AudioManager from "../../utils/audioManager";
 import { usePreventBack } from "../../hooks/usePreventBack";
+import { usePlateSlamAnimation } from "../../hooks/usePlateSlamAnimation";
 import { useResponsive } from "../../utils/responsive";
 
 type R = RouteProp<GameStackParamList, "PassDeviceGameplay">;
@@ -56,24 +56,10 @@ const PassDeviceGameplayScreen = () => {
     navigation.replace("Question", { playerIndex });
   }, [navigation, playerIndex]);
 
-  const plateScale  = useRef(new Animated.Value(40)).current;
-  const plateOpacity = useRef(new Animated.Value(0)).current;
-  const screenShake = useRef(new Animated.Value(0)).current;
+  const { plateScale, plateOpacity, shakeX } = usePlateSlamAnimation();
 
   useEffect(() => {
     AudioManager.playItemDrop();
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(plateScale,   { toValue: 1, duration: 400, easing: Easing.out(Easing.back(3)), useNativeDriver: true }),
-        Animated.timing(plateOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-      ]),
-      Animated.sequence([
-        Animated.timing(screenShake, { toValue: 1,  duration: 60, useNativeDriver: true }),
-        Animated.timing(screenShake, { toValue: -1, duration: 60, useNativeDriver: true }),
-        Animated.timing(screenShake, { toValue: 1,  duration: 60, useNativeDriver: true }),
-        Animated.timing(screenShake, { toValue: 0,  duration: 60, useNativeDriver: true }),
-      ]),
-    ]).start();
   }, []);
 
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
@@ -83,7 +69,6 @@ const PassDeviceGameplayScreen = () => {
   const gap = Math.min(40, windowHeight * 0.055);
   const imageHeight = Math.min(windowWidth * (320 / 350), windowHeight * 0.38);
 
-  const shakeX = screenShake.interpolate({ inputRange: [-1, 1], outputRange: [-8, 8] });
 
   return (
     <FullBleedStack
@@ -142,22 +127,19 @@ const PassDeviceGameplayScreen = () => {
 
           {/* Button + hint */}
           <View style={{ paddingHorizontal: padH, paddingBottom: insets.bottom + 16 }}>
-            <CustomButton
+            <HoldToConfirmButton
               title={t("its_me")}
-              backgroundImage={backgrounds.bg026}
-              glow
-              glowColor="rgba(41,255,25,0.8)"
-              shadowColor="#005f07"
               horizontalPadding={Math.min(48, padH + 20)}
-              fullWidth
-              onPress={onContinue}
+              onConfirm={onContinue}
             />
             <View style={styles.hintRow}>
               <View style={styles.hintIconGlow}>
-                <MaterialCommunityIcons name="gesture-tap" size={20} color="#fbbf24" />
+                <MaterialCommunityIcons name="gesture-tap-hold" size={20} color="#fbbf24" />
               </View>
               <CustomText variant="footnote" textColor="rgba(255,255,255,0.88)" style={{ fontFamily: "Onest-SemiBold", flexShrink: 1 }}>
-                {currentPlayer ? `${currentPlayer.name}, ${t("click_next_phone")}` : t("click_next_phone")}
+                {currentPlayer
+                  ? t("hold_its_me_pass_hint", { name: currentPlayer.name })
+                  : t("hold_its_me_vote_hint")}
               </CustomText>
             </View>
           </View>

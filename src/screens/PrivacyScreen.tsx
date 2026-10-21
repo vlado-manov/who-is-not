@@ -18,12 +18,12 @@ import AudioManager from "../utils/audioManager";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Privacy">;
 
-const LAST_UPDATED = "May 2025";
+const LAST_UPDATED = "October 2026";
 
 const sections = [
   {
     title: "1. Information We Collect",
-    body: "We collect information you provide when creating an account, including your name, email address, and profile photo. We also automatically collect certain technical data such as device type, operating system, IP address, and gameplay statistics to improve the app experience.",
+    body: "We collect information you provide when creating an account, including your name, email address, and profile photo. We also automatically collect certain technical data such as device type, operating system, IP address, and gameplay statistics to improve the app experience. In Cam Mode the app uses your device camera to take player selfies and round photos and, if you choose to record a round, video with sound from the microphone. These photos and videos stay on your device, are never uploaded to us, and are deleted when the game ends unless you choose to save them to your gallery.",
   },
   {
     title: "2. How We Use Your Information",

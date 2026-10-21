@@ -1,5 +1,8 @@
 import type { NavigatorScreenParams } from "@react-navigation/native";
 
+/** Game types that have their own first steps in the rulebook. */
+export type RulesMode = "party" | "online" | "cam";
+
 export type OnboardingStackParamList = {
   Welcome: { skipCurtain?: boolean } | undefined;
   Menu: undefined;
@@ -7,7 +10,8 @@ export type OnboardingStackParamList = {
   Store: undefined;
   Profile: undefined;
   Referral: undefined;
-  Rules: undefined;
+  /** The rulebook; `mode` picks the steps for the game type chosen on the menu. */
+  Rules: { mode?: RulesMode } | undefined;
   Privacy: undefined;
   Terms: undefined;
   Support: undefined;
@@ -56,4 +60,6 @@ export type RootStackParamList = {
   Onboarding: NavigatorScreenParams<OnboardingStackParamList> | undefined;
   CreateGame: NavigatorScreenParams<CreateGameStackParamList> | undefined;
   Game: NavigatorScreenParams<GameStackParamList> | undefined;
+  /** Cam Mode: local-only, single screen so the camera never remounts. */
+  CamGame: undefined;
 };

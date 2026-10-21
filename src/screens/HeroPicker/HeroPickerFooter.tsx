@@ -7,6 +7,7 @@ import CustomInput from "../../components/common/CustomInput";
 import { backgrounds } from "../../../assets/backgrounds";
 import { ICharacter } from "../../types/character";
 import { useTranslation } from "react-i18next";
+import { formatPrice, unlockOf } from "../../game/unlocks";
 
 type Props = {
   hero: ICharacter;
@@ -19,6 +20,8 @@ type Props = {
   onConfirm: () => void;
   onInputFocus: () => void;
   onInputBlur: () => void;
+  /** The name field was tapped (brings the game keyboard back). */
+  onInputPress?: () => void;
   styles: any;
   style: any;
   /** Клавиатура: вдига целия футър (плочка + CTA) над клавиатурата. */
@@ -35,6 +38,7 @@ export function HeroPickerFooter({
   onConfirm,
   onInputFocus,
   onInputBlur,
+  onInputPress,
   styles,
   style,
   keyboardLiftStyle,
@@ -45,8 +49,19 @@ export function HeroPickerFooter({
     playerName.trim().length >= 3 && playerName.trim().length <= 8;
   const isLocked = !hero.unlocked;
 
+  // Locked: what it takes — a price, games to play, or the price when either works.
+  const unlock = unlockOf(hero);
+  const lockedTitle =
+    unlock.mode === "ACTION" && unlock.action
+      ? t("lock_progress_cta", {
+          current: Math.min(unlock.action.progress, unlock.action.target),
+          target: unlock.action.target,
+        })
+      : t("lock_buy_cta", {
+          price: formatPrice(unlock.discountPrice ?? unlock.price ?? hero.price),
+        });
   const ctaTitle = isLocked
-    ? t("unlock_for_price", { price: (hero.price / 100).toFixed(2) })
+    ? lockedTitle
     : isNaming
       ? t("done_btn")
       : t("this_is_me");
@@ -98,9 +113,12 @@ export function HeroPickerFooter({
               onChangeText={onChangeName}
               onFocus={onInputFocus}
               onBlur={onInputBlur}
+              onPressIn={onInputPress}
               maxLength={8}
               autoFocus={false}
               unstyled
+              // The game's own keyboard is used instead of the device one.
+              showSoftInputOnFocus={false}
               style={namePlateStyles.input}
               editable={!disabled}
               returnKeyType="done"

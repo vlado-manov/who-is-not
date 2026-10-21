@@ -1,6 +1,8 @@
 // src/screens/Game/RevealScreen.tsx
+import { resolvePlayerHero } from "../../game/resolvePlayerHero";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  InteractionManager,
   View,
   ImageBackground,
   StyleSheet,
@@ -351,8 +353,19 @@ const RevealScreen = () => {
         ]),
       ]),
     ]);
-    setTimeout(() => void AudioManager.playRevealTitleSplash(), 1000);
-    entryAnimRef.current.start(() => {
+    // The title slam starts only once the screen has been built and drawn.
+    // Started straight from the mount effect, its first frames competed with
+    // laying out the screen and decoding its pictures, and it stuttered.
+    const entry = entryAnimRef.current;
+    const startEntry = () => {
+      if (isContinuingRef.current) return;
+      setTimeout(() => void AudioManager.playRevealTitleSplash(), 1000);
+      entry.start(onEntryDone);
+    };
+    const pending = InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => requestAnimationFrame(startEntry));
+    });
+    const onEntryDone = () => {
       if (isContinuingRef.current) return;
       if (impostorWon) {
         AudioManager.playImposterWinSound();
@@ -369,7 +382,8 @@ const RevealScreen = () => {
         if (isContinuingRef.current) return;
         revealCTA();
       }, 2000);
-    });
+    };
+    return () => pending.cancel();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -533,7 +547,7 @@ const RevealScreen = () => {
   );
 
   const imposterCharacter = imposter
-    ? heroes.find((h) => h.id === imposter.characterId)
+    ? resolvePlayerHero(heroes, imposter)
     : undefined;
 
   const imposterQuestion = useMemo(

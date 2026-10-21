@@ -1,4 +1,5 @@
 // src/screens/Game/LivesRevealScreen.tsx
+import { resolvePlayerHero } from "../../game/resolvePlayerHero";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -45,13 +46,11 @@ type PlayerUi = {
 
 const OVERLAP_RATIO = 1 / 3;
 const WIN_SLOW_FACTOR = 2;
+import { HEART_EMPTY_URI, HEART_FULL_URI } from "../../constants/heartImages";
+
 const { width: SCREEN_W } = Dimensions.get("window");
 const MINUS_ONE_LIVE_URI =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/b358fa09-3908-4736-9bd5-18a01c7b0e2a--1live.webp";
-const HEART_FULL_URI =
-  "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/9c43592c-f28a-4922-bf8f-8e33529a6227-heart1.webp";
-const HEART_EMPTY_URI =
-  "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/44a82900-4469-4558-b968-50208d4fb581-heart2.webp";
 const X_PART_1_URI =
   "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/61d7faf3-5a8a-4aa8-babd-c20a6b82c588-xpart1.webp";
 const X_PART_2_URI =
@@ -215,6 +214,9 @@ const LivesRevealScreen = () => {
   const [showFocusSkip, setShowFocusSkip] = useState(false);
   const skipFocusRef = useRef(false);
   const gridScrollRef = useRef<ScrollView>(null);
+  /** Where the grid and each of its rows sit in the scroll content. */
+  const gridWrapYRef = useRef(0);
+  const gridRowYRef = useRef<Record<number, number>>({});
   const [showGameOver, setShowGameOver] = useState(false);
   const [deadIds, setDeadIds] = useState<string[]>([]);
   const [centerDeadId, setCenterDeadId] = useState<string | null>(null);
@@ -254,7 +256,7 @@ const LivesRevealScreen = () => {
 
   const playersUi = useMemo(() => {
     return players.map((p) => {
-      const hero = heroes.find((h) => h.id === p.characterId);
+      const hero = resolvePlayerHero(heroes, p);
       return {
         id: p.id,
         name: p.name,
@@ -296,9 +298,9 @@ const LivesRevealScreen = () => {
   const deathGrayRef = useRef<Record<string, Animated.Value>>({});
   const deathX1Ref = useRef<Record<string, Animated.Value>>({});
   const deathX2Ref = useRef<Record<string, Animated.Value>>({});
-  useEffect(() => () => {
-    void AudioManager.stopBackground();
-  }, []);
+  // This screen is silent and has no music of its own to stop when it is
+  // left. (It used to stop the music on the way out, which could silence the
+  // next screen's track a moment after it started.)
 
   useEffect(() => {
     playersUi.forEach((p) => {
@@ -475,7 +477,7 @@ const LivesRevealScreen = () => {
 
   const winnerHeroImage = useMemo(() => {
     if (!winnerPlayer) return null;
-    const hero = heroes.find((h) => h.id === winnerPlayer.characterId);
+    const hero = resolvePlayerHero(heroes, winnerPlayer);
     if (!hero) return null;
 
     const isImpostorWinner = winnerPlayer.id === oddOneId && !impostorLost;
@@ -1073,11 +1075,30 @@ const LivesRevealScreen = () => {
       ]);
     });
 
-    for (let i = 0; i < cardAnims.length; i++) {
-      void AudioManager.playAnswerPop();
-      await startAnim(cardAnims[i]);
-      await startAnim(Animated.delay(30));
-      gridScrollRef.current?.scrollToEnd({ animated: true });
+    // Row by row: the screen first scrolls to a row and settles, then that
+    // row's players appear one after the other. (It used to jump to the end of
+    // the list right after the first player, so the others on the same row
+    // came in while it was moving, or off screen.)
+    const animById: Record<string, Animated.CompositeAnimation> = {};
+    playersUi.forEach((p, i) => {
+      animById[p.id] = cardAnims[i];
+    });
+    for (let r = 0; r < staggeredGridRows.length; r++) {
+      const rowY = gridRowYRef.current[r];
+      if (r > 0 && rowY !== undefined) {
+        gridScrollRef.current?.scrollTo({
+          y: Math.max(0, gridWrapYRef.current + rowY - GRID_ROW_SCROLL_TOP),
+          animated: true,
+        });
+        await startAnim(Animated.delay(GRID_ROW_SCROLL_MS));
+      }
+      for (const p of staggeredGridRows[r].players) {
+        const anim = animById[p.id];
+        if (!anim) continue;
+        void AudioManager.playAnswerPop();
+        await startAnim(anim);
+        await startAnim(Animated.delay(GRID_CARD_GAP_MS));
+      }
     }
     await startAnim(Animated.delay(400));
     gridScrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -1775,6 +1796,9 @@ const LivesRevealScreen = () => {
 
               {phase === "grid" && (
                 <Animated.View
+                  onLayout={(e) => {
+                    gridWrapYRef.current = e.nativeEvent.layout.y;
+                  }}
                   style={[
                     styles.gridWrap,
                     { width: containerWidth, opacity: gridHeaderOp },
@@ -1783,6 +1807,9 @@ const LivesRevealScreen = () => {
                   {staggeredGridRows.map((row, rowIdx) => (
                     <View
                       key={`grid-row-${rowIdx}`}
+                      onLayout={(e) => {
+                        gridRowYRef.current[rowIdx] = e.nativeEvent.layout.y;
+                      }}
                       style={[
                         styles.gridRow,
                         row.centered && styles.gridRowCentered,
@@ -1930,18 +1957,20 @@ const LivesRevealScreen = () => {
                               </Animated.View>
                             </View>
 
-                            <CustomButton
-                              title={getDisplayName(p.id, p.name)}
-                              btnSize="xs"
-                              fontSize="sm"
-                              fullWidth
-                              buttonClassName="-mt-4"
-                              backgroundImage={backgrounds.bg018}
-                              glow
-                              glowColor="rgba(255,204,0,1)"
-                              glowIntensity={8}
-                              shadowColor="#834400"
-                            />
+                            {/* Over the hero picture, which it overlaps. */}
+                            <View style={styles.gridNameWrap}>
+                              <CustomButton
+                                title={getDisplayName(p.id, p.name)}
+                                btnSize="xs"
+                                fontSize="sm"
+                                fullWidth
+                                backgroundImage={backgrounds.bg018}
+                                glow
+                                glowColor="rgba(255,204,0,1)"
+                                glowIntensity={8}
+                                shadowColor="#834400"
+                              />
+                            </View>
                           </Animated.View>
                         );
                       })}
@@ -2295,6 +2324,11 @@ const LivesRevealScreen = () => {
 
 export default LivesRevealScreen;
 
+/** Grid entrance: where a row lands under the top edge, and the pauses. */
+const GRID_ROW_SCROLL_TOP = 150;
+const GRID_ROW_SCROLL_MS = 420;
+const GRID_CARD_GAP_MS = 90;
+
 const styles = StyleSheet.create({
   bg: { flex: 1 },
   bgBlurOverlay: {
@@ -2542,6 +2576,11 @@ const styles = StyleSheet.create({
   gridAvatarImage: {
     width: "100%",
     height: "100%",
+  },
+  gridNameWrap: {
+    width: "100%",
+    marginTop: -16,
+    zIndex: 2,
   },
   gridAvatarImageGray: {
     width: "100%",

@@ -55,31 +55,35 @@ function resolveRandomHeroId(excludeId?: string): string {
   return pool[Math.floor(Math.random() * pool.length)].id;
 }
 
-function threePlayers(vanessaId: string) {
+/**
+ * The lab's three sample players: Kai (Mr. Good Time), George (Uncle Vape) and
+ * Maria (Remote Susie). A hero that is not loaded falls back to `fallbackId`.
+ */
+function threePlayers(fallbackId: string) {
   return [
     {
       id: DEV_IDS.local,
-      name: "Angelika",
-      characterId: vanessaId,
+      name: "Kai",
+      characterId: resolveHeroId("mrgoodtime", fallbackId),
       connected: true,
       isHost: true,
     },
     {
       id: DEV_IDS.p2,
-      name: "Bot Alice",
-      characterId: vanessaId,
+      name: "George",
+      characterId: resolveHeroId("uncle-vape", fallbackId),
       connected: true,
     },
     {
       id: DEV_IDS.p3,
-      name: "Bot Bob",
-      characterId: vanessaId,
+      name: "Maria",
+      characterId: resolveHeroId("remote-susie", fallbackId),
       connected: true,
     },
   ];
 }
 
-/** Clears session and applies a LOCAL dev game with 3× Silent Vanessa. */
+/** Clears session and applies a LOCAL dev game with the three sample players. */
 export function seedDevLabBase() {
   const vanessaId = resolveVanessaId();
   const store = useGameStore.getState();
@@ -226,9 +230,9 @@ export function seedRevealLose(heroId?: string) {
     phase: "reveal",
     round: 0,
     players: [
-      { id: DEV_IDS.local, name: "Angelika", characterId: vanessaId, connected: true, isHost: true },
-      { id: DEV_IDS.p2,    name: "Bot Alice", characterId: impostorId, connected: true },
-      { id: DEV_IDS.p3,    name: "Bot Bob",   characterId: vanessaId, connected: true },
+      { id: DEV_IDS.local, name: "Kai", characterId: resolveHeroId("mrgoodtime", vanessaId), connected: true, isHost: true },
+      { id: DEV_IDS.p2,    name: "George", characterId: impostorId, connected: true },
+      { id: DEV_IDS.p3,    name: "Maria",   characterId: resolveHeroId("remote-susie", vanessaId), connected: true },
     ],
     takenCharacters: [vanessaId, impostorId],
     gameSettings: defaultSettings(),
@@ -267,9 +271,9 @@ export function seedRevealWin(heroId?: string) {
     phase: "reveal",
     round: 0,
     players: [
-      { id: DEV_IDS.local, name: "Angelika", characterId: vanessaId, connected: true, isHost: true },
-      { id: DEV_IDS.p2,    name: "Bot Alice", characterId: impostorId, connected: true },
-      { id: DEV_IDS.p3,    name: "Bot Bob",   characterId: vanessaId, connected: true },
+      { id: DEV_IDS.local, name: "Kai", characterId: resolveHeroId("mrgoodtime", vanessaId), connected: true, isHost: true },
+      { id: DEV_IDS.p2,    name: "George", characterId: impostorId, connected: true },
+      { id: DEV_IDS.p3,    name: "Maria",   characterId: resolveHeroId("remote-susie", vanessaId), connected: true },
     ],
     takenCharacters: [vanessaId, impostorId],
     gameSettings: defaultSettings(),
@@ -336,8 +340,8 @@ export function seedPlayerDeathContinue(heroId?: string) {
     round: 0,
     players: [
       { id: DEV_IDS.local, name: "You",       characterId: vanessaId, connected: true, isHost: true },
-      { id: DEV_IDS.p2,    name: "Bot Alice", characterId: deadHeroId, connected: true },
-      { id: DEV_IDS.p3,    name: "Bot Bob",   characterId: vanessaId, connected: true },
+      { id: DEV_IDS.p2,    name: "George", characterId: deadHeroId, connected: true },
+      { id: DEV_IDS.p3,    name: "Maria",   characterId: resolveHeroId("remote-susie", vanessaId), connected: true },
     ],
     takenCharacters: [vanessaId, deadHeroId],
     gameSettings: defaultSettings(),
@@ -368,8 +372,8 @@ export function seedPlayerDeathGameOver() {
     round: 0,
     players: [
       { id: DEV_IDS.local, name: "You",       characterId: vanessaId, connected: true, isHost: true },
-      { id: DEV_IDS.p2,    name: "Bot Alice", characterId: randomId,  connected: true },
-      { id: DEV_IDS.p3,    name: "Bot Bob",   characterId: vanessaId, connected: true },
+      { id: DEV_IDS.p2,    name: "George", characterId: randomId,  connected: true },
+      { id: DEV_IDS.p3,    name: "Maria",   characterId: resolveHeroId("remote-susie", vanessaId), connected: true },
     ],
     takenCharacters: [vanessaId, randomId],
     gameSettings: defaultSettings(),
@@ -396,17 +400,17 @@ export function seedPlayerDeathGameOver() {
  *
  * Timeline (ms from seed call):
  *   T+6 000  phase → voting        → "Players are voting"
- *   T+7 800  p3 loses life         → "Bot Bob lost a life — 2 remaining"
+ *   T+7 800  p3 loses life         → "Maria lost a life — 2 remaining"
  *   T+10 200 round 2 + new Q       → "Round 2" + question text
  *   T+11 900 phase → voting        → "Players are voting"
- *   T+13 700 p2 loses life         → "Bot Alice lost a life — 1 remaining"
+ *   T+13 700 p2 loses life         → "George lost a life — 1 remaining"
  *   T+16 300 round 3 + new Q       → "Round 3" + question text
  *   T+18 100 phase → voting        → "Players are voting"
- *   T+20 000 p3 loses life         → "Bot Bob lost a life — 1 remaining"
- *   T+22 600 p2 eliminated         → "Bot Alice was eliminated"
+ *   T+20 000 p3 loses life         → "Maria lost a life — 1 remaining"
+ *   T+22 600 p2 eliminated         → "George was eliminated"
  *   T+25 000 round 4 + new Q       → "Round 4" + question text
  *   T+26 800 phase → voting        → "Players are voting"
- *   T+29 200 p3 eliminated         → "Bot Bob was eliminated"
+ *   T+29 200 p3 eliminated         → "Maria was eliminated"
  */
 export function seedPlayerDeathWatchDemo() {
   const vanessaId = resolveVanessaId();
@@ -420,8 +424,8 @@ export function seedPlayerDeathWatchDemo() {
     round: 1,
     players: [
       { id: DEV_IDS.local, name: "You",       characterId: randomId,  connected: true, isHost: true },
-      { id: DEV_IDS.p2,    name: "Bot Alice", characterId: vanessaId, connected: true },
-      { id: DEV_IDS.p3,    name: "Bot Bob",   characterId: vanessaId, connected: true },
+      { id: DEV_IDS.p2,    name: "George", characterId: resolveHeroId("uncle-vape", vanessaId), connected: true },
+      { id: DEV_IDS.p3,    name: "Maria",   characterId: resolveHeroId("remote-susie", vanessaId), connected: true },
     ],
     takenCharacters: [vanessaId, randomId],
     gameSettings: defaultSettings(),
@@ -464,9 +468,9 @@ export function seedWinnerCelebration(heroId?: string) {
     phase: "result",
     round: 5,
     players: [
-      { id: DEV_IDS.local, name: "Angelika", characterId: winnerId,   connected: true, isHost: true },
-      { id: DEV_IDS.p2,    name: "Bot Alice", characterId: vanessaId, connected: true },
-      { id: DEV_IDS.p3,    name: "Bot Bob",   characterId: vanessaId, connected: true },
+      { id: DEV_IDS.local, name: "Kai", characterId: winnerId,   connected: true, isHost: true },
+      { id: DEV_IDS.p2,    name: "George", characterId: resolveHeroId("uncle-vape", vanessaId), connected: true },
+      { id: DEV_IDS.p3,    name: "Maria",   characterId: resolveHeroId("remote-susie", vanessaId), connected: true },
     ],
     takenCharacters: [vanessaId, winnerId],
     gameSettings: defaultSettings(),
@@ -696,7 +700,7 @@ export function seedResultsScreenOfType(type: QuestionTypeApi) {
 
 /**
  * Deathmatch entry point: 2 alive players remain (p3 eliminated), all ready
- * for the intro + guessing game. Both alive players use Remote Susie so her
+ * for the intro + stopwatch duel. Both alive players use Remote Susie so her
  * deathmatch_image is shown for both heroes in the intro animation.
  */
 export function seedDeathMatchLocal() {
@@ -711,8 +715,8 @@ export function seedDeathMatchLocal() {
     round: 3,
     players: [
       { id: DEV_IDS.local, name: "You",       characterId: randomId1, connected: true, isHost: true },
-      { id: DEV_IDS.p2,    name: "Bot Alice", characterId: randomId2, connected: true },
-      { id: DEV_IDS.p3,    name: "Bot Bob",   characterId: randomId1, connected: true },
+      { id: DEV_IDS.p2,    name: "George", characterId: randomId2, connected: true },
+      { id: DEV_IDS.p3,    name: "Maria",   characterId: randomId1, connected: true },
     ],
     takenCharacters: [randomId1, randomId2],
     gameSettings: defaultSettings(),
@@ -750,8 +754,8 @@ export function seedDeathMatchOnline() {
     round: 3,
     players: [
       { id: DEV_IDS.local, name: "You",       characterId: randomId1, connected: true, isHost: true },
-      { id: DEV_IDS.p2,    name: "Bot Alice", characterId: randomId2, connected: true },
-      { id: DEV_IDS.p3,    name: "Bot Bob",   characterId: randomId1, connected: true },
+      { id: DEV_IDS.p2,    name: "George", characterId: randomId2, connected: true },
+      { id: DEV_IDS.p3,    name: "Maria",   characterId: randomId1, connected: true },
     ],
     takenCharacters: [randomId1, randomId2],
     gameSettings: defaultSettings(),
@@ -934,4 +938,85 @@ export function seedHeroButtonsGroup2() {
     usedQuestionIds: ["dev-q1", "dev-q2"],
   });
   store.initLives();
+}
+
+/** Sample base / impostor question pairs for the lab's "random" option. */
+const DEV_RANDOM_QUESTIONS: Record<QuestionTypeApi, { base: string; odd: string }[]> = {
+  pick: [
+    {
+      base: "Who is most likely to be late to their own wedding?",
+      odd: "Who is most likely to arrive an hour early everywhere?",
+    },
+    {
+      base: "Who would survive longest on a desert island?",
+      odd: "Who would give up first on a camping trip?",
+    },
+    {
+      base: "Who is most likely to become famous?",
+      odd: "Who is most likely to go viral by accident?",
+    },
+  ],
+  number: [
+    {
+      base: "How many hours of sleep do you need to feel human?",
+      odd: "How many hours can you stay awake in a row?",
+    },
+    {
+      base: "How many coffees do you drink on a bad day?",
+      odd: "How many glasses of water do you drink a day?",
+    },
+  ],
+  rate: [
+    {
+      base: "From 1 to 10, how good a liar are you?",
+      odd: "From 1 to 10, how good a cook are you?",
+    },
+    {
+      base: "From 1 to 10, how competitive are you?",
+      odd: "From 1 to 10, how patient are you?",
+    },
+  ],
+  input: [
+    {
+      base: "What would you do first if you won the lottery?",
+      odd: "What would you do on your last day on Earth?",
+    },
+    {
+      base: "What is your guilty pleasure?",
+      odd: "What is your hidden talent?",
+    },
+  ],
+};
+
+export function getRandomDevQuestionPair(type: QuestionTypeApi) {
+  const pairs = DEV_RANDOM_QUESTIONS[type];
+  return pairs[Math.floor(Math.random() * pairs.length)];
+}
+
+/**
+ * Lab: seeds the question screen of the given type with custom texts — `base`
+ * is what everyone sees, `odd` what the impostor sees. With `asImpostor` the
+ * local player is made the impostor, so the screen shows the `odd` question.
+ */
+export function seedQuestionScreenWithTexts(
+  type: QuestionTypeApi,
+  texts: { base: string; odd: string },
+  asImpostor: boolean,
+) {
+  if (type === "pick") seedQuestionScreen();
+  else seedQuestionScreenOfType(type);
+
+  const state = useGameStore.getState();
+  const baseId = state.currentBaseQuestionId;
+  const oddId = state.currentOddQuestionId;
+  state.set({
+    gameQuestions: state.gameQuestions.map((q) =>
+      q.id === baseId
+        ? { ...q, text: texts.base }
+        : q.id === oddId
+          ? { ...q, text: texts.odd }
+          : q,
+    ),
+    ...(asImpostor ? { oddOneId: DEV_IDS.local } : {}),
+  });
 }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   ScrollView,
@@ -14,17 +14,22 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 
 import { OnboardingStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/useUserStore";
 import CustomText from "../components/common/CustomText";
 import CustomButton from "../components/common/CustomButton";
+import CamNavBar from "../components/cam/CamNavBar";
+import { UiStyleProvider } from "../context/UiStyleContext";
+import { TT } from "../constants/tiktokTheme";
 import AudioManager from "../utils/audioManager";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Support">;
 
 const SUPPORT_EMAIL = "support@whoisnot.app";
+const REASON_GAP = 8;
+/** Wait for the keyboard before scrolling the focused field into view. */
+const FOCUS_SCROLL_DELAY_MS = 250;
 
 const REASONS = [
   { id: "game_issue", label: "Issue with the game", icon: "game-controller-outline" },
@@ -46,6 +51,19 @@ export default function SupportScreen() {
   const [selectedReason, setSelectedReason] = useState<ReasonId | null>(null);
   const [contactEmail, setContactEmail] = useState(user.email ?? "");
   const [message, setMessage] = useState("");
+
+  const scrollRef = useRef<ScrollView>(null);
+  const fieldY = useRef({ email: 0, message: 0 });
+  // Brings the field being typed in to the top of the visible area, above the keyboard.
+  const revealField = (field: "email" | "message") =>
+    setTimeout(
+      () =>
+        scrollRef.current?.scrollTo({
+          y: Math.max(0, fieldY.current[field] - 48),
+          animated: true,
+        }),
+      FOCUS_SCROLL_DELAY_MS,
+    );
 
   const selectedLabel = REASONS.find((r) => r.id === selectedReason)?.label ?? "";
 
@@ -88,39 +106,26 @@ export default function SupportScreen() {
       style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <LinearGradient
-        colors={["#030d1a", "#071629", "#030d1a"]}
-        style={StyleSheet.absoluteFill}
-      />
-
-      <SafeAreaView style={styles.safe} edges={["left", "right"]}>
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-          <Pressable
-            onPress={() => {
-              AudioManager.playButtonClick();
-              navigation.goBack();
-            }}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            style={({ pressed }) => [styles.backBtn, pressed && styles.backBtnPressed]}
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-          >
-            <Ionicons name="arrow-back" size={22} color="rgba(255,248,240,0.9)" />
-            <CustomText variant="p" style={styles.backLabel}>Back</CustomText>
-          </Pressable>
-        </View>
+      <UiStyleProvider value="tiktok">
+      <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+        <CamNavBar
+          title="Help & Support"
+          backLabel="Back"
+          onBack={() => {
+            AudioManager.playButtonClick();
+            navigation.goBack();
+          }}
+        />
 
         <ScrollView
+          ref={scrollRef}
+          automaticallyAdjustKeyboardInsets
+          keyboardDismissMode="interactive"
           style={styles.scroll}
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Title */}
-          <CustomText variant="h3-headline" style={styles.pageTitle}>
-            Contact Support
-          </CustomText>
           <CustomText variant="p-small" style={styles.subtitle}>
             We're here to help. Fill in the form below and we'll get back to you as soon as possible.
           </CustomText>
@@ -129,13 +134,13 @@ export default function SupportScreen() {
           <View style={styles.card}>
             <CustomText variant="p-small" style={styles.cardLabel}>Your info (auto-filled)</CustomText>
             <View style={styles.infoRow}>
-              <Ionicons name="person-circle-outline" size={18} color="rgba(255,232,192,0.7)" />
+              <Ionicons name="person-circle-outline" size={18} color={TT.text2} />
               <CustomText variant="p-small" style={styles.infoText}>
                 {user.name || "Guest"}
               </CustomText>
             </View>
             <View style={styles.infoRow}>
-              <Ionicons name="finger-print-outline" size={18} color="rgba(255,232,192,0.7)" />
+              <Ionicons name="finger-print-outline" size={18} color={TT.text2} />
               <CustomText variant="p-small" style={styles.infoText} numberOfLines={1}>
                 ID: {user.id}
               </CustomText>
@@ -152,27 +157,24 @@ export default function SupportScreen() {
               return (
                 <Pressable
                   key={r.id}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
                   onPress={() => {
                     AudioManager.playButtonClick();
                     setSelectedReason(r.id);
                   }}
-                  style={({ pressed }) => [
-                    styles.reasonChip,
-                    active && styles.reasonChipActive,
-                    pressed && !active && styles.reasonChipPressed,
-                  ]}
                 >
-                  <Ionicons
-                    name={r.icon as any}
-                    size={18}
-                    color={active ? "#ffcc44" : "rgba(255,248,240,0.65)"}
-                  />
-                  <CustomText
-                    variant="p-small"
-                    style={[styles.reasonLabel, active && styles.reasonLabelActive]}
-                  >
-                    {r.label}
-                  </CustomText>
+                  {/* Styled on a plain View so the chip never depends on Pressable's style. */}
+                  <View style={[styles.reasonTile, active && styles.reasonTileActive]}>
+                    <Ionicons name={r.icon as any} size={18} color={TT.text} />
+                    <CustomText
+                      variant="p-small"
+                      numberOfLines={1}
+                      style={[styles.reasonLabel, active && styles.reasonLabelActive]}
+                    >
+                      {r.label}
+                    </CustomText>
+                  </View>
                 </Pressable>
               );
             })}
@@ -182,14 +184,21 @@ export default function SupportScreen() {
           <CustomText variant="p" style={styles.fieldLabel}>
             Your email address
           </CustomText>
-          <View style={styles.inputWrap}>
-            <Ionicons name="mail-outline" size={18} color="rgba(255,232,192,0.5)" style={styles.inputIcon} />
+          <View
+            style={styles.inputWrap}
+            onLayout={(e) => {
+              fieldY.current.email = e.nativeEvent.layout.y;
+            }}
+          >
+            <Ionicons name="mail-outline" size={18} color={TT.text2} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               value={contactEmail}
               onChangeText={setContactEmail}
+              onFocus={() => revealField("email")}
               placeholder="you@example.com"
-              placeholderTextColor="rgba(255,248,240,0.3)"
+              placeholderTextColor={TT.text2}
+              selectionColor={TT.primary}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -200,13 +209,20 @@ export default function SupportScreen() {
           <CustomText variant="p" style={styles.fieldLabel}>
             Message
           </CustomText>
-          <View style={[styles.inputWrap, styles.textAreaWrap]}>
+          <View
+            style={[styles.inputWrap, styles.textAreaWrap]}
+            onLayout={(e) => {
+              fieldY.current.message = e.nativeEvent.layout.y;
+            }}
+          >
             <TextInput
               style={[styles.input, styles.textArea]}
               value={message}
               onChangeText={setMessage}
+              onFocus={() => revealField("message")}
               placeholder="Describe your issue or feedback..."
-              placeholderTextColor="rgba(255,248,240,0.3)"
+              placeholderTextColor={TT.text2}
+              selectionColor={TT.primary}
               multiline
               numberOfLines={5}
               textAlignVertical="top"
@@ -223,9 +239,6 @@ export default function SupportScreen() {
               fullWidth
               btnSize="md"
               fontSize="md"
-              glow={canSend}
-              glowColor="rgba(255,113,28,0.5)"
-              shadowColor="#7a2200"
               iconNode={
                 <Ionicons name="send" size={18} color="#fff" />
               }
@@ -244,59 +257,32 @@ export default function SupportScreen() {
           </CustomText>
         </ScrollView>
       </SafeAreaView>
+      </UiStyleProvider>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#030d1a" },
+  root: { flex: 1, backgroundColor: TT.bg },
   safe: { flex: 1 },
-  header: {
-    paddingHorizontal: 20,
-    paddingBottom: 8,
-  },
-  backBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    alignSelf: "flex-start",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.15)",
-    ...Platform.select({
-      ios: { shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 2 },
-      android: { elevation: 2 },
-    }),
-  },
-  backBtnPressed: { opacity: 0.7 },
-  backLabel: { color: "rgba(255,248,240,0.9)", fontSize: 15 },
   scroll: { flex: 1 },
-  content: { paddingHorizontal: 20, paddingTop: 8 },
-  pageTitle: {
-    color: "#fff8f0",
-    marginBottom: 6,
-  },
+  content: { paddingHorizontal: 16, paddingTop: 8 },
   subtitle: {
-    color: "rgba(255,248,240,0.6)",
+    color: TT.text2,
     lineHeight: 20,
     marginBottom: 20,
   },
 
   /* User info card */
   card: {
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 14,
+    backgroundColor: TT.surface2,
+    borderRadius: TT.cardRadius,
     padding: 14,
     marginBottom: 24,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.1)",
     gap: 6,
   },
   cardLabel: {
-    color: "rgba(255,248,240,0.4)",
+    color: TT.text2,
     marginBottom: 4,
     fontSize: 11,
     textTransform: "uppercase",
@@ -308,67 +294,64 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   infoText: {
-    color: "rgba(255,248,240,0.75)",
+    color: TT.text,
     flex: 1,
   },
 
   /* Form fields */
   fieldLabel: {
-    color: "#ffe8c0",
+    color: TT.text,
     marginBottom: 10,
-    fontWeight: "600",
+    fontWeight: "700",
   },
 
-  /* Reason chips */
+  /* Reasons: chips — icon and label on one line, sized to their content */
   reasonGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: REASON_GAP,
     marginBottom: 24,
   },
-  reasonChip: {
+  reasonTile: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
     paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    paddingVertical: 10,
+    borderRadius: TT.radius,
+    // A step lighter than the screen background, with a visible edge.
+    backgroundColor: TT.chip,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderColor: TT.chipBorder,
   },
-  reasonChipActive: {
-    backgroundColor: "rgba(255,160,30,0.18)",
-    borderColor: "#ffcc44",
+  // Chosen: the whole chip fills with the accent pink.
+  reasonTileActive: {
+    backgroundColor: TT.primary,
+    borderColor: TT.primary,
   },
-  reasonChipPressed: { opacity: 0.75 },
   reasonLabel: {
-    color: "rgba(255,248,240,0.7)",
-    fontSize: 13,
+    color: TT.text,
   },
   reasonLabelActive: {
-    color: "#ffdd88",
-    fontWeight: "600",
+    fontWeight: "700",
   },
 
   /* Inputs */
   inputWrap: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    backgroundColor: TT.surface2,
+    borderRadius: TT.radius,
     marginBottom: 20,
     paddingHorizontal: 14,
-    minHeight: 50,
+    minHeight: 48,
   },
   inputIcon: { marginRight: 8 },
   input: {
     flex: 1,
-    color: "rgba(255,248,240,0.9)",
+    color: TT.text,
     fontSize: 15,
-    fontFamily: Platform.OS === "ios" ? "System" : undefined,
+    fontFamily: "TikTokSans-Medium",
     paddingVertical: 12,
   },
   textAreaWrap: {
@@ -383,12 +366,12 @@ const styles = StyleSheet.create({
   /* Send */
   sendWrap: { marginBottom: 16 },
   footerNote: {
-    color: "rgba(255,248,240,0.4)",
+    color: TT.text2,
     textAlign: "center",
     lineHeight: 18,
   },
   emailLink: {
-    color: "rgba(255,200,100,0.8)",
+    color: TT.text,
     textDecorationLine: "underline",
   },
 });

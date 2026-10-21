@@ -1,4 +1,5 @@
 // src/screens/Game/QuestionScreen.tsx
+import { resolvePlayerHero } from "../../game/resolvePlayerHero";
 import React, {
   useCallback,
   useEffect,
@@ -35,6 +36,8 @@ import { StackNavigationProp } from "@react-navigation/stack";
 
 import { backgrounds } from "../../../assets/backgrounds";
 import CustomText from "../../components/common/CustomText";
+import GameKeyboard from "../../components/game/GameKeyboard";
+import CamText from "../../components/cam/CamText";
 import CustomButton from "../../components/common/CustomButton";
 // import RateFloatMenu from "../../components/RateFloatMenu";
 import RatingSlider from "../../components/RatingSlider";
@@ -46,6 +49,7 @@ import { GameStackParamList } from "../../navigation/types";
 import AudioManager from "../../utils/audioManager";
 import { useHeroesStore } from "../../store/useHeroesStore";
 import { usePreventBack } from "../../hooks/usePreventBack";
+import { usePlateSlamAnimation } from "../../hooks/usePlateSlamAnimation";
 
 import { useMultiplayerPhaseGate } from "../../hooks/useMultiplayerPhaseGate";
 import { useTranslation } from "react-i18next";
@@ -63,7 +67,8 @@ import { reportMultiplayerDiagnostic } from "../../utils/multiplayerDiagnostics"
 type Nav = StackNavigationProp<GameStackParamList, "Question">;
 type R = RouteProp<GameStackParamList, "Question">;
 
-const OPEN_INPUT_MAX_LEN = 12;
+/** Longest written answer. */
+const OPEN_INPUT_MAX_LEN = 30;
 const RATE_GROUP_ID = "rate";
 
 /* -------------------------------------------------------------------------- */
@@ -108,14 +113,14 @@ const QuestionScreen = () => {
   const impostorNameSubstitute = useGameStore((s) => s.impostorNameSubstitute);
   const gameQuestions = useGameStore((s) => s.gameQuestions);
   const setAnswer = useGameStore((s) => s.setAnswer);
-  const plateScale = useRef(new Animated.Value(40)).current;
-  const plateOpacity = useRef(new Animated.Value(0)).current;
-  const screenShake = useRef(new Animated.Value(0)).current;
+  const { plateScale, plateOpacity, shakeX } = usePlateSlamAnimation();
   const numberInputScale = useRef(new Animated.Value(0.8)).current;
   const numberInputOpacity = useRef(new Animated.Value(0)).current;
 
   const currentPlayer = players[playerIndex];
 
+  /** The game keyboard can be hidden with its own key; tapping the field shows it again. */
+  const [keyboardVisible, setKeyboardVisible] = useState(true);
   const [numberAnswer, setNumberAnswer] = useState("");
   const [openAnswer, setOpenAnswer] = useState("");
   const [selectedPickId, setSelectedPickId] = useState<string | null>(null);
@@ -130,11 +135,6 @@ const QuestionScreen = () => {
   const answerSubmittedRef = useRef(false);
 
   /** Answer display font size — large base, shrinks for longer text. iOS uses adjustsFontSizeToFit. */
-  const openAnswerDisplayFontSize = useMemo(() => {
-    if (Platform.OS === "ios") return 48;
-    const len = openAnswer.length || 1;
-    return Math.max(22, Math.round(52 - len * 2.5));
-  }, [openAnswer]);
 
   const answersPhase = mpPhaseAnswers(activeRoundNumber);
 
@@ -246,46 +246,6 @@ const QuestionScreen = () => {
   React.useEffect(() => {
     // Splash sound fires in sync with the plate flying in
     void AudioManager.playRevealTitleSplash();
-    const anim = Animated.sequence([
-      Animated.parallel([
-        Animated.timing(plateScale, {
-          toValue: 1,
-          duration: 400,
-          easing: Easing.out(Easing.back(3)),
-          useNativeDriver: true,
-        }),
-        Animated.timing(plateOpacity, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]),
-
-      Animated.sequence([
-        Animated.timing(screenShake, {
-          toValue: 1,
-          duration: 60,
-          useNativeDriver: true,
-        }),
-        Animated.timing(screenShake, {
-          toValue: -1,
-          duration: 60,
-          useNativeDriver: true,
-        }),
-        Animated.timing(screenShake, {
-          toValue: 1,
-          duration: 60,
-          useNativeDriver: true,
-        }),
-        Animated.timing(screenShake, {
-          toValue: 0,
-          duration: 60,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]);
-    anim.start();
-    return () => anim.stop();
   }, []);
 
   React.useEffect(() => {
@@ -385,13 +345,6 @@ const QuestionScreen = () => {
     submitAnswerAndAdvance(text);
   };
 
-  const handleAnswerAreaPress = () => {
-    if (keyboardHeight > 0 || isInputFocused) {
-      Keyboard.dismiss();
-    } else {
-      openInputRef.current?.focus();
-    }
-  };
 
   const handleNumberChange = (text: string) => {
     const digitsOnly = text.replace(/\D/g, "").slice(0, 4);
@@ -435,7 +388,7 @@ const QuestionScreen = () => {
         h.slug?.toLowerCase().includes("vanessa"),
     );
     if (!currentPlayer?.characterId) return vanessa?.rateImage ?? null;
-    const hero = heroes.find((h) => h.id === currentPlayer.characterId);
+    const hero = resolvePlayerHero(heroes, currentPlayer);
     return hero?.rateImage ?? vanessa?.rateImage ?? null;
   };
 
@@ -501,10 +454,7 @@ const QuestionScreen = () => {
               {
                 transform: [
                   {
-                    translateX: screenShake.interpolate({
-                      inputRange: [-1, 1],
-                      outputRange: [-8, 8],
-                    }),
+                    translateX: shakeX,
                   },
                 ],
               },
@@ -558,6 +508,42 @@ const QuestionScreen = () => {
                     {questionDisplayText}
                   </CustomText>
 
+                  {/* Written answer — a TikTok-style field inside the plate, right under the question. */}
+                  {isInput && (
+                    <View style={styles.openField}>
+                      <TextInput
+                        ref={openInputRef}
+                        value={openAnswer}
+                        onChangeText={(v) =>
+                          setOpenAnswer(v.slice(0, OPEN_INPUT_MAX_LEN))
+                        }
+                        onFocus={() => {
+                          setIsInputFocused(true);
+                          scrollAnswerIntoView();
+                        }}
+                        onBlur={() => setIsInputFocused(false)}
+                        maxLength={OPEN_INPUT_MAX_LEN}
+                        placeholder={t("question_open_placeholder")}
+                        placeholderTextColor="rgba(255,255,255,0.55)"
+                        selectionColor="#FE2C55"
+                        cursorColor="#FE2C55"
+                        keyboardAppearance="dark"
+                        autoCapitalize="characters"
+                        autoCorrect={false}
+                        spellCheck={false}
+                        onPressIn={() => setKeyboardVisible(true)}
+                        // The game's own keyboard is used instead of the device one.
+                        showSoftInputOnFocus={false}
+                        returnKeyType="send"
+                        onSubmitEditing={handleSubmitOpen}
+                        style={styles.openFieldInput}
+                      />
+                      <CamText variant="subtitle" style={styles.openFieldCounter}>
+                        {`${openAnswer.length}/${OPEN_INPUT_MAX_LEN}`}
+                      </CamText>
+                    </View>
+                  )}
+
                   <View style={styles.nameDivider} />
 
                   <CustomText
@@ -573,80 +559,6 @@ const QuestionScreen = () => {
                     {isInput && t("question_hint_input")}
                   </CustomText>
 
-                  {/* ── Embedded answer area (input type only) ─────────────── */}
-                  {isInput && (
-                    <>
-                      <View style={[styles.nameDivider, { marginTop: 12 }]} />
-                      <Pressable
-                        onPress={handleAnswerAreaPress}
-                        style={styles.openEmbedPressable}
-                      >
-                        {/* Hidden TextInput — keyboard target */}
-                        <TextInput
-                          ref={openInputRef}
-                          value={openAnswer}
-                          onChangeText={(v) =>
-                            setOpenAnswer(v.slice(0, OPEN_INPUT_MAX_LEN))
-                          }
-                          onFocus={() => {
-                            setIsInputFocused(true);
-                            scrollAnswerIntoView();
-                          }}
-                          onBlur={() => setIsInputFocused(false)}
-                          maxLength={OPEN_INPUT_MAX_LEN}
-                          autoCapitalize="characters"
-                          autoCorrect={false}
-                          spellCheck={false}
-                          caretHidden
-                          style={styles.openEmbedHiddenInput}
-                        />
-
-                        {/* Visible display */}
-                        <View
-                          style={styles.openEmbedDisplay}
-                          pointerEvents="none"
-                        >
-                          {openAnswer.length === 0 ? (
-                            <View style={styles.openEmbedPlaceholderRow}>
-                              <Text style={styles.openEmbedSparkle}>✦</Text>
-                              <Text
-                                numberOfLines={1}
-                                adjustsFontSizeToFit={Platform.OS === "ios"}
-                                minimumFontScale={0.3}
-                                style={[
-                                  styles.openEmbedAnswerText,
-                                  {
-                                    fontSize: openAnswerDisplayFontSize,
-                                    color: isInputFocused
-                                      ? "rgba(89,36,16,0.65)"
-                                      : "rgba(89,36,16,0.4)",
-                                    flex: 1,
-                                  },
-                                ]}
-                              >
-                                {t("question_open_placeholder")}
-                                {isInputFocused ? "|" : ""}
-                              </Text>
-                              <Text style={styles.openEmbedSparkle}>✦</Text>
-                            </View>
-                          ) : (
-                            <Text
-                              numberOfLines={1}
-                              adjustsFontSizeToFit={Platform.OS === "ios"}
-                              minimumFontScale={0.3}
-                              style={[
-                                styles.openEmbedAnswerText,
-                                { fontSize: openAnswerDisplayFontSize },
-                              ]}
-                            >
-                              {openAnswer.toUpperCase()}
-                            </Text>
-                          )}
-                        </View>
-                      </Pressable>
-                      <View style={styles.openEmbedDividerBottom} />
-                    </>
-                  )}
                 </ImageBackground>
               </Animated.View>
             </View>
@@ -659,9 +571,7 @@ const QuestionScreen = () => {
                 {playerRows.map((row, rowIndex) => (
                   <View key={`row-${rowIndex}`} style={styles.row}>
                     {row.map((player) => {
-                      const characterData = heroes.find(
-                        (h) => h.id === player.characterId,
-                      );
+                      const characterData = resolvePlayerHero(heroes, player);
                       const isSelected = selectedPickId === player.id;
                       const isDimmed = !!selectedPickId && !isSelected;
                       return (
@@ -761,7 +671,10 @@ const QuestionScreen = () => {
                   <View style={styles.numberImageWrap}>
                     <Pressable
                       style={styles.numberImagePressable}
-                      onPress={() => numberInputRef.current?.focus?.()}
+                      onPress={() => {
+                        numberInputRef.current?.focus?.();
+                        setKeyboardVisible(true);
+                      }}
                       onPressIn={() => {
                         Animated.spring(numberHeroScale, {
                           toValue: 1.08,
@@ -800,6 +713,8 @@ const QuestionScreen = () => {
                               value={numberAnswer}
                               onChangeText={handleNumberChange}
                               keyboardType="numeric"
+                              // The game's own number pad is used instead of the device one.
+                              showSoftInputOnFocus={false}
                               maxLength={4}
                               placeholder={t("question_number_placeholder")}
                               placeholderTextColor="rgba(89,36,16,0.5)"
@@ -861,6 +776,18 @@ const QuestionScreen = () => {
           </Animated.View>
             </ScrollView>
 
+            {/* Number pad — outside the scroll so it stays at the bottom */}
+            {isNumber && !isRate && !isInput && keyboardVisible && (
+              <GameKeyboard
+                layout="number"
+                value={numberAnswer}
+                onChangeText={handleNumberChange}
+                maxLength={4}
+                bottomInset={insets.bottom}
+                onClose={() => setKeyboardVisible(false)}
+              />
+            )}
+
             {/* CONFIRM button for pick type */}
             {isPick && selectedPickId && (
               <View
@@ -890,6 +817,17 @@ const QuestionScreen = () => {
                   androidKeyboardPad > 0 && { paddingBottom: androidKeyboardPad + 8 },
                 ]}
               >
+                {keyboardVisible && (
+                  <View style={styles.keyboardBleed}>
+                    <GameKeyboard
+                      value={openAnswer}
+                      onChangeText={(v) => setOpenAnswer(v.slice(0, OPEN_INPUT_MAX_LEN))}
+                      maxLength={OPEN_INPUT_MAX_LEN}
+                      capitalize="characters"
+                      onClose={() => setKeyboardVisible(false)}
+                    />
+                  </View>
+                )}
                 <View style={{ opacity: openAnswer.trim() ? 1 : 0.38 }}>
                   <CustomButton
                     title={t("question_open_send")}
@@ -922,6 +860,29 @@ export default QuestionScreen;
 /* -------------------------------------------------------------------------- */
 
 const styles = StyleSheet.create({
+  // Written-answer field: dark translucent box, white text, red caret, counter.
+  openField: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    height: 52,
+    alignSelf: "stretch",
+    marginTop: 14,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: "rgba(22,24,35,0.85)",
+  },
+  openFieldInput: {
+    flex: 1,
+    height: "100%",
+    padding: 0,
+    color: "#FFFFFF",
+    fontFamily: "TikTokSans-SemiBold",
+    fontSize: 18,
+  },
+  openFieldCounter: {
+    fontSize: 13,
+  },
   keyboardAvoiding: {
     flex: 1,
   },
@@ -1215,50 +1176,10 @@ const styles = StyleSheet.create({
         }
       : { paddingVertical: 0 }),
   },
-  openEmbedPressable: {
-    width: "100%",
-    alignItems: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 8,
-    minHeight: 72,
-    justifyContent: "center",
-  },
-  openEmbedHiddenInput: {
-    position: "absolute",
-    width: 1,
-    height: 1,
-    opacity: 0,
-  },
-  openEmbedDisplay: {
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  openEmbedPlaceholderRow: {
-    flexDirection: "row" as const,
-    alignItems: "center",
-    gap: 8,
-  },
-  openEmbedSparkle: {
-    color: "rgba(89,36,16,0.45)",
-    fontSize: 28,
-  },
-  openEmbedPlaceholderText: {
-    fontStyle: "italic" as const,
-  },
-  openEmbedAnswerText: {
-    fontFamily: "Overpass-ExtraBold",
-    color: "#592410",
-    textAlign: "center" as const,
-    width: "100%",
-    fontWeight: "900" as const,
-  },
-  openEmbedDividerBottom: {
-    width: "60%",
-    height: 1,
-    backgroundColor: "rgba(89,36,16,0.25)",
-    marginTop: 12,
-    marginBottom: 4,
+  // The keyboard spans the full width, past the bar's side padding.
+  keyboardBleed: {
+    marginHorizontal: -24,
+    marginBottom: 12,
   },
   openEmbedButtonBar: {
     paddingHorizontal: 24,
