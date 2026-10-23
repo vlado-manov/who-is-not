@@ -357,15 +357,15 @@ function getHtpSteps(t: (key: string) => string, mode?: RulesMode): Step[] {
   let steps: StepDef[];
   if (mode === "cam") {
     steps = [
-      step("htp_cam_setup", 2, htp_images.htp03),
+      step("htp_cam_setup", 3, htp_images.htp03),
       step("htp_cam_question", 2, htp_images.htp08),
       step("htp_cam_point", 3, htp_images.htp05),
       step("htp_cam_lives", 2, htp_images.htp07),
     ];
   } else if (mode === "party") {
-    steps = [step("htp_party", 2, htp_images.htp03), ...rounds];
+    steps = [step("htp_party", 3, htp_images.htp03), ...rounds];
   } else if (mode === "online") {
-    steps = [step("htp_online", 2, htp_images.htp03), ...rounds];
+    steps = [step("htp_online", 3, htp_images.htp03), ...rounds];
   } else {
     // Opened without a game type: the general version.
     steps = [step("htp_gather", 2, htp_images.htp03), ...rounds];

@@ -62,4 +62,9 @@ export type RootStackParamList = {
   Game: NavigatorScreenParams<GameStackParamList> | undefined;
   /** Cam Mode: local-only, single screen so the camera never remounts. */
   CamGame: undefined;
+  /**
+   * The store opened from game setup (premium sheet, locked hero): on top of
+   * everything, so going back returns to the setup as it was.
+   */
+  StoreOverlay: undefined;
 };

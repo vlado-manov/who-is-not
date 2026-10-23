@@ -23,6 +23,7 @@ import { backgrounds } from "../../../assets/backgrounds";
 import AudioManager from "../../utils/audioManager";
 import { usePlateModalCardWidth } from "./usePlateModalCardWidth";
 import { useAuthStore } from "../../store/useUserStore";
+import { useEntitlements } from "../../store/useEntitlements";
 
 type Props = {
   setGameSettingsVisible: React.Dispatch<React.SetStateAction<boolean>>;
@@ -52,7 +53,8 @@ const GameSettingsModal = ({ setGameSettingsVisible }: Props) => {
   const gameSettings = useGameStore((s) => s.gameSettings);
   const setGameSettings = useGameStore((s) => s.setGameSettings);
   const userId = useAuthStore((s) => s.user.id);
-  const isPremium = useAuthStore((s) => s.user.isPremium);
+  // Merged with a demo purchase this session (see useEntitlements).
+  const { isPremium } = useEntitlements();
 
   const [selectedSec, setSelectedSec] = useState<number>(
     gameSettings?.discussionSeconds ?? 120,

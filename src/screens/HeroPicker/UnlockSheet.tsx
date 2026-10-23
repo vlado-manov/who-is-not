@@ -7,6 +7,7 @@ import CamButton from "../../components/cam/CamButton";
 import CamSheet from "../../components/cam/CamSheet";
 import CamText from "../../components/cam/CamText";
 import { formatPrice, unlockOf } from "../../game/unlocks";
+import { PARTY_ABOVE_TEN_ENABLED, PLAYER_LIMITS } from "../../game/playerLimits";
 import type { ICharacter } from "../../types/character";
 
 type Props = {
@@ -18,13 +19,22 @@ type Props = {
   onClose: () => void;
   /** Resolves when the purchase finished; true = unlocked. */
   onBuy: () => Promise<boolean>;
+  /** Opens the store (Expert: every hero and outfit). */
+  onOpenStore?: () => void;
 };
 
 /**
  * Why something is locked and how to get it: buy it, earn it by playing, or
  * either. A skin of a locked hero only says to unlock the hero first.
  */
-export default function UnlockSheet({ visible, item, lockedHero, onClose, onBuy }: Props) {
+export default function UnlockSheet({
+  visible,
+  item,
+  lockedHero,
+  onClose,
+  onBuy,
+  onOpenStore,
+}: Props) {
   const { t } = useTranslation();
   const [buying, setBuying] = useState(false);
   if (!item) return null;
@@ -32,6 +42,7 @@ export default function UnlockSheet({ visible, item, lockedHero, onClose, onBuy 
   const action = unlock.action;
   const sold = unlock.mode === "BUY" || unlock.mode === "BUY_OR_ACTION";
   const price = unlock.discountPrice ?? unlock.price;
+  const isBaseHero = !item.parentCharacterId;
 
   const buy = async () => {
     setBuying(true);
@@ -86,6 +97,30 @@ export default function UnlockSheet({ visible, item, lockedHero, onClose, onBuy 
                 {t("lock_progress", { current: Math.min(action.progress, action.target), target: action.target })}
               </CamText>
             </View>
+          ) : null}
+
+          {/* What a hero adds besides itself: a bought one an online place,
+              any one a bigger one-phone game. */}
+          {isBaseHero && sold ? (
+            <CamText variant="subtitle" center>
+              {t("lock_hero_perk_note", { max: PLAYER_LIMITS.online.max })}
+            </CamText>
+          ) : null}
+          {isBaseHero && !sold && PARTY_ABOVE_TEN_ENABLED ? (
+            <CamText variant="subtitle" center>
+              {t("lock_hero_party_note")}
+            </CamText>
+          ) : null}
+
+          {onOpenStore ? (
+            <CamButton
+              variant="secondary"
+              title={t("lock_expert_upsell")}
+              onPress={() => {
+                onClose();
+                onOpenStore();
+              }}
+            />
           ) : null}
         </View>
       )}

@@ -8,6 +8,10 @@ export const CAM_PLAYER_COLORS = [
   "#C44CD7",
   "#49D0B5",
   "#FA8900",
+  // 7–9 players (palette: primary-800, primary-300, secondary pressed).
+  "#CACA23",
+  "#205E46",
+  "#E878BE",
 ] as const;
 
 export const CAM_OVERLAY_ALPHA = 0.75;
@@ -80,7 +84,9 @@ export const CAM_LAYOUT = {
 } as const;
 
 export const CAM_MIN_PLAYERS = 3;
-export const CAM_MAX_PLAYERS = 6;
+export const CAM_MAX_PLAYERS = 9;
+/** Free play goes up to this many; more need Premium (see game/playerLimits). */
+export const CAM_FREE_PLAYERS = 4;
 export const CAM_NAME_MAX = 12;
 /** A round needs a base and an odd question. */
 export const CAM_MIN_PICK_POOL = 2;
@@ -103,7 +109,13 @@ export const CAM_GRID_COLUMNS: Record<number, [number, number]> = {
   4: [2, 2],
   5: [2, 3],
   6: [3, 3],
+  7: [3, 4],
+  8: [4, 4],
+  9: [4, 5],
 };
+
+/** Below this cell height the name pill, hearts and VS badge get smaller. */
+export const CAM_COMPACT_CELL_HEIGHT = 170;
 
 export const CAM_TIMING = {
   selfieToSlotMs: 550,

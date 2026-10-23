@@ -14,6 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 
 import { OnboardingStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/useUserStore";
@@ -23,6 +24,7 @@ import CamNavBar from "../components/cam/CamNavBar";
 import { UiStyleProvider } from "../context/UiStyleContext";
 import { TT } from "../constants/tiktokTheme";
 import AudioManager from "../utils/audioManager";
+import ManageSubscriptionCard from "../components/premium/ManageSubscriptionCard";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Support">;
 
@@ -31,6 +33,7 @@ const REASON_GAP = 8;
 /** Wait for the keyboard before scrolling the focused field into view. */
 const FOCUS_SCROLL_DELAY_MS = 250;
 
+/** `label` stays English: it goes into the email to the support team. */
 const REASONS = [
   { id: "game_issue", label: "Issue with the game", icon: "game-controller-outline" },
   { id: "payment", label: "Payment / purchase", icon: "card-outline" },
@@ -47,6 +50,7 @@ export default function SupportScreen() {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
+  const { t } = useTranslation();
 
   const [selectedReason, setSelectedReason] = useState<ReasonId | null>(null);
   const [contactEmail, setContactEmail] = useState(user.email ?? "");
@@ -91,13 +95,16 @@ export default function SupportScreen() {
           return Linking.openURL(mailto);
         } else {
           Alert.alert(
-            "No email app found",
-            `Please email us directly at ${SUPPORT_EMAIL}`,
+            t("support_no_email_title"),
+            t("support_email_us", { email: SUPPORT_EMAIL }),
           );
         }
       })
       .catch(() => {
-        Alert.alert("Error", `Please email us directly at ${SUPPORT_EMAIL}`);
+        Alert.alert(
+          t("support_error_title"),
+          t("support_email_us", { email: SUPPORT_EMAIL }),
+        );
       });
   };
 
@@ -109,8 +116,8 @@ export default function SupportScreen() {
       <UiStyleProvider value="tiktok">
       <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
         <CamNavBar
-          title="Help & Support"
-          backLabel="Back"
+          title={t("profile_help_support")}
+          backLabel={t("back_btn")}
           onBack={() => {
             AudioManager.playButtonClick();
             navigation.goBack();
@@ -127,16 +134,19 @@ export default function SupportScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <CustomText variant="p-small" style={styles.subtitle}>
-            We're here to help. Fill in the form below and we'll get back to you as soon as possible.
+            {t("support_subtitle")}
           </CustomText>
+
+          {/* Membership: manage or cancel in the App Store / Google Play. */}
+          <ManageSubscriptionCard style={{ marginBottom: 20 }} />
 
           {/* Auto-filled user info */}
           <View style={styles.card}>
-            <CustomText variant="p-small" style={styles.cardLabel}>Your info (auto-filled)</CustomText>
+            <CustomText variant="p-small" style={styles.cardLabel}>{t("support_your_info")}</CustomText>
             <View style={styles.infoRow}>
               <Ionicons name="person-circle-outline" size={18} color={TT.text2} />
               <CustomText variant="p-small" style={styles.infoText}>
-                {user.name || "Guest"}
+                {user.name || t("support_guest")}
               </CustomText>
             </View>
             <View style={styles.infoRow}>
@@ -149,7 +159,7 @@ export default function SupportScreen() {
 
           {/* Reason */}
           <CustomText variant="p" style={styles.fieldLabel}>
-            What can we help you with?
+            {t("support_help_with")}
           </CustomText>
           <View style={styles.reasonGrid}>
             {REASONS.map((r) => {
@@ -172,7 +182,7 @@ export default function SupportScreen() {
                       numberOfLines={1}
                       style={[styles.reasonLabel, active && styles.reasonLabelActive]}
                     >
-                      {r.label}
+                      {t(`support_reason_${r.id}`)}
                     </CustomText>
                   </View>
                 </Pressable>
@@ -182,7 +192,7 @@ export default function SupportScreen() {
 
           {/* Contact email */}
           <CustomText variant="p" style={styles.fieldLabel}>
-            Your email address
+            {t("support_your_email")}
           </CustomText>
           <View
             style={styles.inputWrap}
@@ -207,7 +217,7 @@ export default function SupportScreen() {
 
           {/* Message */}
           <CustomText variant="p" style={styles.fieldLabel}>
-            Message
+            {t("support_message")}
           </CustomText>
           <View
             style={[styles.inputWrap, styles.textAreaWrap]}
@@ -220,7 +230,7 @@ export default function SupportScreen() {
               value={message}
               onChangeText={setMessage}
               onFocus={() => revealField("message")}
-              placeholder="Describe your issue or feedback..."
+              placeholder={t("support_message_placeholder")}
               placeholderTextColor={TT.text2}
               selectionColor={TT.primary}
               multiline
@@ -232,7 +242,7 @@ export default function SupportScreen() {
           {/* Send */}
           <View style={styles.sendWrap}>
             <CustomButton
-              title="Send Message"
+              title={t("support_send")}
               onPress={handleSend}
               disabled={!canSend}
               appearance="primary"
@@ -246,7 +256,7 @@ export default function SupportScreen() {
           </View>
 
           <CustomText variant="p-xsmall" style={styles.footerNote}>
-            Or email us directly at{" "}
+            {t("support_or_email")}{" "}
             <CustomText
               variant="p-xsmall"
               style={styles.emailLink}

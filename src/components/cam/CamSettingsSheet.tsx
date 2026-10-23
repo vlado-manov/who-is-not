@@ -21,6 +21,7 @@ import {
 } from "../../screens/Cam/cam.constants";
 import { useGameStore } from "../../store/useGameStore";
 import { useAuthStore } from "../../store/useUserStore";
+import { useEntitlements } from "../../store/useEntitlements";
 
 type Props = {
   visible: boolean;
@@ -61,7 +62,8 @@ export default function CamSettingsSheet({
   const gameSettings = useGameStore((s) => s.gameSettings);
   const setGameSettings = useGameStore((s) => s.setGameSettings);
   const userId = useAuthStore((s) => s.user.id);
-  const isPremium = useAuthStore((s) => s.user.isPremium);
+  // Merged with a demo purchase this session (see useEntitlements).
+  const { isPremium } = useEntitlements();
 
   const [lives, setLives] = useState<3 | 5>(gameSettings.livesPerPlayer ?? 3);
   const [slugs, setSlugs] = useState<string[]>(gameSettings.selectedPacks ?? []);

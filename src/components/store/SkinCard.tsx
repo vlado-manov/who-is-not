@@ -11,7 +11,7 @@ import AudioManager from "../../utils/audioManager";
 
 export const SKIN_CARD_WIDTH = 168;
 const CARD_HEIGHT = 236;
-/** $1.49 when the backend sends no price. */
+/** €1.49 when the backend sends no price. */
 const SKIN_FALLBACK_PRICE = 149;
 
 type Props = {

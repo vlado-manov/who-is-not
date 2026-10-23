@@ -18,6 +18,10 @@ export type IAPPurchaseResult = {
     type: "character" | "bundle" | "subscription";
     unlockedCharacterIds?: string[];
     isPremium?: boolean;
+    /** Membership the purchase gave (newer backends). */
+    tier?: "PREMIUM" | "EXPERT";
+    lifetime?: boolean;
+    expiresAt?: string | null;
   };
   error?: string;
 };

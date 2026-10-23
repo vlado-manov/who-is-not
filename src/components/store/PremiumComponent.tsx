@@ -10,6 +10,9 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import CustomText from "../common/CustomText";
 import { useTranslation } from "react-i18next";
+import { PLAYER_LIMITS } from "../../game/playerLimits";
+import { formatPrice } from "../../game/unlocks";
+import { tierPlanCents } from "../../services/iapConstants";
 
 const PREMIUM_IMG = {
   uri: "https://pub-ec31b9c7bbbc404ebb58e9011a72c729.r2.dev/images/gallery/316ada4e-2f7a-4cc5-aa81-b303b9cea8b3-premiumStore.webp",
@@ -27,8 +30,16 @@ type Props = {
   loading?: boolean;
 };
 
+/** What Premium adds to player counts, with the free limit for comparison. */
+const LIMIT_ROWS = [
+  { icon: "🎉", key: "store_premium_benefit_party", count: PLAYER_LIMITS.party.premium, free: PLAYER_LIMITS.party.free },
+  { icon: "📸", key: "store_premium_benefit_cam", count: PLAYER_LIMITS.cam.premium, free: PLAYER_LIMITS.cam.free },
+  { icon: "🌍", key: "store_premium_benefit_online", count: PLAYER_LIMITS.online.premium, free: PLAYER_LIMITS.online.free },
+];
+
 const PremiumComponent = ({ onSelect, loading }: Props) => {
   const { t } = useTranslation();
+  const premiumPrice = tierPlanCents("premium_monthly");
   const { width: screenWidth } = useWindowDimensions();
   const cardWidth = screenWidth - 32;   // marginHorizontal 16 * 2
   // image is ~5.5 : 1 landscape ratio — render at 70% width, 2× height
@@ -126,9 +137,9 @@ const PremiumComponent = ({ onSelect, loading }: Props) => {
             <CustomText style={styles.customSub}>{t("store_premium_custom_sub")}</CustomText>
             {/* Question type chips */}
             <View style={styles.chips}>
-              {["10× Pick", "10× Number", "10× Input"].map((chip) => (
-                <View key={chip} style={styles.chip}>
-                  <CustomText style={styles.chipText}>{chip}</CustomText>
+              {["store_premium_chip_pick", "store_premium_chip_number", "store_premium_chip_input"].map((key) => (
+                <View key={key} style={styles.chip}>
+                  <CustomText style={styles.chipText}>{t(key, { count: 10 })}</CustomText>
                 </View>
               ))}
             </View>
@@ -140,6 +151,14 @@ const PremiumComponent = ({ onSelect, loading }: Props) => {
 
           {/* ── Other features ───────────────────────────────────────── */}
           <View style={styles.features}>
+            {LIMIT_ROWS.map((row) => (
+              <View key={row.key} style={styles.featureRow}>
+                <CustomText style={styles.featureIcon}>{row.icon}</CustomText>
+                <CustomText style={styles.featureLabel}>
+                  {t(row.key, { count: row.count, free: row.free })}
+                </CustomText>
+              </View>
+            ))}
             {FEATURE_KEYS.slice(1).map((f) => (
               <View key={f.key} style={styles.featureRow}>
                 <CustomText style={styles.featureIcon}>{f.icon}</CustomText>
@@ -151,7 +170,9 @@ const PremiumComponent = ({ onSelect, loading }: Props) => {
           {/* ── Price ────────────────────────────────────────────────── */}
           <View style={styles.priceRow}>
             <CustomText style={styles.priceLabel}>{t("store_premium_price_only")} </CustomText>
-            <CustomText style={styles.price}>$5.99</CustomText>
+            <CustomText style={styles.price}>
+              {formatPrice(premiumPrice.cents, premiumPrice.currency)}
+            </CustomText>
             <CustomText style={styles.priceSub}>{t("store_premium_price_period")}</CustomText>
           </View>
 
@@ -270,7 +291,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   featureIcon: { fontSize: 18 },
-  featureLabel: { color: "#E8D5FF", fontSize: 15, fontWeight: "600" },
+  featureLabel: { flex: 1, color: "#E8D5FF", fontSize: 15, fontWeight: "600" },
   priceRow: {
     flexDirection: "row",
     alignItems: "flex-end",

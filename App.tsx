@@ -258,9 +258,18 @@ export default function App() {
   useEffect(() => { soundEnabledRef.current = soundEnabled; }, [soundEnabled]);
   useEffect(() => { musicLevelRef.current = musicLevel; }, [musicLevel]);
 
+  // Membership at start-up, once the saved user is loaded.
+  useEffect(() => {
+    const refresh = () => void useAuthStore.getState().refreshEntitlements();
+    if (useAuthStore.persist.hasHydrated()) refresh();
+    return useAuthStore.persist.onFinishHydration(refresh);
+  }, []);
+
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
       void addCrashBreadcrumb("app_state", { state });
+      // Membership may have changed meanwhile (renewal, admin grant, expiry).
+      if (state === "active") void useAuthStore.getState().refreshEntitlements();
       if (state === "active" && soundEnabledRef.current && musicLevelRef.current > 0) {
         // Audio session may have been interrupted (phone call, OS preemption).
         // Re-claim the bg track the current screen last requested.

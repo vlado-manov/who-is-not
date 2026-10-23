@@ -14,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { IBundle } from "../../types/bundle";
 import CustomText from "../common/CustomText";
 import { useTranslation } from "react-i18next";
+import { formatPrice } from "../../game/unlocks";
 
 type Props = {
   item: IBundle;
@@ -172,7 +173,10 @@ function ChestBundle({
   };
 
   const badgeLabel =
-    item.priceNote ?? `Save $${(item.price - item.discountPrice).toFixed(0)}`;
+    item.priceNote ??
+    t("store_save_amount", {
+      amount: formatPrice(Math.round((item.price - item.discountPrice) * 100)),
+    });
   const closedUri = toUri(item.closedImage);
   const openUri = toUri(item.image);
 
@@ -283,10 +287,10 @@ function ChestBundle({
             <CustomText style={chestStyles.summary}>{item.summary}</CustomText>
             <View style={chestStyles.priceRow}>
               <CustomText style={chestStyles.original}>
-                ${item.price.toFixed(2)}
+                {formatPrice(Math.round(item.price * 100))}
               </CustomText>
               <CustomText style={chestStyles.discounted}>
-                ${item.discountPrice.toFixed(2)}
+                {formatPrice(Math.round(item.discountPrice * 100))}
               </CustomText>
               <View style={chestStyles.badge}>
                 <CustomText style={chestStyles.badgeText}>
@@ -305,7 +309,7 @@ function ChestBundle({
               style={chestStyles.btn}
             >
               <CustomText style={chestStyles.btnText}>
-                {t("store_get_for", { price: item.discountPrice.toFixed(2) })}
+                {t("store_get_for", { price: formatPrice(Math.round(item.discountPrice * 100)) })}
               </CustomText>
             </LinearGradient>
           </View>
@@ -419,7 +423,10 @@ function CharacterBundle({
   }, [floatY]);
 
   const badgeLabel =
-    item.priceNote ?? `Save $${(item.price - item.discountPrice).toFixed(0)}`;
+    item.priceNote ??
+    t("store_save_amount", {
+      amount: formatPrice(Math.round((item.price - item.discountPrice) * 100)),
+    });
 
   return (
     <Animated.View
@@ -463,10 +470,10 @@ function CharacterBundle({
 
             <View style={charStyles.priceRow}>
               <CustomText style={charStyles.original}>
-                ${item.price.toFixed(2)}
+                {formatPrice(Math.round(item.price * 100))}
               </CustomText>
               <CustomText style={charStyles.discounted}>
-                ${item.discountPrice.toFixed(2)}
+                {formatPrice(Math.round(item.discountPrice * 100))}
               </CustomText>
             </View>
             <View style={charStyles.badge}>
@@ -484,7 +491,7 @@ function CharacterBundle({
             style={charStyles.btn}
           >
             <CustomText style={charStyles.btnText}>
-              {t("store_get_for", { price: item.discountPrice.toFixed(2) })}
+              {t("store_get_for", { price: formatPrice(Math.round(item.discountPrice * 100)) })}
             </CustomText>
           </LinearGradient>
         </View>
@@ -595,7 +602,10 @@ function DefaultBundle({
 }) {
   const { t } = useTranslation();
   const badgeLabel =
-    item.priceNote ?? `Save $${(item.price - item.discountPrice).toFixed(0)}`;
+    item.priceNote ??
+    t("store_save_amount", {
+      amount: formatPrice(Math.round((item.price - item.discountPrice) * 100)),
+    });
 
   return (
     <Animated.View
@@ -636,10 +646,10 @@ function DefaultBundle({
             <CustomText style={defStyles.summary}>{item.summary}</CustomText>
             <View style={defStyles.priceRow}>
               <CustomText style={defStyles.original}>
-                ${item.price.toFixed(2)}
+                {formatPrice(Math.round(item.price * 100))}
               </CustomText>
               <CustomText style={defStyles.discounted}>
-                ${item.discountPrice.toFixed(2)}
+                {formatPrice(Math.round(item.discountPrice * 100))}
               </CustomText>
               <View style={defStyles.badge}>
                 <CustomText style={defStyles.badgeText}>
@@ -656,7 +666,7 @@ function DefaultBundle({
               style={defStyles.btn}
             >
               <CustomText style={defStyles.btnText}>
-                {t("store_get_for", { price: item.discountPrice.toFixed(2) })}
+                {t("store_get_for", { price: formatPrice(Math.round(item.discountPrice * 100)) })}
               </CustomText>
             </LinearGradient>
           </View>

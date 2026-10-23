@@ -91,6 +91,10 @@ export default function CamNameColorPhase({
   );
 }
 
+/** Five 46 pt rings per row with the 6 pt gap, so 7–9 colours wrap evenly. */
+const SWATCHES_PER_ROW = 5;
+const SWATCH_SLOT = 46 + 6;
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -108,9 +112,13 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
+  // Up to 9 colours: wrap after five so the rings keep their size.
   swatches: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "center",
+    alignSelf: "center",
     gap: 6,
+    maxWidth: SWATCHES_PER_ROW * SWATCH_SLOT - 6,
   },
 });

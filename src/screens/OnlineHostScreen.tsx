@@ -34,6 +34,7 @@ import { CreateGameStackParamList } from "../navigation/types";
 import {
   createMultiplayerRoom,
   getMultiplayerRoomMetadata,
+  hostSetMultiplayerCapacity,
   hostCloseMultiplayerRoom,
 } from "../api/multiplayer";
 import {
@@ -78,6 +79,13 @@ import Round1TransitionOverlay from "../components/Round1TransitionOverlay";
 import { game_images } from "../../assets/images";
 import { useAuthStore } from "../store/useUserStore";
 import { usePlateModalCardWidth } from "../components/modals/usePlateModalCardWidth";
+import { useEntitlements, useRefreshEntitlementsOnMount } from "../store/useEntitlements";
+import {
+  onlineCapacityBase,
+  PLAYER_LIMITS,
+  type LockReason,
+} from "../game/playerLimits";
+import PlayerLimitSheet from "../components/premium/PlayerLimitSheet";
 
 type Nav = StackNavigationProp<CreateGameStackParamList, "OnlineHost">;
 
@@ -101,7 +109,15 @@ export default function OnlineHostScreen() {
   const plateModalWidth = usePlateModalCardWidth();
   const { settings, updateSettings } = useAuthStore();
   const userId = useAuthStore((s) => s.user.id);
-  const isPremium = useAuthStore((s) => s.user.isPremium);
+  // Merged with a demo purchase this session (see useEntitlements).
+  const { isPremium, tier, hasOnlinePerk } = useEntitlements();
+  useRefreshEntitlementsOnMount();
+  // Places: 6 (10 with Premium), +1 per player bringing a perk, never above 10.
+  const capacityBase = onlineCapacityBase(tier);
+  const [capacity, setCapacity] = useState(
+    Math.min(PLAYER_LIMITS.online.max, capacityBase + (hasOnlinePerk ? 1 : 0)),
+  );
+  const [lockedSlot, setLockedSlot] = useState<LockReason | null>(null);
   const navigation = useNavigation<Nav>();
   const { openUserSettings } = useUserSettingsSheet();
   const applyOnlinePartySession = useGameStore(
@@ -176,7 +192,7 @@ export default function OnlineHostScreen() {
   const [showRoomEndedModal, setShowRoomEndedModal] = useState(false);
   const [showStartTransition, setShowStartTransition] = useState(false);
   const startGameAfterTransitionRef = useRef<(() => void) | null>(null);
-  const SLOT_MAX = 12;
+  const SLOT_MAX = PLAYER_LIMITS.online.max;
   const slotScale = useRef(
     Array.from({ length: SLOT_MAX }, () => new Animated.Value(1)),
   ).current;
@@ -269,7 +285,14 @@ export default function OnlineHostScreen() {
         selectedPacks: finalPacks,
         livesPerPlayer: selectedLives,
       });
-      const res = await createMultiplayerRoom({ hostPlayerId });
+      const res = await createMultiplayerRoom({
+        hostPlayerId,
+        capacityBase,
+        hostHasPerk: hasOnlinePerk,
+      });
+      // What the room was created with; later changes are re-sent from here.
+      sentCapacityRef.current = `${capacityBase}:${hasOnlinePerk}`;
+      if (typeof res.capacity === "number") setCapacity(res.capacity);
       setJoinCode(res.joinCode);
       setWsToken(res.wsToken);
       setHostSecret(res.hostSecret);
@@ -331,6 +354,8 @@ export default function OnlineHostScreen() {
     settingsTranslateY,
     roomOpacity,
     roomTranslateY,
+    capacityBase,
+    hasOnlinePerk,
   ]);
 
   useEffect(() => {
@@ -345,12 +370,30 @@ export default function OnlineHostScreen() {
     return unsub;
   }, [wsToken]);
 
+  // Membership bought (or ended) while the room is open: new base for its places.
+  const sentCapacityRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!joinCode || !hostSecret) return;
+    const key = `${capacityBase}:${hasOnlinePerk}`;
+    if (sentCapacityRef.current === key) return;
+    sentCapacityRef.current = key;
+    void hostSetMultiplayerCapacity(joinCode, {
+      hostPlayerId,
+      hostSecret,
+      capacityBase,
+      hostHasPerk: hasOnlinePerk,
+    })
+      .then((r) => setCapacity(r.capacity))
+      .catch(() => {});
+  }, [joinCode, hostSecret, hostPlayerId, capacityBase, hasOnlinePerk]);
+
   useEffect(() => {
     if (!joinCode) return;
     const tick = () => {
       void getMultiplayerRoomMetadata(joinCode)
         .then((m) => {
           setParticipantCount(m.participantCount);
+          if (typeof m.capacity === "number") setCapacity(m.capacity);
           if (m.status === "ENDED") {
             setShowRoomEndedModal(true);
           }
@@ -956,6 +999,16 @@ export default function OnlineHostScreen() {
                                 className="text-center mt-1"
                                 textColor={TTL.text2}
                               >
+                                {t("online_room_places", {
+                                  count: participantCount,
+                                  capacity,
+                                })}
+                              </CustomText>
+                              <CustomText
+                                variant="p-xsmall"
+                                className="text-center mt-1"
+                                textColor={TTL.text2}
+                              >
                                 {connLabel}
                               </CustomText>
                               {hostSecret ? (
@@ -987,9 +1040,45 @@ export default function OnlineHostScreen() {
                       >
                         <View className="flex-row flex-wrap gap-2 justify-center">
                           {Array.from({
-                            length: Math.max(6, participantCount),
+                            // Every place up to 10: taken, open, or locked.
+                            length: Math.max(SLOT_MAX, participantCount),
                           }).map((_, i) => {
                             const active = i < participantCount;
+                            const locked = !active && i >= capacity;
+                            if (locked) {
+                              return (
+                                <Pressable
+                                  key={i}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={t("online_slot_locked_a11y")}
+                                  onPress={() =>
+                                    setLockedSlot(
+                                      isPremium
+                                        ? { kind: "ROOM_PERK" }
+                                        : {
+                                            kind: "PREMIUM",
+                                            mode: "online",
+                                            free: PLAYER_LIMITS.online.free,
+                                          },
+                                    )
+                                  }
+                                >
+                                  <View
+                                    style={[
+                                      styles.playerSlotBg,
+                                      styles.playerSlotBgInactive,
+                                      styles.playerSlotLocked,
+                                    ]}
+                                  >
+                                    <MaterialCommunityIcons
+                                      name="lock"
+                                      size={20}
+                                      color={TTL.text2}
+                                    />
+                                  </View>
+                                </Pressable>
+                              );
+                            }
                             return (
                               <Animated.View
                                 key={i}
@@ -1255,6 +1344,15 @@ export default function OnlineHostScreen() {
           ) : null}
         </SafeAreaView>
       </UiStyleProvider>
+
+      {/* A locked place: Premium (free host) or a perk player opens it. */}
+      <PlayerLimitSheet
+        visible={lockedSlot !== null}
+        count={capacity + 1}
+        reason={lockedSlot}
+        onClose={() => setLockedSlot(null)}
+        allowStore={false}
+      />
     </FullBleedStack>
   );
 }
@@ -1535,6 +1633,9 @@ const styles = StyleSheet.create({
   },
   playerSlotBgInactive: {
     backgroundColor: TTL.fill,
+  },
+  playerSlotLocked: {
+    opacity: 0.55,
   },
   copyToastOuter: {
     position: "absolute",

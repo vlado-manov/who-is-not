@@ -20,7 +20,8 @@ import { useTranslation } from "react-i18next";
 import i18n, { normalizeLanguage } from "../i18n";
 import AudioManager from "../utils/audioManager";
 import { CreateGameStackParamList } from "../navigation/types";
-import { getMultiplayerRoomMetadata } from "../api/multiplayer";
+import { getMultiplayerRoomMetadata, leaveMultiplayerRoom } from "../api/multiplayer";
+import { PLAYER_LIMITS } from "../game/playerLimits";
 import {
   connectMultiplayerRelay,
   disconnectMultiplayerRelay,
@@ -57,7 +58,7 @@ type Nav = StackNavigationProp<CreateGameStackParamList, "OnlineJoin">;
 
 type ConnState = "idle" | "connecting" | "open" | "closed" | "error";
 
-const SLOT_MAX = 12;
+const SLOT_MAX = PLAYER_LIMITS.online.max;
 
 export default function OnlineJoinScreen() {
   const { t, i18n: i18nApi } = useTranslation();
@@ -87,6 +88,8 @@ export default function OnlineJoinScreen() {
 
   const [conn, setConn] = useState<ConnState>("idle");
   const [participantCount, setParticipantCount] = useState(0);
+  /** Places in the room; an older host sends none (shown as before). */
+  const [capacity, setCapacity] = useState<number | null>(null);
   const [showRoomEndedModal, setShowRoomEndedModal] = useState(false);
   const [showLeaveGuestModal, setShowLeaveGuestModal] = useState(false);
   const [copyToastVisible, setCopyToastVisible] = useState(false);
@@ -206,6 +209,7 @@ export default function OnlineJoinScreen() {
       void getMultiplayerRoomMetadata(joinCode)
         .then((m) => {
           setParticipantCount(m.participantCount);
+          setCapacity(typeof m.capacity === "number" ? m.capacity : null);
           if (m.status === "ENDED") {
             setShowRoomEndedModal(true);
           }
@@ -300,9 +304,11 @@ export default function OnlineJoinScreen() {
 
   const confirmLeaveGuest = useCallback(() => {
     setShowLeaveGuestModal(false);
+    // Free the place for someone else (best effort).
+    if (joinCode && wsToken) void leaveMultiplayerRoom(joinCode, wsToken).catch(() => {});
     useGameStore.getState().reset();
     goBackFromCreateGameToMenu(navigation, { beforePop: () => {} });
-  }, [navigation]);
+  }, [navigation, joinCode, wsToken]);
 
   const dismissRoomEndedAndExit = useCallback(() => {
     setShowRoomEndedModal(false);
@@ -472,7 +478,8 @@ export default function OnlineJoinScreen() {
                     >
                       <View className="flex-row flex-wrap gap-2 justify-center">
                         {Array.from({
-                          length: Math.max(6, participantCount),
+                          // The room's places (older host: as before).
+                          length: Math.max(capacity ?? 6, participantCount),
                         }).map((_, i) => {
                           const active = i < participantCount;
                           return (

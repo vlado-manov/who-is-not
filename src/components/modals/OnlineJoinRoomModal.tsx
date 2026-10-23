@@ -21,7 +21,9 @@ import AudioManager from "../../utils/audioManager";
 import {
   joinMultiplayerRoom,
   getMultiplayerRoomMetadata,
+  roomFullCapacity,
 } from "../../api/multiplayer";
+import { useEntitlements } from "../../store/useEntitlements";
 import { useGameStore } from "../../store/useGameStore";
 import { createOpaquePlayerId } from "../../utils/opaquePlayerId";
 import { usePlateModalCardWidth } from "./usePlateModalCardWidth";
@@ -47,6 +49,8 @@ export default function OnlineJoinRoomModal({
   );
 
   const guestPlayerId = useMemo(() => createOpaquePlayerId("guest"), []);
+  // A bought hero or Expert brings one more place to the room.
+  const { hasOnlinePerk } = useEntitlements();
 
   const [codeInput, setCodeInput] = useState("");
   const [joining, setJoining] = useState(false);
@@ -91,6 +95,7 @@ export default function OnlineJoinRoomModal({
     try {
       const res = await joinMultiplayerRoom(normalizedCode, {
         playerId: guestPlayerId,
+        hasPerk: hasOnlinePerk,
       });
       const meta = await getMultiplayerRoomMetadata(res.joinCode);
       if (meta.status === "ENDED") {
@@ -108,6 +113,13 @@ export default function OnlineJoinRoomModal({
       AudioManager.playButtonClick();
       onJoined();
     } catch (e: unknown) {
+      const fullCapacity = roomFullCapacity(e);
+      if (fullCapacity !== null) {
+        setJoinError(
+          `${t("online_room_full_title")}. ${t("online_room_full_body", { capacity: fullCapacity })}`,
+        );
+        return;
+      }
       const msg =
         e && typeof e === "object" && "message" in e
           ? String((e as { message?: string }).message)
@@ -116,7 +128,7 @@ export default function OnlineJoinRoomModal({
     } finally {
       setJoining(false);
     }
-  }, [applyOnlinePartySession, guestPlayerId, normalizedCode, onJoined, t]);
+  }, [applyOnlinePartySession, guestPlayerId, hasOnlinePerk, normalizedCode, onJoined, t]);
 
   return (
     <Modal

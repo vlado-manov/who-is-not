@@ -1,5 +1,5 @@
 // src/screens/PlayersNumberScreen.tsx
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { useTranslation } from "react-i18next";
@@ -13,11 +13,11 @@ import { goBackFromCreateGameToMenu } from "../navigation/goBackFromCreateGameTo
 import { CreateGameStackParamList } from "../navigation/types";
 import { useGameStore } from "../store/useGameStore";
 import { useAuthStore } from "../store/useUserStore";
+import { useEntitlements, useRefreshEntitlementsOnMount } from "../store/useEntitlements";
+import { getPartyLimit, PLAYER_LIMITS, type LockReason } from "../game/playerLimits";
+import PlayerLimitSheet from "../components/premium/PlayerLimitSheet";
 
 type Nav = StackNavigationProp<CreateGameStackParamList, "PlayersNumber">;
-
-const MIN_PLAYERS = 3;
-const MAX_PLAYERS = 10;
 
 /**
  * Party mode: how many players. Logo over the game background, and the count
@@ -32,6 +32,24 @@ const PlayersNumberScreen = () => {
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<Nav>();
   const userId = useAuthStore((s) => s.user.id);
+  const ent = useEntitlements();
+  useRefreshEntitlementsOnMount();
+  // 3–6 free, up to 10 with Premium; above 10 a hero for every player.
+  const limit = useMemo(
+    () =>
+      getPartyLimit({
+        tier: ent.tier,
+        unlockedHeroCount: ent.unlockedHeroIds.size,
+        totalHeroCount: ent.totalHeroCount,
+      }),
+    [ent.tier, ent.unlockedHeroIds, ent.totalHeroCount],
+  );
+  const [locked, setLocked] = useState<{ count: number; reason: LockReason } | null>(null);
+
+  // Membership ended while here: a chosen count above the limit is cleared.
+  useEffect(() => {
+    if (players !== null && players > limit.max) setPlayers(null);
+  }, [limit.max, players]);
 
   const onContinue = (count: number) => {
     void trackPlayerSessionStarted({
@@ -64,11 +82,23 @@ const PlayersNumberScreen = () => {
       >
         <PlayerCountSheet
           title={t("cam_players_title")}
-          hint={t("max_characters_players")}
-          min={MIN_PLAYERS}
-          max={MAX_PLAYERS}
+          hint={
+            ent.isPremium
+              ? t("players_hint_party_premium", { max: limit.max })
+              : t("players_hint_party_free", {
+                  free: PLAYER_LIMITS.party.free,
+                  premium: PLAYER_LIMITS.party.premium,
+                })
+          }
+          min={limit.min}
+          max={limit.shownMax}
           selected={players}
           onSelect={setPlayers}
+          isLocked={(count) => limit.lockOf(count) !== null}
+          onLockedPress={(count) => {
+            const reason = limit.lockOf(count);
+            if (reason) setLocked({ count, reason });
+          }}
           confirmLabel={t("continue_btn")}
           onConfirm={onContinue}
         />
@@ -78,6 +108,13 @@ const PlayersNumberScreen = () => {
         visible={settingsVisible}
         showDiscussionTime
         onClose={() => setSettingsVisible(false)}
+      />
+
+      <PlayerLimitSheet
+        visible={locked !== null}
+        count={locked?.count ?? null}
+        reason={locked?.reason ?? null}
+        onClose={() => setLocked(null)}
       />
     </>
   );

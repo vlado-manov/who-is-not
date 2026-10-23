@@ -13,9 +13,9 @@ export type CamGridLayout = {
  * Gapless two-column mosaic that fills the given area (see `CAM_GRID_COLUMNS`).
  * Each column shares the full height equally between its photos.
  *
- * Order of the players: with equal columns (4, 6) it reads row by row, left to
- * right, as people expect from a grid; with unequal ones (3, 5) it goes down
- * the left column first, then the right.
+ * Order of the players: with equal columns (4, 6, 8) it reads row by row, left
+ * to right, as people expect from a grid; with unequal ones (3, 5, 7, 9) it
+ * goes down the left column first, then the right.
  */
 export function computeCamGridLayout(
   count: number,

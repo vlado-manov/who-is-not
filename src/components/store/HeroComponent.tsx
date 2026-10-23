@@ -9,6 +9,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import AppImage from "../AppImage";
 import CustomText from "../common/CustomText";
 import { ICharacter } from "../../types/character";
+import { useTranslation } from "react-i18next";
+import { formatPrice } from "../../game/unlocks";
 
 type Props = {
   item: ICharacter;
@@ -21,6 +23,7 @@ const toSrc = (img: string | ImageSourcePropType): ImageSourcePropType =>
   typeof img === "string" ? { uri: img } : (img as ImageSourcePropType);
 
 export default function HeroComponent({ item, size = 120, onPress, disabled }: Props) {
+  const { t } = useTranslation();
   const price = item.discountPrice > 0 ? item.discountPrice : item.price;
 
   return (
@@ -69,7 +72,7 @@ export default function HeroComponent({ item, size = 120, onPress, disabled }: P
             style={styles.unlockGradient}
           >
             <CustomText style={styles.unlockText}>
-              ${price.toFixed(2)} UNLOCK
+              {t("store_hero_unlock", { price: formatPrice(Math.round(price * 100)) })}
             </CustomText>
           </LinearGradient>
         </Pressable>

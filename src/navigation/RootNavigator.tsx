@@ -8,6 +8,7 @@ import OnboardingStackNavigator from "./OnboardingStackNavigator";
 import CreateGameStackNavigator from "./CreateGameStackNavigator";
 import GameStackNavigator from "./GameStackNavigator";
 import CamGameScreen from "../screens/Cam/CamGameScreen";
+import StoreScreen from "../screens/StoreScreen";
 import { Transitions } from "./transitions";
 
 const Root = createStackNavigator<RootStackParamList>();
@@ -43,6 +44,11 @@ export default function RootNavigator() {
         options={{
           cardStyleInterpolator: CardStyleInterpolators.forNoAnimation,
         }}
+      />
+      <Root.Screen
+        name="StoreOverlay"
+        component={StoreScreen}
+        options={{ cardStyleInterpolator: Transitions.slideFromTop }}
       />
     </Root.Navigator>
   );

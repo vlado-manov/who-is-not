@@ -1,5 +1,6 @@
 // src/game/unlocks.ts
 import type { ICharacter, IUnlockInfo } from "../types/character";
+import i18n from "../i18n";
 
 /** The unlock info, also for heroes from an older backend without it. */
 export function unlockOf(item: ICharacter): IUnlockInfo {
@@ -36,7 +37,21 @@ export function isUnlockedFor(
   return ownRight && (hero.unlocked || extraIds.has(hero.id));
 }
 
-/** Price in the store's currency text, e.g. "$1.49". */
-export function formatPrice(cents: number | null | undefined): string {
-  return `$${((cents ?? 0) / 100).toFixed(2)}`;
+/** The store sells in euro. */
+export const STORE_CURRENCY = "EUR";
+
+/** A price in the player's language, e.g. "€1.49" (en) or "1,49 €" (bg). */
+export function formatPrice(
+  cents: number | null | undefined,
+  currency: string = STORE_CURRENCY,
+): string {
+  const value = (cents ?? 0) / 100;
+  try {
+    return new Intl.NumberFormat(i18n.language || "en", {
+      style: "currency",
+      currency,
+    }).format(value);
+  } catch {
+    return `${value.toFixed(2)} ${currency === "EUR" ? "€" : currency}`;
+  }
 }

@@ -24,6 +24,7 @@ import ProfileLoginComponent from "../components/profile/ProfileLoginComponent";
 import CustomButton from "../components/common/CustomButton";
 import ProfileImagePickerComponent from "../components/profile/ProfileImagePickerComponent";
 import ProfilePremiumQuestionsCard from "../components/profile/ProfilePremiumQuestionsCard";
+import ManageSubscriptionCard from "../components/premium/ManageSubscriptionCard";
 import ProfileFriendsCard from "../components/profile/ProfileFriendsCard";
 import RateAppModal from "../components/modals/RateAppModal";
 import CamNavBar from "../components/cam/CamNavBar";
@@ -342,6 +343,7 @@ const ProfileScreen = () => {
               <ProfileInfoComponent
                 setImagePickerVisible={setImagePickerVisible}
               />
+              <ManageSubscriptionCard style={{ marginHorizontal: 16, width: "auto" }} />
               <ProfilePremiumQuestionsCard />
               <ProfileFriendsCard />
 

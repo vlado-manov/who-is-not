@@ -19,6 +19,9 @@ type Props = {
   onConfirm: (count: number) => void;
   /** Shows a spinner instead of the button and locks the tiles. */
   loading?: boolean;
+  /** Counts shown locked (premium), and what tapping one does. */
+  isLocked?: (count: number) => boolean;
+  onLockedPress?: (count: number) => void;
 };
 
 /**
@@ -35,6 +38,8 @@ export default function PlayerCountSheet({
   confirmLabel,
   onConfirm,
   loading = false,
+  isLocked,
+  onLockedPress,
 }: Props) {
   const insets = useSafeAreaInsets();
 
@@ -56,6 +61,8 @@ export default function PlayerCountSheet({
         selected={selected}
         disabled={loading}
         onSelect={onSelect}
+        isLocked={isLocked}
+        onLockedPress={onLockedPress}
       />
 
       {/* Fixed height so the tiles do not jump when the button appears. */}

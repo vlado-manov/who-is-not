@@ -6,7 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { IUser } from "../types/user";
 import { AvatarId } from "../../assets/characters";
 import { useHeroesStore } from "./useHeroesStore";
-import { loginWithEmailPassword } from "../api/users";
+import { fetchMembership, loginWithEmailPassword, MembershipFields } from "../api/users";
 import { HEROES } from "../data/heroes";
 
 export type AuthStatus = "guest" | "loggedIn";
@@ -120,7 +120,22 @@ type AuthStore = {
   patchUser: (
     patch: Partial<IUser> | ((prev: IUser) => Partial<IUser>),
   ) => void;
+  /** Re-reads membership and bought heroes from the backend (signed-in users). */
+  refreshEntitlements: () => Promise<void>;
 };
+
+/** The membership part of a backend user response, as stored on the user. */
+function membershipOf(res: MembershipFields): Partial<IUser> {
+  return {
+    isPremium: res.isPremium,
+    premiumTier: res.premiumTier ?? (res.isPremium ? "PREMIUM" : "NONE"),
+    premiumLifetime: res.premiumLifetime ?? false,
+    premiumExpiresAt: res.premiumExpiresAt ?? null,
+    premiumManageable: res.premiumManageable ?? false,
+    hasActiveStoreSubscription: res.hasActiveStoreSubscription ?? res.premiumManageable ?? false,
+    purchasedCharacterIds: res.purchasedCharacterIds ?? [],
+  };
+}
 
 const DEFAULT_SETTINGS: Settings = {
   notificationsEnabled: false,
@@ -156,7 +171,7 @@ export const useAuthStore = create<AuthStore>()(
             avatarId: avatarIdForUnlocked(res.unlockedCharacterIds ?? []),
             provider: "local",
             isGuest: false,
-            isPremium: res.isPremium,
+            ...membershipOf(res),
             lang: (res.lang as "bg" | "en" | "fr" | "es" | undefined) ?? "en",
             purchasedProductIds: res.purchasedProductIds ?? [],
             unlockedCharacterIds: res.unlockedCharacterIds ?? [],
@@ -180,6 +195,18 @@ export const useAuthStore = create<AuthStore>()(
         const current = get().user;
         const delta = typeof patch === "function" ? patch(current) : patch;
         set({ user: { ...current, ...delta } });
+      },
+      refreshEntitlements: async () => {
+        const { user } = get();
+        if (user.isGuest || !user.id) return;
+        try {
+          const res = await fetchMembership(user.id);
+          // The user may have signed out meanwhile.
+          if (get().user.id !== user.id) return;
+          set({ user: { ...get().user, ...membershipOf(res) } });
+        } catch {
+          // Offline or not on the backend: keep what we have.
+        }
       },
     }),
     {

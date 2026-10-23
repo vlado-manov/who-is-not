@@ -133,6 +133,7 @@ import { isUnlockedFor, unlockOf } from "../game/unlocks";
 import { purchaseItem } from "../services/purchases";
 import OutfitToggle from "./HeroPicker/OutfitToggle";
 import UnlockSheet from "./HeroPicker/UnlockSheet";
+import { openStoreOverlay } from "../navigation/openStoreOverlay";
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
@@ -1441,6 +1442,12 @@ export default function HeroPickerScreen() {
                 }
                 onClose={() => setUnlockSheetOpen(false)}
                 onBuy={buyUnlock}
+                // Online the room keeps going: no leaving the picker for the store.
+                onOpenStore={
+                  mode === "ONLINE"
+                    ? undefined
+                    : () => openStoreOverlay(navigation)
+                }
               />
               {showConfetti && (
                 <View

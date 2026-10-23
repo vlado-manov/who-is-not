@@ -33,6 +33,7 @@ import {
   initialCamGameState,
   isCamGameFinished,
 } from "./camGameReducer";
+import { useEntitlements } from "../../store/useEntitlements";
 
 export type CamLoadStatus = "idle" | "loading" | "error";
 export type CamSaveStatus = "idle" | "saving" | "saved" | "denied" | "failed";
@@ -56,7 +57,8 @@ export function useCamGame(
 ) {
   const { t, i18n } = useTranslation();
   const userId = useAuthStore((s) => s.user.id);
-  const isPremium = useAuthStore((s) => s.user.isPremium);
+  // Merged with a demo purchase this session (see useEntitlements).
+  const { isPremium } = useEntitlements();
   const [state, dispatch] = useReducer(camGameReducer, initialCamGameState);
   const [loadStatus, setLoadStatus] = useState<CamLoadStatus>("idle");
   const [saveStatus, setSaveStatus] = useState<CamSaveStatus>("idle");

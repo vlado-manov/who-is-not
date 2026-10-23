@@ -61,6 +61,7 @@ import FloatingChatDock, {
   type ChatLine,
 } from "../../components/discussion/FloatingChatDock";
 import { getOnlinePlayerIndex } from "../../utils/onlinePlayerIndex";
+import { PARTY_ABSOLUTE_MAX } from "../../game/playerLimits";
 
 type Nav = StackNavigationProp<GameStackParamList, "Results">;
 
@@ -74,7 +75,7 @@ type Character = {
 type ScreenPhase = "answers" | "title" | "timer_intro" | "running";
 
 /** Max animated answer slots — enough for any game configuration. */
-const MAX_ANS = 14;
+const MAX_ANS = PARTY_ABSOLUTE_MAX;
 
 const PLAYER_COLORS = [
   "#F0A020",

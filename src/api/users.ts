@@ -1,6 +1,18 @@
 import { apiGet, apiPost } from "./client";
+import type { PremiumTier } from "../types/user";
 
-export type LoginUserResponse = {
+/** Membership fields every user response carries. */
+export type MembershipFields = {
+  isPremium: boolean;
+  premiumTier?: PremiumTier;
+  premiumLifetime?: boolean;
+  premiumExpiresAt?: string | null;
+  premiumManageable?: boolean;
+  hasActiveStoreSubscription?: boolean;
+  purchasedCharacterIds?: string[];
+};
+
+export type LoginUserResponse = MembershipFields & {
   id: string;
   name: string;
   email?: string | null;
@@ -13,6 +25,11 @@ export type LoginUserResponse = {
   unlockedCharacterIds: string[];
   purchasedProductIds: string[];
 };
+
+/** The user's current membership (for refreshing after a purchase or on focus). */
+export async function fetchMembership(userId: string) {
+  return apiGet<MembershipFields>(`/users/${encodeURIComponent(userId)}`);
+}
 
 export async function loginWithEmailPassword(email: string, password: string) {
   return apiPost<LoginUserResponse>(

@@ -42,7 +42,7 @@ import AnimatedLogoHero from "../components/AnimatedLogoHero";
 import { useHeroesStore } from "../store/useHeroesStore";
 import { useDemoUnlocks } from "../store/useDemoUnlocks";
 import { isUnlockedFor, unlockOf } from "../game/unlocks";
-import { purchaseItem } from "../services/purchases";
+import { DEMO_PURCHASES, purchaseItem } from "../services/purchases";
 import SkinCard from "../components/store/SkinCard";
 import { fetchCatalogCharacterProducts } from "../api/catalog";
 import { queryKeys } from "../api/queryKeys";
@@ -50,17 +50,21 @@ import { useAuthStore } from "../store/useUserStore";
 import { IBundle } from "../types/bundle";
 import { trackItemPurchased } from "../api/analytics";
 import { useStorePurchase } from "../hooks/useStorePurchase";
-import { IAP_SKUS, IAP_FALLBACK_PRICES } from "../services/iapConstants";
+import { TIER_PLANS, tierPlanCents, type TierPlan } from "../services/iapConstants";
+import { useEntitlements } from "../store/useEntitlements";
+import ExpertComponent from "../components/store/ExpertComponent";
+import ManageSubscriptionCard from "../components/premium/ManageSubscriptionCard";
+import { openManageSubscription } from "../services/subscriptionManagement";
+import { formatPrice, STORE_CURRENCY } from "../game/unlocks";
 
 type Nav = StackNavigationProp<OnboardingStackParamList, "Store">;
 
 /**
- * Dev builds only: tapping buy on a hero, a bundle or Premium plays the processing
- * state and the purchase confirmation without charging or unlocking anything, so the flow can
- * be reviewed before store products exist. Release builds always run the real
- * purchase. Set to `false` to test real purchases in a dev build.
+ * There is no donation product yet: dev builds play the processing state and
+ * the thank-you so the flow can be reviewed; release builds do nothing.
+ * Every other buy goes through purchaseItem (demo or real store).
  */
-const PREVIEW_HERO_PURCHASE_FLOW = __DEV__;
+const DONATE_PREVIEW = __DEV__;
 const PREVIEW_PROCESSING_MS = 1400;
 
 export type StoreHeroItem = ICharacter & {
@@ -714,10 +718,16 @@ const StoreScreen = () => {
   const { t } = useTranslation();
   const { isTablet } = useResponsive();
   const userId = useAuthStore((s) => s.user.id);
-  const isPremium = useAuthStore((s) => s.user.isPremium);
+  const refreshEntitlements = useAuthStore((s) => s.refreshEntitlements);
+  const ent = useEntitlements();
+  const { isPremium, isExpert } = ent;
 
-  const { purchase, restore, isLoading, state, lastResult, reset } =
-    useStorePurchase();
+  const { restore, isLoading, state } = useStorePurchase();
+
+  // Membership may have changed elsewhere (another device, a renewal).
+  useEffect(() => {
+    void refreshEntitlements();
+  }, [refreshEntitlements]);
   const [successHero, setSuccessHero] = React.useState<ICharacter | null>(null);
   const [donationThanks, setDonationThanks] = React.useState(false);
   /** Between tapping Unlock and the confirmation, while previewing the flow. */
@@ -826,7 +836,7 @@ const StoreScreen = () => {
             price: pack.fullPrice,
             discountPrice: pack.packPrice,
             discountPercentage: pack.savingPercent,
-            priceNote: `Save ${pack.savingPercent}%`,
+            priceNote: t("store_save_percent", { percent: pack.savingPercent }),
           },
         });
         continue;
@@ -844,54 +854,69 @@ const StoreScreen = () => {
       offers.push({ bundle, heroes: [] });
     }
     return offers;
-  }, [paidHeroes]);
+  }, [paidHeroes, t]);
 
   // ── Purchase handlers ──────────────────────────────────────────────────────
-  const handlePremiumBuy = async () => {
-    if (PREVIEW_HERO_PURCHASE_FLOW) {
-      setPreviewProcessing(true);
-      await new Promise<void>((resolve) =>
-        setTimeout(resolve, PREVIEW_PROCESSING_MS),
-      );
-      setPreviewProcessing(false);
-      setSuccessPremium(true);
+  const failed = (error?: string) =>
+    Alert.alert(t("required_alert_title"), error ?? t("lock_purchase_failed"));
+
+  const handleTierBuy = async (plan: TierPlan) => {
+    // A lifetime bought over a monthly subscription: the store keeps billing
+    // the subscription until it is cancelled there.
+    const hadSubscription = ent.server.hasActiveStoreSubscription;
+    setPreviewProcessing(true);
+    const outcome = await purchaseItem({ kind: "TIER", plan }, userId);
+    setPreviewProcessing(false);
+    if (!outcome.success) {
+      failed(outcome.error);
       return;
     }
-    const result = await purchase(IAP_SKUS.PREMIUM_MONTHLY);
-    if (result.success) {
-      setSuccessPremium(true);
-    }
-    void trackItemPurchased({
+    setSuccessPremium(true);
+    const price = tierPlanCents(plan);
+    if (!DEMO_PURCHASES) void trackItemPurchased({
       playerId: userId,
       userId,
       itemType: "subscription",
-      itemId: IAP_SKUS.PREMIUM_MONTHLY,
-      price: 5.99,
-      currency: "USD",
+      itemId: TIER_PLANS[plan].sku,
+      price: price.cents / 100,
+      currency: price.currency,
       quantity: 1,
     }).catch(() => {});
+    if (TIER_PLANS[plan].lifetime && hadSubscription) {
+      Alert.alert(t("store_expert_title"), t("store_lifetime_with_sub_note"), [
+        { text: t("sub_manage_cta"), onPress: () => void openManageSubscription() },
+        { text: t("ok"), style: "cancel" },
+      ]);
+    }
   };
 
+  const handlePremiumBuy = () => handleTierBuy("premium_monthly");
+
   const handleHeroBuy = async (hero: StoreHeroItem) => {
-    if (PREVIEW_HERO_PURCHASE_FLOW) {
-      setPreviewProcessing(true);
-      await new Promise<void>((resolve) =>
-        setTimeout(resolve, PREVIEW_PROCESSING_MS),
-      );
-      setPreviewProcessing(false);
-      setSuccessHero(hero);
+    const info = unlockOf(hero);
+    setPreviewProcessing(true);
+    const outcome = await purchaseItem(
+      {
+        kind: "HERO",
+        characterIds: [hero.id],
+        productId: info.productId ?? hero.productId ?? null,
+        storeProductId: info.storeProductId,
+      },
+      userId,
+    );
+    setPreviewProcessing(false);
+    if (!outcome.success) {
+      failed(outcome.error);
       return;
     }
-    const sku = (hero.productId ?? hero.slug) as any;
-    const result = await purchase(sku);
-    if (result.success) setSuccessHero(hero);
-    void trackItemPurchased({
+    setSuccessHero(hero);
+    if (!DEMO_PURCHASES) void trackItemPurchased({
       playerId: userId,
       userId,
       itemType: "character",
       itemId: hero.productId ?? hero.id,
       price: hero.discountPrice > 0 ? hero.discountPrice : hero.price,
-      currency: hero.currency ?? "USD",
+      currency: hero.currency ?? STORE_CURRENCY,
       quantity: 1,
     }).catch(() => {});
   };
@@ -902,18 +927,23 @@ const StoreScreen = () => {
       bundle,
       heroes: storeBundles.find((o) => o.bundle.id === bundle.id)?.heroes ?? [],
     };
-    if (PREVIEW_HERO_PURCHASE_FLOW) {
-      setPreviewProcessing(true);
-      await new Promise<void>((resolve) =>
-        setTimeout(resolve, PREVIEW_PROCESSING_MS),
-      );
-      setPreviewProcessing(false);
-      setSuccessBundle(unlocked);
+    setPreviewProcessing(true);
+    const outcome = await purchaseItem(
+      {
+        kind: "BUNDLE",
+        characterIds: unlocked.heroes.map((h) => h.id),
+        productId: bundle.productId ?? null,
+        storeProductId: null,
+      },
+      userId,
+    );
+    setPreviewProcessing(false);
+    if (!outcome.success) {
+      failed(outcome.error);
       return;
     }
-    const result = await purchase(bundle.productId as any);
-    if (result.success) setSuccessBundle(unlocked);
-    void trackItemPurchased({
+    setSuccessBundle(unlocked);
+    if (!DEMO_PURCHASES) void trackItemPurchased({
       playerId: userId,
       userId,
       itemType: "bundle",
@@ -928,7 +958,7 @@ const StoreScreen = () => {
   // builds the button plays "processing" and the thank-you; in release builds it
   // does nothing until a product is wired here.
   const handleDonate = async () => {
-    if (!PREVIEW_HERO_PURCHASE_FLOW) return;
+    if (!DONATE_PREVIEW) return;
     setPreviewProcessing(true);
     await new Promise<void>((resolve) =>
       setTimeout(resolve, PREVIEW_PROCESSING_MS),
@@ -978,7 +1008,7 @@ const StoreScreen = () => {
             {/* ── Store Header — logo + character ───────────────────── */}
             <StoreHeader />
 
-            {/* ── Premium ───────────────────────────────────────────────── */}
+            {/* ── Membership ────────────────────────────────────────────── */}
             {!isPremium && (
               <>
                 <SectionHeader
@@ -988,7 +1018,7 @@ const StoreScreen = () => {
                   delay={100}
                 />
                 <PremiumComponent
-                  onSelect={handlePremiumBuy}
+                  onSelect={() => void handlePremiumBuy()}
                   loading={isLoading}
                 />
               </>
@@ -997,10 +1027,33 @@ const StoreScreen = () => {
             {isPremium && (
               <View style={styles.premiumOwned}>
                 <CustomText style={styles.premiumOwnedText}>
-                  {t("store_premium_owned")}
+                  {isExpert
+                    ? ent.lifetime
+                      ? t("store_expert_owned_lifetime")
+                      : t("store_expert_owned")
+                    : t("store_premium_owned")}
                 </CustomText>
               </View>
             )}
+
+            {/* Expert: offered to everyone below it (Premium members too). */}
+            {!isExpert && (
+              <>
+                <SectionHeader
+                  emoji="💎"
+                  title={t("store_expert_title")}
+                  subtitle={t("store_expert_subtitle")}
+                  delay={140}
+                />
+                <ExpertComponent
+                  heroCount={heroes.length}
+                  onSelect={(plan) => void handleTierBuy(plan)}
+                  loading={isLoading}
+                />
+              </>
+            )}
+
+            <ManageSubscriptionCard style={styles.manageCard} />
 
             {/* ── Heroes ────────────────────────────────────────────────── */}
             {paidHeroes.length > 0 && (
@@ -1010,6 +1063,7 @@ const StoreScreen = () => {
                   title={t("store_heroes_section")}
                   subtitle={t("store_heroes_subtitle", {
                     count: paidHeroes.length,
+                    price: formatPrice(199),
                   })}
                   delay={180}
                 />
@@ -1118,6 +1172,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
 
+  manageCard: { marginHorizontal: 16, marginTop: 12, width: "auto" },
   // ── Premium owned badge
   premiumOwned: {
     marginHorizontal: 16,
